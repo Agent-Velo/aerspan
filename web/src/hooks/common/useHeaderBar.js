@@ -29,14 +29,13 @@ import { useSidebarCollapsed } from './useSidebarCollapsed';
 import { useMinimumLoadingTime } from './useMinimumLoadingTime';
 
 export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [userState, userDispatch] = useContext(UserContext);
   const [statusState] = useContext(StatusContext);
   const isMobile = useIsMobile();
   const [collapsed, toggleCollapsed] = useSidebarCollapsed();
   const [logoLoaded, setLogoLoaded] = useState(false);
   const navigate = useNavigate();
-  const [currentLang, setCurrentLang] = useState(i18n.language);
   const location = useLocation();
 
   const loading = statusState?.status === undefined;
@@ -115,27 +114,6 @@ export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
     }
   }, [actualTheme]);
 
-  // Language change effect
-  useEffect(() => {
-    const handleLanguageChanged = (lng) => {
-      setCurrentLang(lng);
-      try {
-        const iframe = document.querySelector('iframe');
-        const cw = iframe && iframe.contentWindow;
-        if (cw) {
-          cw.postMessage({ lang: lng }, '*');
-        }
-      } catch (e) {
-        // Silently ignore cross-origin or access errors
-      }
-    };
-
-    i18n.on('languageChanged', handleLanguageChanged);
-    return () => {
-      i18n.off('languageChanged', handleLanguageChanged);
-    };
-  }, [i18n]);
-
   // Actions
   const logout = useCallback(async () => {
     await API.get('/api/user/logout');
@@ -144,13 +122,6 @@ export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
     localStorage.removeItem('user');
     navigate('/login');
   }, [navigate, t, userDispatch]);
-
-  const handleLanguageChange = useCallback(
-    (lang) => {
-      i18n.changeLanguage(lang);
-    },
-    [i18n],
-  );
 
   const handleThemeToggle = useCallback(
     (newTheme) => {
@@ -180,7 +151,6 @@ export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
     isMobile,
     collapsed,
     logoLoaded,
-    currentLang,
     location,
     isLoading,
     systemName,
@@ -197,7 +167,6 @@ export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
 
     // Actions
     logout,
-    handleLanguageChange,
     handleThemeToggle,
     handleMobileMenuToggle,
     navigate,
