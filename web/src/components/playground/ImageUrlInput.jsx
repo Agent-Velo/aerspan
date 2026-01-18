@@ -70,8 +70,8 @@ const ImageUrlInput = ({
           <Switch
             checked={imageEnabled}
             onChange={onImageEnabledChange}
-            checkedText={t('启用')}
-            uncheckedText={t('停用')}
+            checkedText={t('开')}
+            uncheckedText={t('关')}
             size='small'
             className='flex-shrink-0'
             disabled={disabled}

@@ -263,7 +263,7 @@ const CheckinCalendar = ({ t, status, turnstileEnabled, turnstileSiteKey }) => {
                 ? t('正在加载签到状态...')
                 : checkinData.stats?.checked_in_today
                   ? t('今日已签到，累计签到') +
-                    ` ${checkinData.stats?.total_checkins || 0} ` +
+                    ` ${checkinData.stats?.total_checkins || 0}` +
                     t('天')
                   : t('每日签到可获得随机额度奖励')}
             </div>
