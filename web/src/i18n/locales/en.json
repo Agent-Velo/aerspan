@@ -995,7 +995,7 @@
     "开启后，当前分组渠道失败时会按顺序尝试下一个分组的渠道": "After enabling, when the current group channel fails, it will try the next group's channel in order",
     "开启后，所有请求将直接透传给上游，不会进行任何处理（重定向和渠道适配也将失效）,请谨慎开启": "When enabled, all requests are forwarded upstream without processing (redirects and channel adaptation are disabled). Use with caution.",
     "开启后不限制：必须设置模型倍率": "After enabling, no limit: must set model ratio",
-    "开启后未登录用户无法访问模型广场": "When enabled, unauthenticated users cannot access the model marketplace",
+    "开启后未登录用户无法访问模型广场": "When enabled, unauthenticated users cannot access the Models",
     "开启批量操作": "Enable batch selection",
     "开始同步": "Start sync",
     "开始批量测试 ${count} 个模型，已清空上次结果...": "Starting batch test of ${count} models, cleared previous results...",
@@ -1450,7 +1450,7 @@
     "模型固定价格": "Model price per call",
     "模型图标": "Model icon",
     "模型定价，需要登录访问": "Model pricing (sign-in required)",
-    "模型广场": "Model marketplace",
+    "模型广场": "Models",
     "模型拉取失败: {{error}}": "Failed to pull model: {{error}}",
     "模型支持的接口端点信息": "Model supported API endpoint information",
     "模型数据分析": "Model analytics",
@@ -2592,11 +2592,11 @@
     "填充模板（指定渠道）": "Fill template (selected channels)",
     "填充模板（全渠道）": "Fill template (all channels)",
     "格式化 JSON": "Format JSON",
-    "提示：此处配置仅用于控制「模型广场」对用户的展示效果，不会影响模型的实际调用与路由。若需配置真实调用行为，请前往「渠道管理」进行设置。": "Note: These settings only affect how the model marketplace is displayed. They don't affect routing or actual calls. Configure routing in Channels.",
+    "提示：此处配置仅用于控制「模型广场」对用户的展示效果，不会影响模型的实际调用与路由。若需配置真实调用行为，请前往「渠道管理」进行设置。": "Note: These settings only affect how the Models is displayed. They don't affect routing or actual calls. Configure routing in Channels.",
     "确认关闭提示": "Hide this tip?",
     "关闭后将不再显示此提示（仅对当前浏览器生效）。确定要关闭吗？": "This tip won't be shown again in this browser. Continue?",
     "关闭提示": "Don't show again",
     "说明：本页测试为非流式请求；若渠道仅支持流式返回，可能出现测试失败，请以实际使用为准。": "Note: Tests on this page use non-streaming requests. If a channel only supports streaming responses, tests may fail. Verify with real usage.",
-    "提示：端点映射仅用于模型广场展示，不会影响模型真实调用。如需配置真实调用，请前往「渠道管理」。": "Note: Endpoint mapping is for the model marketplace only. It doesn't affect routing or actual calls. Configure routing in Channels."
+    "提示：端点映射仅用于模型广场展示，不会影响模型真实调用。如需配置真实调用，请前往「渠道管理」。": "Note: Endpoint mapping is for the Models only. It doesn't affect routing or actual calls. Configure routing in Channels."
   }
 }
