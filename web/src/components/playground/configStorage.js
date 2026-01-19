@@ -36,7 +36,7 @@ export const saveConfig = (config) => {
     };
     localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(configToSave));
   } catch (error) {
-    console.error('保存配置失败:', error);
+    console.error('Failed to save config:', error);
   }
 };
 
@@ -52,7 +52,7 @@ export const saveMessages = (messages) => {
     };
     localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(messagesToSave));
   } catch (error) {
-    console.error('保存消息失败:', error);
+    console.error('Failed to save messages:', error);
   }
 };
 
@@ -86,7 +86,7 @@ export const loadConfig = () => {
       return mergedConfig;
     }
   } catch (error) {
-    console.error('加载配置失败:', error);
+    console.error('Failed to load config:', error);
   }
 
   return DEFAULT_CONFIG;
@@ -104,7 +104,7 @@ export const loadMessages = () => {
       return parsedMessages.messages || null;
     }
   } catch (error) {
-    console.error('加载消息失败:', error);
+    console.error('Failed to load messages:', error);
   }
 
   return null;
@@ -118,7 +118,7 @@ export const clearConfig = () => {
     localStorage.removeItem(STORAGE_KEYS.CONFIG);
     localStorage.removeItem(STORAGE_KEYS.MESSAGES); // 同时清除消息
   } catch (error) {
-    console.error('清除配置失败:', error);
+    console.error('Failed to clear config:', error);
   }
 };
 
@@ -129,7 +129,7 @@ export const clearMessages = () => {
   try {
     localStorage.removeItem(STORAGE_KEYS.MESSAGES);
   } catch (error) {
-    console.error('清除消息失败:', error);
+    console.error('Failed to clear messages:', error);
   }
 };
 
@@ -141,7 +141,7 @@ export const hasStoredConfig = () => {
   try {
     return localStorage.getItem(STORAGE_KEYS.CONFIG) !== null;
   } catch (error) {
-    console.error('检查配置失败:', error);
+    console.error('Failed to check stored config:', error);
     return false;
   }
 };
@@ -158,7 +158,7 @@ export const getConfigTimestamp = () => {
       return parsedConfig.timestamp || null;
     }
   } catch (error) {
-    console.error('获取配置时间戳失败:', error);
+    console.error('Failed to read config timestamp:', error);
   }
   return null;
 };
@@ -187,7 +187,7 @@ export const exportConfig = (config, messages = null) => {
 
     URL.revokeObjectURL(link.href);
   } catch (error) {
-    console.error('导出配置失败:', error);
+    console.error('Failed to export config:', error);
   }
 };
 

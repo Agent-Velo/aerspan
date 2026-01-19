@@ -72,7 +72,8 @@ const ChannelSelectorModal = forwardRef(
       return (
         id === -100 ||
         base === 'https://basellm.github.io' ||
-        name === '官方倍率预设'
+        name === '官方倍率预设' ||
+        name === '官方定价预设'
       );
     };
 
@@ -115,7 +116,9 @@ const ChannelSelectorModal = forwardRef(
       const currentEndpoint = channelEndpoints[channelId] || '';
 
       const getEndpointType = (ep) => {
-        if (ep === '/api/ratio_config') return 'ratio_config';
+        if (ep === '/api/pricing_config' || ep === '/api/ratio_config') {
+          return 'pricing_config';
+        }
         if (ep === '/api/pricing') return 'pricing';
         return 'custom';
       };
@@ -123,8 +126,8 @@ const ChannelSelectorModal = forwardRef(
       const currentType = getEndpointType(currentEndpoint);
 
       const handleTypeChange = (val) => {
-        if (val === 'ratio_config') {
-          updateEndpoint(channelId, '/api/ratio_config');
+        if (val === 'pricing_config') {
+          updateEndpoint(channelId, '/api/pricing_config');
         } else if (val === 'pricing') {
           updateEndpoint(channelId, '/api/pricing');
         } else {
@@ -142,7 +145,7 @@ const ChannelSelectorModal = forwardRef(
             onChange={handleTypeChange}
             style={{ width: 120 }}
             optionList={[
-              { label: 'ratio_config', value: 'ratio_config' },
+              { label: 'pricing_config', value: 'pricing_config' },
               { label: 'pricing', value: 'pricing' },
               { label: 'custom', value: 'custom' },
             ]}

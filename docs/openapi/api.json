@@ -374,10 +374,35 @@
         ]
       }
     },
+    "/api/pricing_config": {
+      "get": {
+        "summary": "获取定价配置",
+        "deprecated": false,
+        "description": "🔓 无需鉴权",
+        "tags": [
+          "系统"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "成功",
+            "headers": {}
+          }
+        },
+        "security": [
+          {
+            "Combination343": []
+          },
+          {
+            "Combination1243": []
+          }
+        ]
+      }
+    },
     "/api/ratio_config": {
       "get": {
-        "summary": "获取倍率配置",
-        "deprecated": false,
+        "summary": "获取定价配置（兼容）",
+        "deprecated": true,
         "description": "🔓 无需鉴权",
         "tags": [
           "系统"
@@ -4845,7 +4870,7 @@
     },
     "/api/option/rest_model_ratio": {
       "post": {
-        "summary": "重置模型倍率",
+        "summary": "重置模型定价",
         "deprecated": false,
         "description": "👑 需要超级管理员权限（Root）",
         "tags": [
@@ -4920,7 +4945,7 @@
     },
     "/api/ratio_sync/fetch": {
       "post": {
-        "summary": "获取上游倍率",
+        "summary": "获取上游定价",
         "deprecated": false,
         "description": "👑 需要超级管理员权限（Root）",
         "tags": [

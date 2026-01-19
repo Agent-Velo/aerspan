@@ -26,6 +26,7 @@ import (
 	"github.com/QuantumNous/new-api/relay/helper"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/pricing_setting"
 	"github.com/QuantumNous/new-api/types"
 
 	"github.com/bytedance/gopkg/util/gopool"
@@ -392,9 +393,10 @@ func testChannel(channel *model.Channel, testModel string, endpointType string) 
 
 	quota := 0
 	if !priceData.UsePrice {
-		quota = usage.PromptTokens + int(math.Round(float64(usage.CompletionTokens)*priceData.CompletionRatio))
-		quota = int(math.Round(float64(quota) * priceData.ModelRatio))
-		if priceData.ModelRatio != 0 && quota <= 0 {
+		usd := (float64(usage.PromptTokens)*priceData.InputPrice + float64(usage.CompletionTokens)*priceData.OutputPrice) / pricing_setting.TokensPerMillion
+		usd *= priceData.GroupRatioInfo.GroupRatio
+		quota = int(math.Round(usd * common.QuotaPerUnit))
+		if usd > 0 && quota <= 0 {
 			quota = 1
 		}
 	} else {
@@ -403,8 +405,8 @@ func testChannel(channel *model.Channel, testModel string, endpointType string) 
 	tok := time.Now()
 	milliseconds := tok.Sub(tik).Milliseconds()
 	consumedTime := float64(milliseconds) / 1000.0
-	other := service.GenerateTextOtherInfo(c, info, priceData.ModelRatio, priceData.GroupRatioInfo.GroupRatio, priceData.CompletionRatio,
-		usage.PromptTokensDetails.CachedTokens, priceData.CacheRatio, priceData.ModelPrice, priceData.GroupRatioInfo.GroupSpecialRatio)
+	other := service.GenerateTextOtherInfo(c, info, priceData.InputPrice, priceData.OutputPrice, priceData.GroupRatioInfo.GroupRatio,
+		usage.PromptTokensDetails.CachedTokens, priceData.CacheReadPrice, priceData.ModelPrice, priceData.GroupRatioInfo.GroupSpecialRatio)
 	model.RecordConsumeLog(c, 1, model.RecordConsumeLogParams{
 		ChannelId:        channel.Id,
 		PromptTokens:     usage.PromptTokens,

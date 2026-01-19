@@ -18,8 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import { Tag, Space, Tooltip } from '@douyinfe/semi-ui';
-import { IconHelpCircle } from '@douyinfe/semi-icons';
+import { Tag, Space } from '@douyinfe/semi-ui';
 import {
   renderModelTag,
   stringToColor,
@@ -50,6 +49,11 @@ function renderQuotaType(type, t) {
       return t('未知');
   }
 }
+
+const renderTokenCount = (value) => {
+  if (value === undefined || value === null || value === 0) return '-';
+  return value;
+};
 
 // Render vendor name
 const renderVendor = (vendorName, vendorIcon, t) => {
@@ -103,14 +107,9 @@ function renderSupportedEndpoints(endpoints) {
 export const getPricingTableColumns = ({
   t,
   selectedGroup,
-  groupRatio,
   copyText,
-  setModalImageUrl,
-  setIsModalOpenurl,
-  currency,
   tokenUnit,
   displayPrice,
-  showRatio,
 }) => {
   const isMobile = useIsMobile();
   const priceDataCache = new WeakMap();
@@ -120,11 +119,8 @@ export const getPricingTableColumns = ({
     if (!cache) {
       cache = calculateModelPrice({
         record,
-        selectedGroup,
-        groupRatio,
         tokenUnit,
         displayPrice,
-        currency,
       });
       priceDataCache.set(record, cache);
     }
@@ -185,44 +181,32 @@ export const getPricingTableColumns = ({
     vendorColumn,
     descriptionColumn,
     tagsColumn,
+    {
+      title: t('Total Context'),
+      dataIndex: 'total_context',
+      render: renderTokenCount,
+      sorter: (a, b) => (a.total_context || 0) - (b.total_context || 0),
+    },
+    {
+      title: t('Max Output'),
+      dataIndex: 'max_output',
+      render: renderTokenCount,
+      sorter: (a, b) => (a.max_output || 0) - (b.max_output || 0),
+    },
     quotaColumn,
   ];
 
-  const ratioColumn = {
-    title: () => (
-      <div className='flex items-center space-x-1'>
-        <span>{t('倍率')}</span>
-        <Tooltip content={t('倍率是为了方便换算不同价格的模型')}>
-          <IconHelpCircle
-            className='text-blue-500 cursor-pointer'
-            onClick={() => {
-              setModalImageUrl('/ratio.png');
-              setIsModalOpenurl(true);
-            }}
-          />
-        </Tooltip>
-      </div>
-    ),
-    dataIndex: 'model_ratio',
-    render: (text, record, index) => {
-      const completionRatio = parseFloat(record.completion_ratio.toFixed(3));
-      const priceData = getPriceData(record);
-
-      return (
-        <div className='space-y-1'>
-          <div className='text-gray-700'>
-            {t('模型倍率')}：{record.quota_type === 0 ? text : t('无')}
-          </div>
-          <div className='text-gray-700'>
-            {t('补全倍率')}：
-            {record.quota_type === 0 ? completionRatio : t('无')}
-          </div>
-          <div className='text-gray-700'>
-            {t('分组倍率')}：{priceData?.usedGroupRatio ?? '-'}
-          </div>
-        </div>
-      );
-    },
+  const usedGroupColumn = {
+    title: t('定价分组'),
+    dataIndex: 'used_group',
+    render: (text) =>
+      text ? (
+        <Tag color='white' shape='circle'>
+          {text}
+        </Tag>
+      ) : (
+        '-'
+      ),
   };
 
   const priceColumn = {
@@ -239,7 +223,7 @@ export const getPricingTableColumns = ({
               {t('输入')} {priceData.inputPrice} / 1{priceData.unitLabel} tokens
             </div>
             <div className='text-gray-700'>
-              {t('输出')} {priceData.completionPrice} / 1{priceData.unitLabel}{' '}
+              {t('输出')} {priceData.outputPrice} / 1{priceData.unitLabel}{' '}
               tokens
             </div>
           </div>
@@ -256,8 +240,8 @@ export const getPricingTableColumns = ({
 
   const columns = [...baseColumns];
   columns.push(endpointColumn);
-  if (showRatio) {
-    columns.push(ratioColumn);
+  if (selectedGroup === 'all') {
+    columns.push(usedGroupColumn);
   }
   columns.push(priceColumn);
   return columns;

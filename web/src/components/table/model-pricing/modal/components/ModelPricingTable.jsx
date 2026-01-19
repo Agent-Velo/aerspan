@@ -17,20 +17,17 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Avatar, Typography, Table, Tag } from '@douyinfe/semi-ui';
 import { IconCoinMoneyStroked } from '@douyinfe/semi-icons';
-import { calculateModelPrice } from '../../../../../helpers';
+import { API, calculateModelPrice } from '../../../../../helpers';
 
 const { Text } = Typography;
 
 const ModelPricingTable = ({
   modelData,
-  groupRatio,
-  currency,
   tokenUnit,
   displayPrice,
-  showRatio,
   usableGroup,
   autoGroups = [],
   t,
@@ -39,52 +36,95 @@ const ModelPricingTable = ({
     ? modelData.enable_groups
     : [];
   const autoChain = autoGroups.filter((g) => modelEnableGroups.includes(g));
-  const renderGroupPriceTable = () => {
-    // 仅展示模型可用的分组：模型 enable_groups 与用户可用分组的交集
+  const availableGroups = useMemo(
+    () =>
+      Object.keys(usableGroup || {})
+        .filter((g) => g !== '' && g !== 'auto')
+        .filter((g) => modelEnableGroups.includes(g)),
+    [usableGroup, modelEnableGroups],
+  );
 
-    const availableGroups = Object.keys(usableGroup || {})
-      .filter((g) => g !== '')
-      .filter((g) => g !== 'auto')
-      .filter((g) => modelEnableGroups.includes(g));
+  const [groupPricingMap, setGroupPricingMap] = useState({});
+  const [tableLoading, setTableLoading] = useState(false);
 
-    // 准备表格数据
-    const tableData = availableGroups.map((group) => {
-      const priceData = modelData
-        ? calculateModelPrice({
-            record: modelData,
-            selectedGroup: group,
-            groupRatio,
-            tokenUnit,
-            displayPrice,
-            currency,
-          })
-        : { inputPrice: '-', outputPrice: '-', price: '-' };
+  useEffect(() => {
+    if (!modelData?.model_name || availableGroups.length === 0) {
+      setGroupPricingMap({});
+      return;
+    }
 
-      // 获取分组倍率
-      const groupRatioValue =
-        groupRatio && groupRatio[group] ? groupRatio[group] : 1;
+    let cancelled = false;
 
-      return {
-        key: group,
-        group: group,
-        ratio: groupRatioValue,
-        billingType:
-          modelData?.quota_type === 0
-            ? t('按量计费')
-            : modelData?.quota_type === 1
-              ? t('按次计费')
-              : '-',
-        inputPrice: modelData?.quota_type === 0 ? priceData.inputPrice : '-',
-        outputPrice:
-          modelData?.quota_type === 0
-            ? priceData.completionPrice || priceData.outputPrice
-            : '-',
-        fixedPrice: modelData?.quota_type === 1 ? priceData.price : '-',
-      };
-    });
+    const fetchGroupPricing = async () => {
+      setTableLoading(true);
+      try {
+        const results = await Promise.all(
+          availableGroups.map(async (group) => {
+            try {
+              const res = await API.get(
+                `/api/pricing?group=${encodeURIComponent(group)}&model=${encodeURIComponent(modelData.model_name)}`,
+              );
+              if (res.data?.success && Array.isArray(res.data?.data)) {
+                return [group, res.data.data[0] || null];
+              }
+            } catch (e) {
+              // ignore per-group errors
+            }
+            return [group, null];
+          }),
+        );
 
-    // 定义表格列
-    const columns = [
+        if (cancelled) return;
+
+        const next = {};
+        results.forEach(([group, pricing]) => {
+          next[group] = pricing;
+        });
+        setGroupPricingMap(next);
+      } finally {
+        if (!cancelled) setTableLoading(false);
+      }
+    };
+
+    fetchGroupPricing();
+    return () => {
+      cancelled = true;
+    };
+  }, [modelData?.model_name, availableGroups]);
+
+  const tableData = useMemo(
+    () =>
+      availableGroups.map((group) => {
+        const record = groupPricingMap[group];
+        const priceData = record
+          ? calculateModelPrice({
+              record,
+              tokenUnit,
+              displayPrice,
+            })
+          : null;
+
+        return {
+          key: group,
+          group,
+          billingType:
+            modelData?.quota_type === 0
+              ? t('按量计费')
+              : modelData?.quota_type === 1
+                ? t('按次计费')
+                : '-',
+          inputPrice:
+            modelData?.quota_type === 0 ? priceData?.inputPrice || '-' : '-',
+          outputPrice:
+            modelData?.quota_type === 0 ? priceData?.outputPrice || '-' : '-',
+          fixedPrice: modelData?.quota_type === 1 ? priceData?.price || '-' : '-',
+        };
+      }),
+    [availableGroups, displayPrice, groupPricingMap, modelData?.quota_type, t, tokenUnit],
+  );
+
+  const columns = useMemo(() => {
+    const cols = [
       {
         title: t('分组'),
         dataIndex: 'group',
@@ -95,43 +135,26 @@ const ModelPricingTable = ({
           </Tag>
         ),
       },
+      {
+        title: t('计费类型'),
+        dataIndex: 'billingType',
+        render: (text) => {
+          let color = 'white';
+          if (text === t('按量计费')) color = 'violet';
+          else if (text === t('按次计费')) color = 'teal';
+          return (
+            <Tag color={color} size='small' shape='circle'>
+              {text || '-'}
+            </Tag>
+          );
+        },
+      },
     ];
 
-    // 如果显示倍率，添加倍率列
-    if (showRatio) {
-      columns.push({
-        title: t('倍率'),
-        dataIndex: 'ratio',
-        render: (text) => (
-          <Tag color='white' size='small' shape='circle'>
-            {text}x
-          </Tag>
-        ),
-      });
-    }
-
-    // 添加计费类型列
-    columns.push({
-      title: t('计费类型'),
-      dataIndex: 'billingType',
-      render: (text) => {
-        let color = 'white';
-        if (text === t('按量计费')) color = 'violet';
-        else if (text === t('按次计费')) color = 'teal';
-        return (
-          <Tag color={color} size='small' shape='circle'>
-            {text || '-'}
-          </Tag>
-        );
-      },
-    });
-
-    // 根据计费类型添加价格列
     if (modelData?.quota_type === 0) {
-      // 按量计费
-      columns.push(
+      cols.push(
         {
-          title: t('提示'),
+          title: t('输入'),
           dataIndex: 'inputPrice',
           render: (text) => (
             <>
@@ -143,7 +166,7 @@ const ModelPricingTable = ({
           ),
         },
         {
-          title: t('补全'),
+          title: t('输出'),
           dataIndex: 'outputPrice',
           render: (text) => (
             <>
@@ -156,8 +179,7 @@ const ModelPricingTable = ({
         },
       );
     } else {
-      // 按次计费
-      columns.push({
+      cols.push({
         title: t('价格'),
         dataIndex: 'fixedPrice',
         render: (text) => (
@@ -169,17 +191,8 @@ const ModelPricingTable = ({
       });
     }
 
-    return (
-      <Table
-        dataSource={tableData}
-        columns={columns}
-        pagination={false}
-        size='small'
-        bordered={false}
-        className='!rounded-lg'
-      />
-    );
-  };
+    return cols;
+  }, [modelData?.quota_type, t, tokenUnit]);
 
   return (
     <Card className='!rounded-2xl shadow-sm border-0'>
@@ -209,7 +222,15 @@ const ModelPricingTable = ({
           ))}
         </div>
       )}
-      {renderGroupPriceTable()}
+      <Table
+        dataSource={tableData}
+        columns={columns}
+        loading={tableLoading}
+        pagination={false}
+        size='small'
+        bordered={false}
+        className='!rounded-lg'
+      />
     </Card>
   );
 };

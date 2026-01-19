@@ -9,6 +9,7 @@ import (
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/config"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/pricing_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
 )
@@ -133,6 +134,13 @@ func InitOptionMap() {
 	common.OptionMap["AutomaticDisableKeywords"] = operation_setting.AutomaticDisableKeywordsToString()
 	common.OptionMap["AutomaticDisableStatusCodes"] = operation_setting.AutomaticDisableStatusCodesToString()
 	common.OptionMap["ExposeRatioEnabled"] = strconv.FormatBool(ratio_setting.IsExposeRatioEnabled())
+	common.OptionMap["ExposePricingEnabled"] = strconv.FormatBool(pricing_setting.IsExposePricingEnabled())
+	common.OptionMap["ModelInputPrice"] = pricing_setting.ModelInputPrice2JSONString()
+	common.OptionMap["ModelOutputPrice"] = pricing_setting.ModelOutputPrice2JSONString()
+	common.OptionMap["ModelCacheReadPrice"] = pricing_setting.ModelCacheReadPrice2JSONString()
+	common.OptionMap["ModelImageInputPrice"] = pricing_setting.ModelImageInputPrice2JSONString()
+	common.OptionMap["ModelAudioInputPrice"] = pricing_setting.ModelAudioInputPrice2JSONString()
+	common.OptionMap["ModelAudioOutputPrice"] = pricing_setting.ModelAudioOutputPrice2JSONString()
 
 	// 自动添加所有注册的模型配置
 	modelConfigs := config.GlobalConfig.ExportAllConfigs()
@@ -283,6 +291,8 @@ func updateOptionMap(key string, value string) (err error) {
 			setting.DefaultUseAutoGroup = boolValue
 		case "ExposeRatioEnabled":
 			ratio_setting.SetExposeRatioEnabled(boolValue)
+		case "ExposePricingEnabled":
+			pricing_setting.SetExposePricingEnabled(boolValue)
 		}
 	}
 	switch key {
@@ -397,6 +407,18 @@ func updateOptionMap(key string, value string) (err error) {
 		err = ratio_setting.UpdateAudioRatioByJSONString(value)
 	case "AudioCompletionRatio":
 		err = ratio_setting.UpdateAudioCompletionRatioByJSONString(value)
+	case "ModelInputPrice":
+		err = pricing_setting.UpdateModelInputPriceByJSONString(value)
+	case "ModelOutputPrice":
+		err = pricing_setting.UpdateModelOutputPriceByJSONString(value)
+	case "ModelCacheReadPrice":
+		err = pricing_setting.UpdateModelCacheReadPriceByJSONString(value)
+	case "ModelImageInputPrice":
+		err = pricing_setting.UpdateModelImageInputPriceByJSONString(value)
+	case "ModelAudioInputPrice":
+		err = pricing_setting.UpdateModelAudioInputPriceByJSONString(value)
+	case "ModelAudioOutputPrice":
+		err = pricing_setting.UpdateModelAudioOutputPriceByJSONString(value)
 	case "TopUpLink":
 		common.TopUpLink = value
 	//case "ChatLink":

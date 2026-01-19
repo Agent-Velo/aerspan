@@ -10,6 +10,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
+	"github.com/QuantumNous/new-api/setting/pricing_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/QuantumNous/new-api/types"
 )
@@ -20,11 +21,18 @@ type Pricing struct {
 	Icon                   string                  `json:"icon,omitempty"`
 	Tags                   string                  `json:"tags,omitempty"`
 	VendorID               int                     `json:"vendor_id,omitempty"`
+	TotalContext           *int                    `json:"total_context,omitempty"`
+	MaxOutput              *int                    `json:"max_output,omitempty"`
 	QuotaType              int                     `json:"quota_type"`
-	ModelRatio             float64                 `json:"model_ratio"`
+	InputPrice             float64                 `json:"input_price"`
+	OutputPrice            float64                 `json:"output_price"`
+	CacheReadPrice         float64                 `json:"cache_read_price,omitempty"`
+	ImageInputPrice        float64                 `json:"image_input_price,omitempty"`
+	AudioInputPrice        float64                 `json:"audio_input_price,omitempty"`
+	AudioOutputPrice       float64                 `json:"audio_output_price,omitempty"`
 	ModelPrice             float64                 `json:"model_price"`
 	OwnerBy                string                  `json:"owner_by"`
-	CompletionRatio        float64                 `json:"completion_ratio"`
+	UsedGroup              string                  `json:"used_group,omitempty"`
 	EnableGroup            []string                `json:"enable_groups"`
 	SupportedEndpointTypes []constant.EndpointType `json:"supported_endpoint_types"`
 }
@@ -280,15 +288,34 @@ func updatePricing() {
 			pricing.Icon = meta.Icon
 			pricing.Tags = meta.Tags
 			pricing.VendorID = meta.VendorID
+			pricing.TotalContext = meta.TotalContext
+			pricing.MaxOutput = meta.MaxOutput
 		}
 		modelPrice, findPrice := ratio_setting.GetModelPrice(model, false)
 		if findPrice {
 			pricing.ModelPrice = modelPrice
 			pricing.QuotaType = 1
 		} else {
-			modelRatio, _, _ := ratio_setting.GetModelRatio(model)
-			pricing.ModelRatio = modelRatio
-			pricing.CompletionRatio = ratio_setting.GetCompletionRatio(model)
+			inputPrice, _, _ := pricing_setting.GetModelInputPrice(model)
+			pricing.InputPrice = inputPrice
+			if outputPrice, ok := pricing_setting.GetModelOutputPrice(model); ok {
+				pricing.OutputPrice = outputPrice
+			} else {
+				// Backward-compatible fallback for models without explicit output pricing.
+				pricing.OutputPrice = inputPrice * ratio_setting.GetCompletionRatio(model)
+			}
+			if p, ok := pricing_setting.GetModelCacheReadPrice(model); ok {
+				pricing.CacheReadPrice = p
+			}
+			if p, ok := pricing_setting.GetModelImageInputPrice(model); ok {
+				pricing.ImageInputPrice = p
+			}
+			if p, ok := pricing_setting.GetModelAudioInputPrice(model); ok {
+				pricing.AudioInputPrice = p
+			}
+			if p, ok := pricing_setting.GetModelAudioOutputPrice(model); ok {
+				pricing.AudioOutputPrice = p
+			}
 			pricing.QuotaType = 0
 		}
 		pricingMap = append(pricingMap, pricing)

@@ -131,7 +131,7 @@ export default function SettingsSidebarModulesUser() {
         },
       };
       setSidebarModulesUser(newModules);
-      console.log('用户边栏区域配置变更:', sectionKey, checked, newModules);
+      console.log('User sidebar section changed:', sectionKey, checked, newModules);
     };
   }
 
@@ -147,7 +147,7 @@ export default function SettingsSidebarModulesUser() {
       };
       setSidebarModulesUser(newModules);
       console.log(
-        '用户边栏功能配置变更:',
+        'User sidebar module changed:',
         sectionKey,
         moduleKey,
         checked,
@@ -161,32 +161,32 @@ export default function SettingsSidebarModulesUser() {
     const defaultConfig = generateDefaultConfig();
     setSidebarModulesUser(defaultConfig);
     showSuccess(t('已重置为默认配置'));
-    console.log('用户边栏配置重置为默认:', defaultConfig);
+    console.log('User sidebar config reset to defaults:', defaultConfig);
   }
 
   // 保存配置
   async function onSubmit() {
     setLoading(true);
     try {
-      console.log('保存用户边栏配置:', sidebarModulesUser);
+      console.log('Saving user sidebar config:', sidebarModulesUser);
       const res = await API.put('/api/user/self', {
         sidebar_modules: JSON.stringify(sidebarModulesUser),
       });
       const { success, message } = res.data;
       if (success) {
         showSuccess(t('保存成功'));
-        console.log('用户边栏配置保存成功');
+        console.log('User sidebar config saved');
 
         // 刷新useSidebar钩子中的用户配置，实现实时更新
         await refreshUserConfig();
-        console.log('用户边栏配置已刷新，边栏将立即更新');
+        console.log('Sidebar config refreshed; changes should apply immediately');
       } else {
         showError(message);
-        console.error('用户边栏配置保存失败:', message);
+        console.error('Failed to save user sidebar config:', message);
       }
     } catch (error) {
       showError(t('保存失败，请重试'));
-      console.error('用户边栏配置保存异常:', error);
+      console.error('Error saving user sidebar config:', error);
     } finally {
       setLoading(false);
     }
@@ -204,19 +204,19 @@ export default function SettingsSidebarModulesUser() {
             );
             const mergedAdminConf = mergeAdminConfig(adminConf);
             setAdminConfig(mergedAdminConf);
-            console.log('加载管理员边栏配置:', mergedAdminConf);
+            console.log('Loaded admin sidebar config:', mergedAdminConf);
           } catch (error) {
             const mergedAdminConf = mergeAdminConfig(null);
             setAdminConfig(mergedAdminConf);
             console.log(
-              '加载管理员边栏配置失败，使用默认配置:',
+              'Failed to parse admin sidebar config; using defaults:',
               mergedAdminConf,
             );
           }
         } else {
           const mergedAdminConf = mergeAdminConfig(null);
           setAdminConfig(mergedAdminConf);
-          console.log('管理员边栏配置缺失，使用默认配置:', mergedAdminConf);
+          console.log('Admin sidebar config missing; using defaults:', mergedAdminConf);
         }
 
         // 获取用户个人配置
@@ -229,7 +229,7 @@ export default function SettingsSidebarModulesUser() {
           } else {
             userConf = userRes.data.data.sidebar_modules;
           }
-          console.log('从API加载的用户配置:', userConf);
+          console.log('Loaded user config from API:', userConf);
 
           // 确保用户配置也经过权限过滤
           const filteredUserConf = {};
@@ -248,15 +248,15 @@ export default function SettingsSidebarModulesUser() {
             }
           });
           setSidebarModulesUser(filteredUserConf);
-          console.log('权限过滤后的用户配置:', filteredUserConf);
+          console.log('User config after permission filter:', filteredUserConf);
         } else {
           // 如果用户没有配置，使用权限过滤后的默认配置
           const defaultConfig = generateDefaultConfig();
           setSidebarModulesUser(defaultConfig);
-          console.log('用户无配置，使用默认配置:', defaultConfig);
+          console.log('No user config found; using defaults:', defaultConfig);
         }
       } catch (error) {
-        console.error('加载边栏配置失败:', error);
+        console.error('Failed to load sidebar config:', error);
         // 出错时也使用默认配置
         const defaultConfig = generateDefaultConfig();
         setSidebarModulesUser(defaultConfig);

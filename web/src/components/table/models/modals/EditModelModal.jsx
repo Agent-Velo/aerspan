@@ -120,6 +120,8 @@ const EditModelModal = (props) => {
     vendor: '',
     vendor_icon: '',
     endpoints: '',
+    total_context: undefined,
+    max_output: undefined,
     name_rule: props.editingModel?.model_name ? 0 : undefined, // 通过未配置模型过来的固定为精确匹配
     status: true,
     sync_official: true,
@@ -362,6 +364,28 @@ const EditModelModal = (props) => {
                       placeholder={t('请输入模型描述')}
                       rows={3}
                       showClear
+                    />
+                  </Col>
+
+                  <Col span={24}>
+                    <Form.InputNumber
+                      field='total_context'
+                      label={t('Total Context')}
+                      placeholder='e.g. 128000'
+                      min={0}
+                      extraText='Unit: tokens; leave empty if unknown'
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+
+                  <Col span={24}>
+                    <Form.InputNumber
+                      field='max_output'
+                      label={t('Max Output')}
+                      placeholder='e.g. 4096'
+                      min={0}
+                      extraText='Unit: tokens; leave empty if unknown'
+                      style={{ width: '100%' }}
                     />
                   </Col>
                   <Col span={24}>

@@ -33,11 +33,9 @@ const ModelDetailSideSheet = ({
   visible,
   onClose,
   modelData,
-  groupRatio,
   currency,
   tokenUnit,
   displayPrice,
-  showRatio,
   usableGroup,
   vendorsMap,
   endpointMap,
@@ -90,11 +88,9 @@ const ModelDetailSideSheet = ({
             />
             <ModelPricingTable
               modelData={modelData}
-              groupRatio={groupRatio}
               currency={currency}
               tokenUnit={tokenUnit}
               displayPrice={displayPrice}
-              showRatio={showRatio}
               usableGroup={usableGroup}
               autoGroups={autoGroups}
               t={t}

@@ -3,16 +3,17 @@ package controller
 import (
 	"net/http"
 
-	"github.com/QuantumNous/new-api/setting/ratio_setting"
+	"github.com/QuantumNous/new-api/setting/pricing_setting"
 
 	"github.com/gin-gonic/gin"
 )
 
-func GetRatioConfig(c *gin.Context) {
-	if !ratio_setting.IsExposeRatioEnabled() {
+// GetPricingConfig exposes pricing configuration (USD per 1M tokens) for clients.
+func GetPricingConfig(c *gin.Context) {
+	if !pricing_setting.IsExposePricingEnabled() {
 		c.JSON(http.StatusForbidden, gin.H{
 			"success": false,
-			"message": "Ratio config endpoint is disabled",
+			"message": "Pricing config endpoint is disabled",
 		})
 		return
 	}
@@ -20,6 +21,11 @@ func GetRatioConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    ratio_setting.GetExposedData(),
+		"data":    pricing_setting.GetExposedData(),
 	})
+}
+
+// GetRatioConfig is kept for backward compatibility.
+func GetRatioConfig(c *gin.Context) {
+	GetPricingConfig(c)
 }

@@ -34,8 +34,6 @@ const FilterModalContent = ({ sidebarProps, t }) => {
     setCurrency,
     handleChange,
     setActiveKey,
-    showRatio,
-    setShowRatio,
     viewMode,
     setViewMode,
     filterGroup,
@@ -77,8 +75,6 @@ const FilterModalContent = ({ sidebarProps, t }) => {
         setShowWithRecharge={setShowWithRecharge}
         currency={currency}
         setCurrency={setCurrency}
-        showRatio={showRatio}
-        setShowRatio={setShowRatio}
         viewMode={viewMode}
         setViewMode={setViewMode}
         tokenUnit={tokenUnit}
@@ -109,7 +105,6 @@ const FilterModalContent = ({ sidebarProps, t }) => {
         filterGroup={filterGroup}
         setFilterGroup={setFilterGroup}
         usableGroup={categoryProps.usableGroup}
-        groupRatio={categoryProps.groupRatio}
         models={groupCountModels}
         loading={loading}
         t={t}

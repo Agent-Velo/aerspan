@@ -415,7 +415,7 @@ const EditChannelModal = (props) => {
       try {
         settings = JSON.parse(inputs.settings);
       } catch (error) {
-        console.error('解析设置失败:', error);
+        console.error('Failed to parse settings JSON:', error);
       }
     }
     settings[key] = value;
@@ -585,7 +585,7 @@ const EditChannelModal = (props) => {
           data.system_prompt_override =
             parsedSettings.system_prompt_override || false;
         } catch (error) {
-          console.error('解析渠道设置失败:', error);
+          console.error('Failed to parse channel settings JSON:', error);
           data.force_format = false;
           data.thinking_to_content = false;
           data.proxy = '';
@@ -620,7 +620,7 @@ const EditChannelModal = (props) => {
           data.allow_safety_identifier =
             parsedSettings.allow_safety_identifier || false;
         } catch (error) {
-          console.error('解析其他设置失败:', error);
+          console.error('Failed to parse extra settings JSON:', error);
           data.azure_responses_version = '';
           data.region = '';
           data.vertex_key_type = 'json';
@@ -1310,7 +1310,7 @@ const EditChannelModal = (props) => {
       try {
         settings = JSON.parse(localInputs.settings);
       } catch (error) {
-        console.error('解析settings失败:', error);
+        console.error('Failed to parse settings JSON:', error);
       }
     }
 
@@ -2865,7 +2865,7 @@ const EditChannelModal = (props) => {
                       multiple
                       allowAdditions
                       additionLabel={t(
-                        '请在系统设置页面编辑分组倍率以添加新的分组：',
+                        '请在系统设置页面编辑分组系数以添加新的分组：',
                       )}
                       optionList={groupOptions}
                       style={{ width: '100%' }}

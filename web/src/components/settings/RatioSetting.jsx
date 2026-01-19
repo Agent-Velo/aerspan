@@ -34,17 +34,17 @@ const RatioSetting = () => {
 
   let [inputs, setInputs] = useState({
     ModelPrice: '',
-    ModelRatio: '',
-    CacheRatio: '',
-    CompletionRatio: '',
+    ModelInputPrice: '',
+    ModelOutputPrice: '',
+    ModelCacheReadPrice: '',
+    ModelImageInputPrice: '',
+    ModelAudioInputPrice: '',
+    ModelAudioOutputPrice: '',
     GroupRatio: '',
     GroupGroupRatio: '',
-    ImageRatio: '',
-    AudioRatio: '',
-    AudioCompletionRatio: '',
     AutoGroups: '',
     DefaultUseAutoGroup: false,
-    ExposeRatioEnabled: false,
+    ExposePricingEnabled: false,
     UserUsableGroups: '',
     'group_ratio_setting.group_special_usable_group': '',
   });
@@ -66,7 +66,7 @@ const RatioSetting = () => {
             // 如果后端返回的不是合法 JSON，直接展示
           }
         }
-        if (['DefaultUseAutoGroup', 'ExposeRatioEnabled'].includes(item.key)) {
+        if (['DefaultUseAutoGroup', 'ExposePricingEnabled'].includes(item.key)) {
           newInputs[item.key] = toBoolean(item.value);
         } else {
           newInputs[item.key] = item.value;
@@ -96,22 +96,22 @@ const RatioSetting = () => {
 
   return (
     <Spin spinning={loading} size='large'>
-      {/* 模型倍率设置以及可视化编辑器 */}
+      {/* 模型定价设置以及可视化编辑器 */}
       <Card style={{ marginTop: '10px' }}>
         <Tabs type='card'>
-          <Tabs.TabPane tab={t('模型倍率设置')} itemKey='model'>
+          <Tabs.TabPane tab={t('模型定价设置')} itemKey='model'>
             <ModelRatioSettings options={inputs} refresh={onRefresh} />
           </Tabs.TabPane>
-          <Tabs.TabPane tab={t('分组倍率设置')} itemKey='group'>
+          <Tabs.TabPane tab={t('分组定价设置')} itemKey='group'>
             <GroupRatioSettings options={inputs} refresh={onRefresh} />
           </Tabs.TabPane>
-          <Tabs.TabPane tab={t('可视化倍率设置')} itemKey='visual'>
+          <Tabs.TabPane tab={t('可视化定价设置')} itemKey='visual'>
             <ModelSettingsVisualEditor options={inputs} refresh={onRefresh} />
           </Tabs.TabPane>
-          <Tabs.TabPane tab={t('未设置倍率模型')} itemKey='unset_models'>
+          <Tabs.TabPane tab={t('未设置定价模型')} itemKey='unset_models'>
             <ModelRatioNotSetEditor options={inputs} refresh={onRefresh} />
           </Tabs.TabPane>
-          <Tabs.TabPane tab={t('上游倍率同步')} itemKey='upstream_sync'>
+          <Tabs.TabPane tab={t('上游定价同步')} itemKey='upstream_sync'>
             <UpstreamRatioSync options={inputs} refresh={onRefresh} />
           </Tabs.TabPane>
         </Tabs>

@@ -36,6 +36,7 @@ import {
   renderClaudeLogContent,
   renderLogContent,
   renderModelPriceSimple,
+  renderPricingSummary,
   renderAudioModelPrice,
   renderClaudeModelPrice,
   renderModelPrice,
@@ -541,43 +542,54 @@ export const getLogsColumns = ({
             </Typography.Paragraph>
           );
         }
-        let content = other?.claude
-          ? renderModelPriceSimple(
-              other.model_ratio,
-              other.model_price,
-              other.group_ratio,
-              other?.user_group_ratio,
-              other.cache_tokens || 0,
-              other.cache_ratio || 1.0,
-              other.cache_creation_tokens || 0,
-              other.cache_creation_ratio || 1.0,
-              other.cache_creation_tokens_5m || 0,
-              other.cache_creation_ratio_5m || other.cache_creation_ratio || 1.0,
-              other.cache_creation_tokens_1h || 0,
-              other.cache_creation_ratio_1h || other.cache_creation_ratio || 1.0,
-              false,
-              1.0,
-              other?.is_system_prompt_overwritten,
-              'claude',
-            )
-          : renderModelPriceSimple(
-              other.model_ratio,
-              other.model_price,
-              other.group_ratio,
-              other?.user_group_ratio,
-              other.cache_tokens || 0,
-              other.cache_ratio || 1.0,
-              0,
-              1.0,
-              0,
-              1.0,
-              0,
-              1.0,
-              false,
-              1.0,
-              other?.is_system_prompt_overwritten,
-              'openai',
-            );
+        let content = null;
+        if (
+          other?.model_input_price !== undefined ||
+          other?.model_output_price !== undefined ||
+          other?.group_multiplier !== undefined
+        ) {
+          content = renderPricingSummary(other);
+        }
+
+        if (!content) {
+          content = other?.claude
+            ? renderModelPriceSimple(
+                other.model_ratio,
+                other.model_price,
+                other.group_ratio,
+                other?.user_group_ratio,
+                other.cache_tokens || 0,
+                other.cache_ratio || 1.0,
+                other.cache_creation_tokens || 0,
+                other.cache_creation_ratio || 1.0,
+                other.cache_creation_tokens_5m || 0,
+                other.cache_creation_ratio_5m || other.cache_creation_ratio || 1.0,
+                other.cache_creation_tokens_1h || 0,
+                other.cache_creation_ratio_1h || other.cache_creation_ratio || 1.0,
+                false,
+                1.0,
+                other?.is_system_prompt_overwritten,
+                'claude',
+              )
+            : renderModelPriceSimple(
+                other.model_ratio,
+                other.model_price,
+                other.group_ratio,
+                other?.user_group_ratio,
+                other.cache_tokens || 0,
+                other.cache_ratio || 1.0,
+                0,
+                1.0,
+                0,
+                1.0,
+                0,
+                1.0,
+                false,
+                1.0,
+                other?.is_system_prompt_overwritten,
+                'openai',
+              );
+        }
         return (
           <Typography.Paragraph
             ellipsis={{

@@ -279,7 +279,7 @@ export default function GeneralSettings(props) {
                 <Form.Switch
                   field={'SelfUseModeEnabled'}
                   label={t('自用模式')}
-                  extraText={t('开启后不限制：必须设置模型倍率')}
+                  extraText={t('开启后不限制：必须设置模型定价')}
                   size='default'
                   checkedText='｜'
                   uncheckedText='〇'

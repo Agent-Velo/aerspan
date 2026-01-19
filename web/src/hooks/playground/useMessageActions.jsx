@@ -53,7 +53,7 @@ export const useMessageActions = (
               duration: 2,
             });
           } catch (err) {
-            console.error('Clipboard API 复制失败:', err);
+            console.error('Clipboard API copy failed:', err);
             fallbackCopy(text);
           }
         } else {
@@ -91,7 +91,7 @@ export const useMessageActions = (
             throw new Error('execCommand copy failed');
           }
         } catch (err) {
-          console.error('回退复制方案也失败:', err);
+          console.error('Fallback copy method failed:', err);
 
           let errorMessage = t(ERROR_MESSAGES.COPY_FAILED);
           if (

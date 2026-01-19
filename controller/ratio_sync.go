@@ -15,14 +15,14 @@ import (
 
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/setting/ratio_setting"
+	"github.com/QuantumNous/new-api/setting/pricing_setting"
 
 	"github.com/gin-gonic/gin"
 )
 
 const (
 	defaultTimeoutSeconds = 10
-	defaultEndpoint       = "/api/ratio_config"
+	defaultEndpoint       = "/api/pricing_config"
 	maxConcurrentFetches  = 8
 	maxRatioConfigBytes   = 10 << 20 // 10MB
 	floatEpsilon          = 1e-9
@@ -44,7 +44,15 @@ func valuesEqual(a, b interface{}) bool {
 	return a == b
 }
 
-var ratioTypes = []string{"model_ratio", "completion_ratio", "cache_ratio", "model_price"}
+var pricingTypes = []string{
+	"model_input_price",
+	"model_output_price",
+	"model_cache_read_price",
+	"model_image_input_price",
+	"model_audio_input_price",
+	"model_audio_output_price",
+	"model_price",
+}
 
 type upstreamResult struct {
 	Name string         `json:"name"`
@@ -209,14 +217,14 @@ func FetchUpstreamRatios(c *gin.Context) {
 				return
 			}
 
-			// 若 Data 为空，将继续按 type1 尝试解析（与多数静态 ratio_config 兼容）
+			// 若 Data 为空，将继续按 type1 尝试解析（与多数静态 pricing_config 兼容）
 
 			// 尝试按 type1 解析
 			var type1Data map[string]any
 			if err := json.Unmarshal(body.Data, &type1Data); err == nil {
-				// 如果包含至少一个 ratioTypes 字段，则认为是 type1
+				// 如果包含至少一个 pricingTypes 字段，则认为是 type1
 				isType1 := false
-				for _, rt := range ratioTypes {
+				for _, rt := range pricingTypes {
 					if _, ok := type1Data[rt]; ok {
 						isType1 = true
 						break
@@ -230,11 +238,15 @@ func FetchUpstreamRatios(c *gin.Context) {
 
 			// 如果不是 type1，则尝试按 type2 (/api/pricing) 解析
 			var pricingItems []struct {
-				ModelName       string  `json:"model_name"`
-				QuotaType       int     `json:"quota_type"`
-				ModelRatio      float64 `json:"model_ratio"`
-				ModelPrice      float64 `json:"model_price"`
-				CompletionRatio float64 `json:"completion_ratio"`
+				ModelName        string  `json:"model_name"`
+				QuotaType        int     `json:"quota_type"`
+				InputPrice       float64 `json:"input_price"`
+				OutputPrice      float64 `json:"output_price"`
+				CacheReadPrice   float64 `json:"cache_read_price"`
+				ImageInputPrice  float64 `json:"image_input_price"`
+				AudioInputPrice  float64 `json:"audio_input_price"`
+				AudioOutputPrice float64 `json:"audio_output_price"`
+				ModelPrice       float64 `json:"model_price"`
 			}
 			if err := json.Unmarshal(body.Data, &pricingItems); err != nil {
 				logger.LogWarn(c.Request.Context(), "unrecognized data format from "+chItem.Name+": "+err.Error())
@@ -242,36 +254,78 @@ func FetchUpstreamRatios(c *gin.Context) {
 				return
 			}
 
-			modelRatioMap := make(map[string]float64)
-			completionRatioMap := make(map[string]float64)
+			modelInputPriceMap := make(map[string]float64)
+			modelOutputPriceMap := make(map[string]float64)
+			modelCacheReadPriceMap := make(map[string]float64)
+			modelImageInputPriceMap := make(map[string]float64)
+			modelAudioInputPriceMap := make(map[string]float64)
+			modelAudioOutputPriceMap := make(map[string]float64)
 			modelPriceMap := make(map[string]float64)
 
 			for _, item := range pricingItems {
 				if item.QuotaType == 1 {
 					modelPriceMap[item.ModelName] = item.ModelPrice
-				} else {
-					modelRatioMap[item.ModelName] = item.ModelRatio
-					// completionRatio 可能为 0，此时也直接赋值，保持与上游一致
-					completionRatioMap[item.ModelName] = item.CompletionRatio
+					continue
+				}
+				modelInputPriceMap[item.ModelName] = item.InputPrice
+				modelOutputPriceMap[item.ModelName] = item.OutputPrice
+				if item.CacheReadPrice != 0 {
+					modelCacheReadPriceMap[item.ModelName] = item.CacheReadPrice
+				}
+				if item.ImageInputPrice != 0 {
+					modelImageInputPriceMap[item.ModelName] = item.ImageInputPrice
+				}
+				if item.AudioInputPrice != 0 {
+					modelAudioInputPriceMap[item.ModelName] = item.AudioInputPrice
+				}
+				if item.AudioOutputPrice != 0 {
+					modelAudioOutputPriceMap[item.ModelName] = item.AudioOutputPrice
 				}
 			}
 
 			converted := make(map[string]any)
 
-			if len(modelRatioMap) > 0 {
-				ratioAny := make(map[string]any, len(modelRatioMap))
-				for k, v := range modelRatioMap {
-					ratioAny[k] = v
+			if len(modelInputPriceMap) > 0 {
+				anyMap := make(map[string]any, len(modelInputPriceMap))
+				for k, v := range modelInputPriceMap {
+					anyMap[k] = v
 				}
-				converted["model_ratio"] = ratioAny
+				converted["model_input_price"] = anyMap
 			}
-
-			if len(completionRatioMap) > 0 {
-				compAny := make(map[string]any, len(completionRatioMap))
-				for k, v := range completionRatioMap {
-					compAny[k] = v
+			if len(modelOutputPriceMap) > 0 {
+				anyMap := make(map[string]any, len(modelOutputPriceMap))
+				for k, v := range modelOutputPriceMap {
+					anyMap[k] = v
 				}
-				converted["completion_ratio"] = compAny
+				converted["model_output_price"] = anyMap
+			}
+			if len(modelCacheReadPriceMap) > 0 {
+				anyMap := make(map[string]any, len(modelCacheReadPriceMap))
+				for k, v := range modelCacheReadPriceMap {
+					anyMap[k] = v
+				}
+				converted["model_cache_read_price"] = anyMap
+			}
+			if len(modelImageInputPriceMap) > 0 {
+				anyMap := make(map[string]any, len(modelImageInputPriceMap))
+				for k, v := range modelImageInputPriceMap {
+					anyMap[k] = v
+				}
+				converted["model_image_input_price"] = anyMap
+			}
+			if len(modelAudioInputPriceMap) > 0 {
+				anyMap := make(map[string]any, len(modelAudioInputPriceMap))
+				for k, v := range modelAudioInputPriceMap {
+					anyMap[k] = v
+				}
+				converted["model_audio_input_price"] = anyMap
+			}
+			if len(modelAudioOutputPriceMap) > 0 {
+				anyMap := make(map[string]any, len(modelAudioOutputPriceMap))
+				for k, v := range modelAudioOutputPriceMap {
+					anyMap[k] = v
+				}
+				converted["model_audio_output_price"] = anyMap
 			}
 
 			if len(modelPriceMap) > 0 {
@@ -289,7 +343,7 @@ func FetchUpstreamRatios(c *gin.Context) {
 	wg.Wait()
 	close(ch)
 
-	localData := ratio_setting.GetExposedData()
+	localData := pricing_setting.GetExposedData()
 
 	var testResults []dto.TestResult
 	var successfulChannels []struct {
@@ -335,7 +389,7 @@ func buildDifferences(localData map[string]any, successfulChannels []struct {
 
 	allModels := make(map[string]struct{})
 
-	for _, ratioType := range ratioTypes {
+	for _, ratioType := range pricingTypes {
 		if localRatioAny, ok := localData[ratioType]; ok {
 			if localRatio, ok := localRatioAny.(map[string]float64); ok {
 				for modelName := range localRatio {
@@ -346,7 +400,7 @@ func buildDifferences(localData map[string]any, successfulChannels []struct {
 	}
 
 	for _, channel := range successfulChannels {
-		for _, ratioType := range ratioTypes {
+		for _, ratioType := range pricingTypes {
 			if upstreamRatio, ok := channel.data[ratioType].(map[string]any); ok {
 				for modelName := range upstreamRatio {
 					allModels[modelName] = struct{}{}
@@ -356,44 +410,16 @@ func buildDifferences(localData map[string]any, successfulChannels []struct {
 	}
 
 	confidenceMap := make(map[string]map[string]bool)
-
-	// 预处理阶段：检查pricing接口的可信度
+	// 默认全部标记为可信（不同上游的定价口径差异较大，避免误判）
 	for _, channel := range successfulChannels {
 		confidenceMap[channel.name] = make(map[string]bool)
-
-		modelRatios, hasModelRatio := channel.data["model_ratio"].(map[string]any)
-		completionRatios, hasCompletionRatio := channel.data["completion_ratio"].(map[string]any)
-
-		if hasModelRatio && hasCompletionRatio {
-			// 遍历所有模型，检查是否满足不可信条件
-			for modelName := range allModels {
-				// 默认为可信
-				confidenceMap[channel.name][modelName] = true
-
-				// 检查是否满足不可信条件：model_ratio为37.5且completion_ratio为1
-				if modelRatioVal, ok := modelRatios[modelName]; ok {
-					if completionRatioVal, ok := completionRatios[modelName]; ok {
-						// 转换为float64进行比较
-						if modelRatioFloat, ok := modelRatioVal.(float64); ok {
-							if completionRatioFloat, ok := completionRatioVal.(float64); ok {
-								if modelRatioFloat == 37.5 && completionRatioFloat == 1.0 {
-									confidenceMap[channel.name][modelName] = false
-								}
-							}
-						}
-					}
-				}
-			}
-		} else {
-			// 如果不是从pricing接口获取的数据，则全部标记为可信
-			for modelName := range allModels {
-				confidenceMap[channel.name][modelName] = true
-			}
+		for modelName := range allModels {
+			confidenceMap[channel.name][modelName] = true
 		}
 	}
 
 	for modelName := range allModels {
-		for _, ratioType := range ratioTypes {
+		for _, ratioType := range pricingTypes {
 			var localValue interface{} = nil
 			if localRatioAny, ok := localData[ratioType]; ok {
 				if localRatio, ok := localRatioAny.(map[string]float64); ok {

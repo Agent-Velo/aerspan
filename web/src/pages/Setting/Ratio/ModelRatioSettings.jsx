@@ -41,13 +41,13 @@ export default function ModelRatioSettings(props) {
   const [loading, setLoading] = useState(false);
   const [inputs, setInputs] = useState({
     ModelPrice: '',
-    ModelRatio: '',
-    CacheRatio: '',
-    CompletionRatio: '',
-    ImageRatio: '',
-    AudioRatio: '',
-    AudioCompletionRatio: '',
-    ExposeRatioEnabled: false,
+    ModelInputPrice: '',
+    ModelOutputPrice: '',
+    ModelCacheReadPrice: '',
+    ModelImageInputPrice: '',
+    ModelAudioInputPrice: '',
+    ModelAudioOutputPrice: '',
+    ExposePricingEnabled: false,
   });
   const refForm = useRef();
   const [inputsRow, setInputsRow] = useState(inputs);
@@ -107,7 +107,7 @@ export default function ModelRatioSettings(props) {
     }
   }
 
-  async function resetModelRatio() {
+  async function resetModelPricing() {
     try {
       let res = await API.post(`/api/option/rest_model_ratio`);
       if (res.data.success) {
@@ -143,8 +143,8 @@ export default function ModelRatioSettings(props) {
         <Row gutter={16}>
           <Col xs={24} sm={16}>
             <Form.TextArea
-              label={t('模型固定价格')}
-              extraText={t('一次调用消耗多少刀，优先级大于模型倍率')}
+          label={t('模型固定价格')}
+              extraText={t('按次计费模型：一次调用消耗多少美元（优先级最高）')}
               placeholder={t(
                 '为一个 JSON 文本，键为模型名称，值为一次调用消耗多少刀，比如 "gpt-4-gizmo-*": 0.1，一次消耗0.1刀',
               )}
@@ -165,48 +165,9 @@ export default function ModelRatioSettings(props) {
         <Row gutter={16}>
           <Col xs={24} sm={16}>
             <Form.TextArea
-              label={t('模型倍率')}
-              placeholder={t('为一个 JSON 文本，键为模型名称，值为倍率')}
-              field={'ModelRatio'}
-              autosize={{ minRows: 6, maxRows: 12 }}
-              trigger='blur'
-              stopValidateWithError
-              rules={[
-                {
-                  validator: (rule, value) => verifyJSON(value),
-                  message: '不是合法的 JSON 字符串',
-                },
-              ]}
-              onChange={(value) => setInputs({ ...inputs, ModelRatio: value })}
-            />
-          </Col>
-        </Row>
-        <Row gutter={16}>
-          <Col xs={24} sm={16}>
-            <Form.TextArea
-              label={t('提示缓存倍率')}
-              placeholder={t('为一个 JSON 文本，键为模型名称，值为倍率')}
-              field={'CacheRatio'}
-              autosize={{ minRows: 6, maxRows: 12 }}
-              trigger='blur'
-              stopValidateWithError
-              rules={[
-                {
-                  validator: (rule, value) => verifyJSON(value),
-                  message: '不是合法的 JSON 字符串',
-                },
-              ]}
-              onChange={(value) => setInputs({ ...inputs, CacheRatio: value })}
-            />
-          </Col>
-        </Row>
-        <Row gutter={16}>
-          <Col xs={24} sm={16}>
-            <Form.TextArea
-              label={t('模型补全倍率（仅对自定义模型有效）')}
-              extraText={t('仅对自定义模型有效')}
-              placeholder={t('为一个 JSON 文本，键为模型名称，值为倍率')}
-              field={'CompletionRatio'}
+              label={t('模型输入价格（USD/1M tokens）')}
+              placeholder={t('为一个 JSON 文本，键为模型名称，值为 USD/1M tokens')}
+              field={'ModelInputPrice'}
               autosize={{ minRows: 6, maxRows: 12 }}
               trigger='blur'
               stopValidateWithError
@@ -217,7 +178,7 @@ export default function ModelRatioSettings(props) {
                 },
               ]}
               onChange={(value) =>
-                setInputs({ ...inputs, CompletionRatio: value })
+                setInputs({ ...inputs, ModelInputPrice: value })
               }
             />
           </Col>
@@ -225,60 +186,9 @@ export default function ModelRatioSettings(props) {
         <Row gutter={16}>
           <Col xs={24} sm={16}>
             <Form.TextArea
-              label={t('图片输入倍率（仅部分模型支持该计费）')}
-              extraText={t(
-                '图片输入相关的倍率设置，键为模型名称，值为倍率，仅部分模型支持该计费',
-              )}
-              placeholder={t(
-                '为一个 JSON 文本，键为模型名称，值为倍率，例如：{"gpt-image-1": 2}',
-              )}
-              field={'ImageRatio'}
-              autosize={{ minRows: 6, maxRows: 12 }}
-              trigger='blur'
-              stopValidateWithError
-              rules={[
-                {
-                  validator: (rule, value) => verifyJSON(value),
-                  message: '不是合法的 JSON 字符串',
-                },
-              ]}
-              onChange={(value) => setInputs({ ...inputs, ImageRatio: value })}
-            />
-          </Col>
-        </Row>
-        <Row gutter={16}>
-          <Col xs={24} sm={16}>
-            <Form.TextArea
-              label={t('音频倍率（仅部分模型支持该计费）')}
-              extraText={t('音频输入相关的倍率设置，键为模型名称，值为倍率')}
-              placeholder={t(
-                '为一个 JSON 文本，键为模型名称，值为倍率，例如：{"gpt-4o-audio-preview": 16}',
-              )}
-              field={'AudioRatio'}
-              autosize={{ minRows: 6, maxRows: 12 }}
-              trigger='blur'
-              stopValidateWithError
-              rules={[
-                {
-                  validator: (rule, value) => verifyJSON(value),
-                  message: '不是合法的 JSON 字符串',
-                },
-              ]}
-              onChange={(value) => setInputs({ ...inputs, AudioRatio: value })}
-            />
-          </Col>
-        </Row>
-        <Row gutter={16}>
-          <Col xs={24} sm={16}>
-            <Form.TextArea
-              label={t('音频补全倍率（仅部分模型支持该计费）')}
-              extraText={t(
-                '音频输出补全相关的倍率设置，键为模型名称，值为倍率',
-              )}
-              placeholder={t(
-                '为一个 JSON 文本，键为模型名称，值为倍率，例如：{"gpt-4o-realtime": 2}',
-              )}
-              field={'AudioCompletionRatio'}
+              label={t('模型输出价格（USD/1M tokens）')}
+              placeholder={t('为一个 JSON 文本，键为模型名称，值为 USD/1M tokens')}
+              field={'ModelOutputPrice'}
               autosize={{ minRows: 6, maxRows: 12 }}
               trigger='blur'
               stopValidateWithError
@@ -289,7 +199,105 @@ export default function ModelRatioSettings(props) {
                 },
               ]}
               onChange={(value) =>
-                setInputs({ ...inputs, AudioCompletionRatio: value })
+                setInputs({ ...inputs, ModelOutputPrice: value })
+              }
+            />
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col xs={24} sm={16}>
+            <Form.TextArea
+              label={t('模型缓存读取价格（USD/1M tokens）')}
+              extraText={t('仅部分模型支持该计费，未设置时默认等于输入价格')}
+              placeholder={t('为一个 JSON 文本，键为模型名称，值为 USD/1M tokens')}
+              field={'ModelCacheReadPrice'}
+              autosize={{ minRows: 6, maxRows: 12 }}
+              trigger='blur'
+              stopValidateWithError
+              rules={[
+                {
+                  validator: (rule, value) => verifyJSON(value),
+                  message: '不是合法的 JSON 字符串',
+                },
+              ]}
+              onChange={(value) =>
+                setInputs({ ...inputs, ModelCacheReadPrice: value })
+              }
+            />
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col xs={24} sm={16}>
+            <Form.TextArea
+              label={t('图片输入价格（USD/1M tokens）')}
+              extraText={t(
+                '图片输入相关的价格设置，键为模型名称，值为 USD/1M tokens，仅部分模型支持该计费',
+              )}
+              placeholder={t(
+                '为一个 JSON 文本，键为模型名称，值为 USD/1M tokens，例如：{"gpt-image-1": 5}',
+              )}
+              field={'ModelImageInputPrice'}
+              autosize={{ minRows: 6, maxRows: 12 }}
+              trigger='blur'
+              stopValidateWithError
+              rules={[
+                {
+                  validator: (rule, value) => verifyJSON(value),
+                  message: '不是合法的 JSON 字符串',
+                },
+              ]}
+              onChange={(value) =>
+                setInputs({ ...inputs, ModelImageInputPrice: value })
+              }
+            />
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col xs={24} sm={16}>
+            <Form.TextArea
+              label={t('音频输入价格（USD/1M tokens）')}
+              extraText={t('音频输入相关的价格设置，键为模型名称，值为 USD/1M tokens')}
+              placeholder={t(
+                '为一个 JSON 文本，键为模型名称，值为 USD/1M tokens，例如：{"gpt-4o-audio-preview": 20}',
+              )}
+              field={'ModelAudioInputPrice'}
+              autosize={{ minRows: 6, maxRows: 12 }}
+              trigger='blur'
+              stopValidateWithError
+              rules={[
+                {
+                  validator: (rule, value) => verifyJSON(value),
+                  message: '不是合法的 JSON 字符串',
+                },
+              ]}
+              onChange={(value) =>
+                setInputs({ ...inputs, ModelAudioInputPrice: value })
+              }
+            />
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col xs={24} sm={16}>
+            <Form.TextArea
+              label={t('音频输出价格（USD/1M tokens）')}
+              extraText={t(
+                '音频输出相关的价格设置，键为模型名称，值为 USD/1M tokens',
+              )}
+              placeholder={t(
+                '为一个 JSON 文本，键为模型名称，值为 USD/1M tokens，例如：{"gpt-4o-realtime": 40}',
+              )}
+              field={'ModelAudioOutputPrice'}
+              autosize={{ minRows: 6, maxRows: 12 }}
+              trigger='blur'
+              stopValidateWithError
+              rules={[
+                {
+                  validator: (rule, value) => verifyJSON(value),
+                  message: '不是合法的 JSON 字符串',
+                },
+              ]}
+              onChange={(value) =>
+                setInputs({ ...inputs, ModelAudioOutputPrice: value })
               }
             />
           </Col>
@@ -297,25 +305,25 @@ export default function ModelRatioSettings(props) {
         <Row gutter={16}>
           <Col span={16}>
             <Form.Switch
-              label={t('暴露倍率接口')}
-              field={'ExposeRatioEnabled'}
+              label={t('暴露定价接口')}
+              field={'ExposePricingEnabled'}
               onChange={(value) =>
-                setInputs({ ...inputs, ExposeRatioEnabled: value })
+                setInputs({ ...inputs, ExposePricingEnabled: value })
               }
             />
           </Col>
         </Row>
       </Form>
       <Space>
-        <Button onClick={onSubmit}>{t('保存模型倍率设置')}</Button>
+        <Button onClick={onSubmit}>{t('保存模型定价设置')}</Button>
         <Popconfirm
-          title={t('确定重置模型倍率吗？')}
+          title={t('确定重置模型定价吗？')}
           content={t('此修改将不可逆')}
           okType={'danger'}
           position={'top'}
-          onConfirm={resetModelRatio}
+          onConfirm={resetModelPricing}
         >
-          <Button type={'danger'}>{t('重置模型倍率')}</Button>
+          <Button type={'danger'}>{t('重置模型定价')}</Button>
         </Popconfirm>
       </Space>
     </Spin>

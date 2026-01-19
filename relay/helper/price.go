@@ -7,6 +7,7 @@ import (
 	"github.com/QuantumNous/new-api/logger"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/pricing_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/QuantumNous/new-api/types"
 
@@ -51,44 +52,68 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 	groupRatioInfo := HandleGroupRatio(c, info)
 
 	var preConsumedQuota int
-	var modelRatio float64
-	var completionRatio float64
-	var cacheRatio float64
-	var imageRatio float64
-	var cacheCreationRatio float64
-	var cacheCreationRatio5m float64
-	var cacheCreationRatio1h float64
-	var audioRatio float64
-	var audioCompletionRatio float64
+	var inputPrice float64
+	var outputPrice float64
+	var cacheReadPrice float64
+	var imageInputPrice float64
+	var cacheCreationPrice float64
+	var cacheCreation5mPrice float64
+	var cacheCreation1hPrice float64
+	var audioInputPrice float64
+	var audioOutputPrice float64
 	var freeModel bool
 	if !usePrice {
 		preConsumedTokens := common.Max(promptTokens, common.PreConsumedQuota)
 		if meta.MaxTokens != 0 {
 			preConsumedTokens += meta.MaxTokens
 		}
-		var success bool
+
+		var ok bool
 		var matchName string
-		modelRatio, success, matchName = ratio_setting.GetModelRatio(info.OriginModelName)
-		if !success {
+		inputPrice, ok, matchName = pricing_setting.GetModelInputPrice(info.OriginModelName)
+		if !ok {
 			acceptUnsetRatio := false
 			if info.UserSetting.AcceptUnsetRatioModel {
 				acceptUnsetRatio = true
 			}
 			if !acceptUnsetRatio {
-				return types.PriceData{}, fmt.Errorf("No ratio or price configured for model %s. Contact an admin or enable self-use mode", matchName)
+				return types.PriceData{}, fmt.Errorf("No pricing configured for model %s. Contact an admin or enable self-use mode", matchName)
 			}
 		}
-		completionRatio = ratio_setting.GetCompletionRatio(info.OriginModelName)
-		cacheRatio, _ = ratio_setting.GetCacheRatio(info.OriginModelName)
-		cacheCreationRatio, _ = ratio_setting.GetCreateCacheRatio(info.OriginModelName)
-		cacheCreationRatio5m = cacheCreationRatio
+
+		if v, ok := pricing_setting.GetModelOutputPrice(info.OriginModelName); ok {
+			outputPrice = v
+		} else {
+			// Backward-compatible fallback: derive output pricing from legacy completion ratio.
+			outputPrice = inputPrice * ratio_setting.GetCompletionRatio(info.OriginModelName)
+		}
+
+		if v, ok := pricing_setting.GetModelCacheReadPrice(info.OriginModelName); ok {
+			cacheReadPrice = v
+		} else {
+			cacheReadPrice = inputPrice
+		}
+
+		if v, ok := pricing_setting.GetModelImageInputPrice(info.OriginModelName); ok {
+			imageInputPrice = v
+		} else {
+			imageInputPrice = inputPrice
+		}
+
+		cacheCreationRatio, _ := ratio_setting.GetCreateCacheRatio(info.OriginModelName)
+		cacheCreationPrice = inputPrice * cacheCreationRatio
+		cacheCreation5mPrice = cacheCreationPrice
 		// 固定1h和5min缓存写入价格的比例
-		cacheCreationRatio1h = cacheCreationRatio * claudeCacheCreation1hMultiplier
-		imageRatio, _ = ratio_setting.GetImageRatio(info.OriginModelName)
-		audioRatio = ratio_setting.GetAudioRatio(info.OriginModelName)
-		audioCompletionRatio = ratio_setting.GetAudioCompletionRatio(info.OriginModelName)
-		ratio := modelRatio * groupRatioInfo.GroupRatio
-		preConsumedQuota = int(float64(preConsumedTokens) * ratio)
+		cacheCreation1hPrice = cacheCreationPrice * claudeCacheCreation1hMultiplier
+
+		if v, ok := pricing_setting.GetModelAudioInputPrice(info.OriginModelName); ok {
+			audioInputPrice = v
+		}
+		if v, ok := pricing_setting.GetModelAudioOutputPrice(info.OriginModelName); ok {
+			audioOutputPrice = v
+		}
+
+		preConsumedQuota = int(float64(preConsumedTokens) / pricing_setting.TokensPerMillion * inputPrice * groupRatioInfo.GroupRatio * common.QuotaPerUnit)
 	} else {
 		if meta.ImagePriceRatio != 0 {
 			modelPrice = modelPrice * meta.ImagePriceRatio
@@ -108,7 +133,7 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 				freeModel = true
 			}
 		} else {
-			if modelRatio == 0 {
+			if inputPrice == 0 && outputPrice == 0 {
 				preConsumedQuota = 0
 				freeModel = true
 			}
@@ -118,17 +143,17 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 	priceData := types.PriceData{
 		FreeModel:            freeModel,
 		ModelPrice:           modelPrice,
-		ModelRatio:           modelRatio,
-		CompletionRatio:      completionRatio,
+		InputPrice:           inputPrice,
+		OutputPrice:          outputPrice,
+		CacheReadPrice:       cacheReadPrice,
+		CacheCreationPrice:   cacheCreationPrice,
+		CacheCreation5mPrice: cacheCreation5mPrice,
+		CacheCreation1hPrice: cacheCreation1hPrice,
 		GroupRatioInfo:       groupRatioInfo,
 		UsePrice:             usePrice,
-		CacheRatio:           cacheRatio,
-		ImageRatio:           imageRatio,
-		AudioRatio:           audioRatio,
-		AudioCompletionRatio: audioCompletionRatio,
-		CacheCreationRatio:   cacheCreationRatio,
-		CacheCreation5mRatio: cacheCreationRatio5m,
-		CacheCreation1hRatio: cacheCreationRatio1h,
+		ImageInputPrice:      imageInputPrice,
+		AudioInputPrice:      audioInputPrice,
+		AudioOutputPrice:     audioOutputPrice,
 		QuotaToPreConsume:    preConsumedQuota,
 	}
 
@@ -167,7 +192,7 @@ func ContainPriceOrRatio(modelName string) bool {
 	if ok {
 		return true
 	}
-	_, ok, _ = ratio_setting.GetModelRatio(modelName)
+	_, ok, _ = pricing_setting.GetModelInputPrice(modelName)
 	if ok {
 		return true
 	}

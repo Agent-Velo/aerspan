@@ -97,7 +97,7 @@ const OtherSetting = () => {
       await updateOption('Notice', inputs.Notice);
       showSuccess(t('公告已更新'));
     } catch (error) {
-      console.error(t('公告更新失败'), error);
+      console.error('Failed to update notice:', error);
       showError(t('公告更新失败'));
     } finally {
       setLoadingInput((loadingInput) => ({ ...loadingInput, Notice: false }));
@@ -116,7 +116,7 @@ const OtherSetting = () => {
       );
       showSuccess(t('用户协议已更新'));
     } catch (error) {
-      console.error(t('用户协议更新失败'), error);
+      console.error('Failed to update user agreement:', error);
       showError(t('用户协议更新失败'));
     } finally {
       setLoadingInput((loadingInput) => ({
@@ -138,7 +138,7 @@ const OtherSetting = () => {
       );
       showSuccess(t('隐私政策已更新'));
     } catch (error) {
-      console.error(t('隐私政策更新失败'), error);
+      console.error('Failed to update privacy policy:', error);
       showError(t('隐私政策更新失败'));
     } finally {
       setLoadingInput((loadingInput) => ({
@@ -159,7 +159,7 @@ const OtherSetting = () => {
       await updateOption('SystemName', inputs.SystemName);
       showSuccess(t('系统名称已更新'));
     } catch (error) {
-      console.error(t('系统名称更新失败'), error);
+      console.error('Failed to update system name:', error);
       showError(t('系统名称更新失败'));
     } finally {
       setLoadingInput((loadingInput) => ({
@@ -176,7 +176,7 @@ const OtherSetting = () => {
       await updateOption('Logo', inputs.Logo);
       showSuccess('Logo 已更新');
     } catch (error) {
-      console.error('Logo 更新失败', error);
+      console.error('Failed to update logo:', error);
       showError('Logo 更新失败');
     } finally {
       setLoadingInput((loadingInput) => ({ ...loadingInput, Logo: false }));
@@ -192,7 +192,7 @@ const OtherSetting = () => {
       await updateOption(key, inputs[key]);
       showSuccess('首页内容已更新');
     } catch (error) {
-      console.error('首页内容更新失败', error);
+      console.error('Failed to update home page content:', error);
       showError('首页内容更新失败');
     } finally {
       setLoadingInput((loadingInput) => ({
@@ -208,7 +208,7 @@ const OtherSetting = () => {
       await updateOption('About', inputs.About);
       showSuccess('关于内容已更新');
     } catch (error) {
-      console.error('关于内容更新失败', error);
+      console.error('Failed to update About content:', error);
       showError('关于内容更新失败');
     } finally {
       setLoadingInput((loadingInput) => ({ ...loadingInput, About: false }));
@@ -221,7 +221,7 @@ const OtherSetting = () => {
       await updateOption('Footer', inputs.Footer);
       showSuccess('页脚内容已更新');
     } catch (error) {
-      console.error('页脚内容更新失败', error);
+      console.error('Failed to update footer content:', error);
       showError('页脚内容更新失败');
     } finally {
       setLoadingInput((loadingInput) => ({ ...loadingInput, Footer: false }));

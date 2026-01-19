@@ -29,12 +29,9 @@ const PricingPage = () => {
   const pricingData = useModelPricingData();
   const { Sider, Content } = Layout;
   const isMobile = useIsMobile();
-  const [showRatio, setShowRatio] = React.useState(false);
   const [viewMode, setViewMode] = React.useState('card');
   const allProps = {
     ...pricingData,
-    showRatio,
-    setShowRatio,
     viewMode,
     setViewMode,
   };
@@ -67,12 +64,10 @@ const PricingPage = () => {
         visible={pricingData.showModelDetail}
         onClose={pricingData.closeModelDetail}
         modelData={pricingData.selectedModel}
-        groupRatio={pricingData.groupRatio}
         usableGroup={pricingData.usableGroup}
         currency={pricingData.currency}
         tokenUnit={pricingData.tokenUnit}
         displayPrice={pricingData.displayPrice}
-        showRatio={allProps.showRatio}
         vendorsMap={pricingData.vendorsMap}
         endpointMap={pricingData.endpointMap}
         autoGroups={pricingData.autoGroups}

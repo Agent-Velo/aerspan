@@ -207,7 +207,7 @@ const NotificationSettings = ({
           setSidebarModulesUser(userConf);
         }
       } catch (error) {
-        console.error('加载边栏配置失败:', error);
+        console.error('Failed to load sidebar config:', error);
       }
     };
 
@@ -335,7 +335,7 @@ const NotificationSettings = ({
           saveNotificationSettings();
         })
         .catch((errors) => {
-          console.log('表单验证失败:', errors);
+          console.log('Form validation failed:', errors);
           Toast.error(t('请检查表单填写是否正确'));
         });
     } else {

@@ -602,94 +602,36 @@ export const selectFilter = (input, option) => {
 // 模型定价计算工具函数
 export const calculateModelPrice = ({
   record,
-  selectedGroup,
-  groupRatio,
   tokenUnit,
   displayPrice,
-  currency,
   precision = 4,
 }) => {
-  // 1. 选择实际使用的分组
-  let usedGroup = selectedGroup;
-  let usedGroupRatio = groupRatio[selectedGroup];
+  const usedGroup = record?.used_group || '';
 
-  if (selectedGroup === 'all' || usedGroupRatio === undefined) {
-    // 在模型可用分组中选择倍率最小的分组，若无则使用 1
-    let minRatio = Number.POSITIVE_INFINITY;
-    if (
-      Array.isArray(record.enable_groups) &&
-      record.enable_groups.length > 0
-    ) {
-      record.enable_groups.forEach((g) => {
-        const r = groupRatio[g];
-        if (r !== undefined && r < minRatio) {
-          minRatio = r;
-          usedGroup = g;
-          usedGroupRatio = r;
-        }
-      });
-    }
-
-    // 如果找不到合适分组倍率，回退为 1
-    if (usedGroupRatio === undefined) {
-      usedGroupRatio = 1;
-    }
-  }
-
-  // 2. 根据计费类型计算价格
+  // 根据计费类型计算价格
   if (record.quota_type === 0) {
-    // 按量计费
-    const inputRatioPriceUSD = record.model_ratio * 2 * usedGroupRatio;
-    const completionRatioPriceUSD =
-      record.model_ratio * record.completion_ratio * 2 * usedGroupRatio;
-
     const unitDivisor = tokenUnit === 'K' ? 1000 : 1;
     const unitLabel = tokenUnit === 'K' ? 'K' : 'M';
 
-    const rawDisplayInput = displayPrice(inputRatioPriceUSD);
-    const rawDisplayCompletion = displayPrice(completionRatioPriceUSD);
-
-    const numInput =
-      parseFloat(rawDisplayInput.replace(/[^0-9.]/g, '')) / unitDivisor;
-    const numCompletion =
-      parseFloat(rawDisplayCompletion.replace(/[^0-9.]/g, '')) / unitDivisor;
-
-    let symbol = '$';
-    if (currency === 'CNY') {
-      symbol = '¥';
-    } else if (currency === 'CUSTOM') {
-      try {
-        const statusStr = localStorage.getItem('status');
-        if (statusStr) {
-          const s = JSON.parse(statusStr);
-          symbol = s?.custom_currency_symbol || '¤';
-        } else {
-          symbol = '¤';
-        }
-      } catch (e) {
-        symbol = '¤';
-      }
-    }
+    const inputPriceUSD = (record.input_price || 0) / unitDivisor;
+    const outputPriceUSD = (record.output_price || 0) / unitDivisor;
     return {
-      inputPrice: `${symbol}${numInput.toFixed(precision)}`,
-      completionPrice: `${symbol}${numCompletion.toFixed(precision)}`,
+      inputPrice: displayPrice(inputPriceUSD, precision),
+      outputPrice: displayPrice(outputPriceUSD, precision),
       unitLabel,
       isPerToken: true,
       usedGroup,
-      usedGroupRatio,
     };
   }
 
   if (record.quota_type === 1) {
     // 按次计费
-    const priceUSD = parseFloat(record.model_price) * usedGroupRatio;
-    const displayVal = displayPrice(priceUSD);
+    const displayVal = displayPrice(parseFloat(record.model_price), precision);
 
     return {
       price: displayVal,
       isPerToken: false,
       usedGroup,
-      usedGroupRatio,
     };
   }
 
@@ -698,7 +640,6 @@ export const calculateModelPrice = ({
     price: '-',
     isPerToken: false,
     usedGroup,
-    usedGroupRatio,
   };
 };
 
@@ -711,7 +652,7 @@ export const formatPriceInfo = (priceData, t) => {
           {t('输入')} {priceData.inputPrice}/{priceData.unitLabel}
         </span>
         <span style={{ color: 'var(--semi-color-text-1)' }}>
-          {t('输出')} {priceData.completionPrice}/{priceData.unitLabel}
+          {t('输出')} {priceData.outputPrice}/{priceData.unitLabel}
         </span>
       </>
     );
@@ -780,7 +721,6 @@ const DEFAULT_PRICING_FILTERS = {
   search: '',
   showWithRecharge: false,
   currency: 'USD',
-  showRatio: false,
   viewMode: 'card',
   tokenUnit: 'M',
   filterGroup: 'all',
@@ -796,7 +736,6 @@ export const resetPricingFilters = ({
   handleChange,
   setShowWithRecharge,
   setCurrency,
-  setShowRatio,
   setViewMode,
   setFilterGroup,
   setFilterQuotaType,
@@ -809,7 +748,6 @@ export const resetPricingFilters = ({
   handleChange?.(DEFAULT_PRICING_FILTERS.search);
   setShowWithRecharge?.(DEFAULT_PRICING_FILTERS.showWithRecharge);
   setCurrency?.(DEFAULT_PRICING_FILTERS.currency);
-  setShowRatio?.(DEFAULT_PRICING_FILTERS.showRatio);
   setViewMode?.(DEFAULT_PRICING_FILTERS.viewMode);
   setTokenUnit?.(DEFAULT_PRICING_FILTERS.tokenUnit);
   setFilterGroup?.(DEFAULT_PRICING_FILTERS.filterGroup);

@@ -9,17 +9,20 @@ type GroupRatioInfo struct {
 }
 
 type PriceData struct {
-	FreeModel            bool
-	ModelPrice           float64
-	ModelRatio           float64
-	CompletionRatio      float64
-	CacheRatio           float64
-	CacheCreationRatio   float64
-	CacheCreation5mRatio float64
-	CacheCreation1hRatio float64
-	ImageRatio           float64
-	AudioRatio           float64
-	AudioCompletionRatio float64
+	FreeModel bool
+	// ModelPrice is used for per-call billing (quota_type=1).
+	ModelPrice float64
+
+	// Token prices are used for per-token billing (quota_type=0) and are expressed in USD per 1M tokens.
+	InputPrice           float64
+	OutputPrice          float64
+	CacheReadPrice       float64
+	CacheCreationPrice   float64
+	CacheCreation5mPrice float64
+	CacheCreation1hPrice float64
+	ImageInputPrice      float64
+	AudioInputPrice      float64
+	AudioOutputPrice     float64
 	OtherRatios          map[string]float64
 	UsePrice             bool
 	QuotaToPreConsume    int // 预消耗额度
@@ -43,5 +46,5 @@ type PerCallPriceData struct {
 }
 
 func (p *PriceData) ToSetting() string {
-	return fmt.Sprintf("ModelPrice: %f, ModelRatio: %f, CompletionRatio: %f, CacheRatio: %f, GroupRatio: %f, UsePrice: %t, CacheCreationRatio: %f, CacheCreation5mRatio: %f, CacheCreation1hRatio: %f, QuotaToPreConsume: %d, ImageRatio: %f, AudioRatio: %f, AudioCompletionRatio: %f", p.ModelPrice, p.ModelRatio, p.CompletionRatio, p.CacheRatio, p.GroupRatioInfo.GroupRatio, p.UsePrice, p.CacheCreationRatio, p.CacheCreation5mRatio, p.CacheCreation1hRatio, p.QuotaToPreConsume, p.ImageRatio, p.AudioRatio, p.AudioCompletionRatio)
+	return fmt.Sprintf("ModelPrice: %f, InputPrice: %f, OutputPrice: %f, CacheReadPrice: %f, CacheCreationPrice: %f, CacheCreation5mPrice: %f, CacheCreation1hPrice: %f, ImageInputPrice: %f, AudioInputPrice: %f, AudioOutputPrice: %f, GroupRatio: %f, UsePrice: %t, QuotaToPreConsume: %d", p.ModelPrice, p.InputPrice, p.OutputPrice, p.CacheReadPrice, p.CacheCreationPrice, p.CacheCreation5mPrice, p.CacheCreation1hPrice, p.ImageInputPrice, p.AudioInputPrice, p.AudioOutputPrice, p.GroupRatioInfo.GroupRatio, p.UsePrice, p.QuotaToPreConsume)
 }

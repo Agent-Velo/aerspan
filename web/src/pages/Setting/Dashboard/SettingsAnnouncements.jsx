@@ -218,7 +218,7 @@ const SettingsAnnouncements = ({ options, refresh }) => {
       await updateOption('console_setting.announcements', announcementsJson);
       setHasChanges(false);
     } catch (error) {
-      console.error('系统公告更新失败', error);
+      console.error('Failed to update announcements:', error);
       showError('系统公告更新失败');
     } finally {
       setLoading(false);
@@ -328,7 +328,7 @@ const SettingsAnnouncements = ({ options, refresh }) => {
       }));
       setAnnouncementsList(listWithIds);
     } catch (error) {
-      console.error('解析系统公告失败:', error);
+      console.error('Failed to parse announcements:', error);
       setAnnouncementsList([]);
     }
   };
@@ -463,10 +463,10 @@ const SettingsAnnouncements = ({ options, refresh }) => {
       setSelectedRowKeys(selectedRowKeys);
     },
     onSelect: (record, selected, selectedRows) => {
-      console.log(`选择行: ${selected}`, record);
+      console.log(`Row selected: ${selected}`, record);
     },
     onSelectAll: (selected, selectedRows) => {
-      console.log(`全选: ${selected}`, selectedRows);
+      console.log(`Select all: ${selected}`, selectedRows);
     },
     getCheckboxProps: (record) => ({
       disabled: false,

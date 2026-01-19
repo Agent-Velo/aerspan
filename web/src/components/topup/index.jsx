@@ -340,7 +340,7 @@ const TopUp = () => {
           // 初始化显示实付金额
           getAmount(minTopUpValue);
         } catch (e) {
-          console.log('解析支付方式失败:', e);
+          console.log('Failed to parse payment methods:', e);
           setPayMethods([]);
         }
 
@@ -353,10 +353,10 @@ const TopUp = () => {
           setPresetAmounts(customPresets);
         }
       } else {
-        console.error('获取充值配置失败:', data);
+        console.error('Failed to load top-up config:', data);
       }
     } catch (error) {
-      console.error('获取充值配置异常:', error);
+      console.error('Top-up config request error:', error);
     }
   };
 

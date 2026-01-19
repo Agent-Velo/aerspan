@@ -38,6 +38,11 @@ import {
 
 const { Text } = Typography;
 
+const renderTokenCount = (value) => {
+  if (value === undefined || value === null || value === 0) return '-';
+  return value;
+};
+
 // Render timestamp
 function renderTimestamp(timestamp) {
   return <>{timestamp2string(timestamp)}</>;
@@ -326,6 +331,18 @@ export const getModelsColumns = ({
       title: t('标签'),
       dataIndex: 'tags',
       render: renderTags,
+    },
+    {
+      title: t('Total Context'),
+      dataIndex: 'total_context',
+      render: renderTokenCount,
+      sorter: (a, b) => (a.total_context || 0) - (b.total_context || 0),
+    },
+    {
+      title: t('Max Output'),
+      dataIndex: 'max_output',
+      render: renderTokenCount,
+      sorter: (a, b) => (a.max_output || 0) - (b.max_output || 0),
     },
     {
       title: t('端点'),

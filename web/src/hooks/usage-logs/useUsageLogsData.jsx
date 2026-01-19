@@ -36,6 +36,8 @@ import {
   renderAudioModelPrice,
   renderClaudeModelPrice,
   renderModelPrice,
+  renderPricingSummary,
+  renderPricingBreakdown,
 } from '../../helpers';
 import { ITEMS_PER_PAGE } from '../../constants';
 import { useTableCompactMode } from '../common/useTableCompactMode';
@@ -350,36 +352,43 @@ export const useLogsData = () => {
         });
       }
       if (logs[i].type === 2) {
+        const isPricingLog =
+          other?.model_input_price !== undefined ||
+          other?.model_output_price !== undefined ||
+          other?.group_multiplier !== undefined;
+
         expandDataLocal.push({
           key: t('日志详情'),
-          value: other?.claude
-            ? renderClaudeLogContent(
-                other?.model_ratio,
-                other.completion_ratio,
-                other.model_price,
-                other.group_ratio,
-                other?.user_group_ratio,
-                other.cache_ratio || 1.0,
-                other.cache_creation_ratio || 1.0,
-                other.cache_creation_tokens_5m || 0,
-                other.cache_creation_ratio_5m || other.cache_creation_ratio || 1.0,
-                other.cache_creation_tokens_1h || 0,
-                other.cache_creation_ratio_1h || other.cache_creation_ratio || 1.0,
-              )
-            : renderLogContent(
-                other?.model_ratio,
-                other.completion_ratio,
-                other.model_price,
-                other.group_ratio,
-                other?.user_group_ratio,
-                other.cache_ratio || 1.0,
-                false,
-                1.0,
-                other.web_search || false,
-                other.web_search_call_count || 0,
-                other.file_search || false,
-                other.file_search_call_count || 0,
-              ),
+          value: isPricingLog
+            ? renderPricingSummary(other)
+            : other?.claude
+              ? renderClaudeLogContent(
+                  other?.model_ratio,
+                  other.completion_ratio,
+                  other.model_price,
+                  other.group_ratio,
+                  other?.user_group_ratio,
+                  other.cache_ratio || 1.0,
+                  other.cache_creation_ratio || 1.0,
+                  other.cache_creation_tokens_5m || 0,
+                  other.cache_creation_ratio_5m || other.cache_creation_ratio || 1.0,
+                  other.cache_creation_tokens_1h || 0,
+                  other.cache_creation_ratio_1h || other.cache_creation_ratio || 1.0,
+                )
+              : renderLogContent(
+                  other?.model_ratio,
+                  other.completion_ratio,
+                  other.model_price,
+                  other.group_ratio,
+                  other?.user_group_ratio,
+                  other.cache_ratio || 1.0,
+                  false,
+                  1.0,
+                  other.web_search || false,
+                  other.web_search_call_count || 0,
+                  other.file_search || false,
+                  other.file_search_call_count || 0,
+                ),
         });
         if (logs[i]?.content) {
           expandDataLocal.push({
@@ -404,7 +413,18 @@ export const useLogsData = () => {
           });
         }
         let content = '';
-        if (other?.ws || other?.audio) {
+        const isPricingLog =
+          other?.model_input_price !== undefined ||
+          other?.model_output_price !== undefined ||
+          other?.group_multiplier !== undefined;
+
+        if (isPricingLog) {
+          content = renderPricingBreakdown(
+            logs[i].prompt_tokens,
+            logs[i].completion_tokens,
+            other,
+          );
+        } else if (other?.ws || other?.audio) {
           content = renderAudioModelPrice(
             other?.text_input,
             other?.text_output,

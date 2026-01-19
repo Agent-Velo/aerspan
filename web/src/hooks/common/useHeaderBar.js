@@ -69,7 +69,7 @@ export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
 
         return modules;
       } catch (error) {
-        console.error('解析顶栏模块配置失败:', error);
+        console.error('Failed to parse header nav config:', error);
         return null;
       }
     }

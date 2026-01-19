@@ -19,7 +19,7 @@ import (
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/model_setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
-	"github.com/QuantumNous/new-api/setting/ratio_setting"
+	"github.com/QuantumNous/new-api/setting/pricing_setting"
 	"github.com/QuantumNous/new-api/types"
 
 	"github.com/shopspring/decimal"
@@ -87,7 +87,7 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		}
 
 		var containAudioTokens = usage.CompletionTokenDetails.AudioTokens > 0 || usage.PromptTokensDetails.AudioTokens > 0
-		var containsAudioRatios = ratio_setting.ContainsAudioRatio(info.OriginModelName) || ratio_setting.ContainsAudioCompletionRatio(info.OriginModelName)
+		var containsAudioRatios = pricing_setting.HasAudioPricing(info.OriginModelName)
 
 		if containAudioTokens && containsAudioRatios {
 			service.PostAudioConsumeQuota(c, info, usage, "")
@@ -207,7 +207,7 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 	}
 
 	var containAudioTokens = usage.(*dto.Usage).CompletionTokenDetails.AudioTokens > 0 || usage.(*dto.Usage).PromptTokensDetails.AudioTokens > 0
-	var containsAudioRatios = ratio_setting.ContainsAudioRatio(info.OriginModelName) || ratio_setting.ContainsAudioCompletionRatio(info.OriginModelName)
+	var containsAudioRatios = pricing_setting.HasAudioPricing(info.OriginModelName)
 
 	if containAudioTokens && containsAudioRatios {
 		service.PostAudioConsumeQuota(c, info, usage.(*dto.Usage), "")
@@ -247,13 +247,22 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 	modelName := relayInfo.OriginModelName
 
 	tokenName := ctx.GetString("token_name")
-	completionRatio := relayInfo.PriceData.CompletionRatio
-	cacheRatio := relayInfo.PriceData.CacheRatio
-	imageRatio := relayInfo.PriceData.ImageRatio
-	modelRatio := relayInfo.PriceData.ModelRatio
+	inputPrice := relayInfo.PriceData.InputPrice
+	outputPrice := relayInfo.PriceData.OutputPrice
+	cacheReadPrice := relayInfo.PriceData.CacheReadPrice
+	cacheCreationPrice := relayInfo.PriceData.CacheCreationPrice
+	imageInputPrice := relayInfo.PriceData.ImageInputPrice
 	groupRatio := relayInfo.PriceData.GroupRatioInfo.GroupRatio
 	modelPrice := relayInfo.PriceData.ModelPrice
-	cachedCreationRatio := relayInfo.PriceData.CacheCreationRatio
+	if cacheReadPrice == 0 {
+		cacheReadPrice = inputPrice
+	}
+	if cacheCreationPrice == 0 {
+		cacheCreationPrice = inputPrice
+	}
+	if imageInputPrice == 0 {
+		imageInputPrice = inputPrice
+	}
 
 	// Convert values to decimal for precise calculation
 	dPromptTokens := decimal.NewFromInt(int64(promptTokens))
@@ -262,16 +271,15 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 	dAudioTokens := decimal.NewFromInt(int64(audioTokens))
 	dCompletionTokens := decimal.NewFromInt(int64(completionTokens))
 	dCachedCreationTokens := decimal.NewFromInt(int64(cachedCreationTokens))
-	dCompletionRatio := decimal.NewFromFloat(completionRatio)
-	dCacheRatio := decimal.NewFromFloat(cacheRatio)
-	dImageRatio := decimal.NewFromFloat(imageRatio)
-	dModelRatio := decimal.NewFromFloat(modelRatio)
 	dGroupRatio := decimal.NewFromFloat(groupRatio)
 	dModelPrice := decimal.NewFromFloat(modelPrice)
-	dCachedCreationRatio := decimal.NewFromFloat(cachedCreationRatio)
 	dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-
-	ratio := dModelRatio.Mul(dGroupRatio)
+	unitTokens := decimal.NewFromInt(pricing_setting.TokensPerMillion)
+	dInputPrice := decimal.NewFromFloat(inputPrice)
+	dOutputPrice := decimal.NewFromFloat(outputPrice)
+	dCacheReadPrice := decimal.NewFromFloat(cacheReadPrice)
+	dCacheCreationPrice := decimal.NewFromFloat(cacheCreationPrice)
+	dImageInputPrice := decimal.NewFromFloat(imageInputPrice)
 
 	// openai web search 工具计费
 	var dWebSearchQuota decimal.Decimal
@@ -341,26 +349,26 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 		// 减去 cached tokens
 		// Anthropic API 的 input_tokens 已经不包含缓存 tokens，不需要减去
 		// OpenAI/OpenRouter 等 API 的 prompt_tokens 包含缓存 tokens，需要减去
-		var cachedTokensWithRatio decimal.Decimal
+		var cachedTokensUSD decimal.Decimal
 		if !dCacheTokens.IsZero() {
 			if !isClaudeUsageSemantic {
 				baseTokens = baseTokens.Sub(dCacheTokens)
 			}
-			cachedTokensWithRatio = dCacheTokens.Mul(dCacheRatio)
+			cachedTokensUSD = dCacheTokens.Mul(dCacheReadPrice).Div(unitTokens)
 		}
-		var dCachedCreationTokensWithRatio decimal.Decimal
+		var cachedCreationUSD decimal.Decimal
 		if !dCachedCreationTokens.IsZero() {
 			if !isClaudeUsageSemantic {
 				baseTokens = baseTokens.Sub(dCachedCreationTokens)
 			}
-			dCachedCreationTokensWithRatio = dCachedCreationTokens.Mul(dCachedCreationRatio)
+			cachedCreationUSD = dCachedCreationTokens.Mul(dCacheCreationPrice).Div(unitTokens)
 		}
 
 		// 减去 image tokens
-		var imageTokensWithRatio decimal.Decimal
+		var imageTokensUSD decimal.Decimal
 		if !dImageTokens.IsZero() {
 			baseTokens = baseTokens.Sub(dImageTokens)
-			imageTokensWithRatio = dImageTokens.Mul(dImageRatio)
+			imageTokensUSD = dImageTokens.Mul(dImageInputPrice).Div(unitTokens)
 		}
 
 		// 减去 Gemini audio tokens
@@ -369,19 +377,16 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 			if audioInputPrice > 0 {
 				// 重新计算 base tokens
 				baseTokens = baseTokens.Sub(dAudioTokens)
-				audioInputQuota = decimal.NewFromFloat(audioInputPrice).Div(decimal.NewFromInt(1000000)).Mul(dAudioTokens).Mul(dGroupRatio).Mul(dQuotaPerUnit)
+				audioInputQuota = decimal.NewFromFloat(audioInputPrice).Div(unitTokens).Mul(dAudioTokens).Mul(dGroupRatio).Mul(dQuotaPerUnit)
 				extraContent = append(extraContent, fmt.Sprintf("Audio input cost %s", audioInputQuota.String()))
 			}
 		}
-		promptQuota := baseTokens.Add(cachedTokensWithRatio).
-			Add(imageTokensWithRatio).
-			Add(dCachedCreationTokensWithRatio)
+		promptTextUSD := baseTokens.Mul(dInputPrice).Div(unitTokens)
+		completionUSD := dCompletionTokens.Mul(dOutputPrice).Div(unitTokens)
+		totalUSD := promptTextUSD.Add(cachedTokensUSD).Add(imageTokensUSD).Add(cachedCreationUSD).Add(completionUSD)
 
-		completionQuota := dCompletionTokens.Mul(dCompletionRatio)
-
-		quotaCalculateDecimal = promptQuota.Add(completionQuota).Mul(ratio)
-
-		if !ratio.IsZero() && quotaCalculateDecimal.LessThanOrEqual(decimal.Zero) {
+		quotaCalculateDecimal = totalUSD.Mul(dGroupRatio).Mul(dQuotaPerUnit)
+		if totalUSD.GreaterThan(decimal.Zero) && !dGroupRatio.IsZero() && quotaCalculateDecimal.LessThanOrEqual(decimal.Zero) {
 			quotaCalculateDecimal = decimal.NewFromInt(1)
 		}
 	} else {
@@ -417,7 +422,7 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 		logger.LogError(ctx, fmt.Sprintf("total tokens is 0, cannot consume quota, userId %d, channelId %d, "+
 			"tokenId %d, model %s， pre-consumed quota %d", relayInfo.UserId, relayInfo.ChannelId, relayInfo.TokenId, modelName, relayInfo.FinalPreConsumedQuota))
 	} else {
-		if !ratio.IsZero() && quota == 0 {
+		if !dGroupRatio.IsZero() && quota == 0 && quotaCalculateDecimal.GreaterThan(decimal.Zero) {
 			quota = 1
 		}
 		model.UpdateUserUsedQuotaAndRequestCount(relayInfo.UserId, quota)
@@ -459,7 +464,7 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 		extraContent = append(extraContent, fmt.Sprintf("Model %s", modelName))
 	}
 	logContent := strings.Join(extraContent, ", ")
-	other := service.GenerateTextOtherInfo(ctx, relayInfo, modelRatio, groupRatio, completionRatio, cacheTokens, cacheRatio, modelPrice, relayInfo.PriceData.GroupRatioInfo.GroupSpecialRatio)
+	other := service.GenerateTextOtherInfo(ctx, relayInfo, inputPrice, outputPrice, groupRatio, cacheTokens, cacheReadPrice, modelPrice, relayInfo.PriceData.GroupRatioInfo.GroupSpecialRatio)
 	// For chat-based calls to the Claude model, tagging is required. Using Claude's rendering logs, the two approaches handle input rendering differently.
 	if isClaudeUsageSemantic {
 		other["claude"] = true
@@ -467,12 +472,12 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 	}
 	if imageTokens != 0 {
 		other["image"] = true
-		other["image_ratio"] = imageRatio
-		other["image_output"] = imageTokens
+		other["image_input_price"] = imageInputPrice
+		other["image_input_tokens"] = imageTokens
 	}
 	if cachedCreationTokens != 0 {
 		other["cache_creation_tokens"] = cachedCreationTokens
-		other["cache_creation_ratio"] = cachedCreationRatio
+		other["cache_creation_price"] = cacheCreationPrice
 	}
 	if !dWebSearchQuota.IsZero() {
 		if relayInfo.ResponsesUsageInfo != nil {

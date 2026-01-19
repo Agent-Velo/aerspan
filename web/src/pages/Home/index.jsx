@@ -129,7 +129,7 @@ const Home = () => {
             setNoticeVisible(true);
           }
         } catch (error) {
-          console.error('获取公告失败:', error);
+          console.error('Failed to fetch notice:', error);
         }
       }
     };

@@ -25,6 +25,9 @@ import { stringToColor } from '../../../../../helpers';
 const { Text } = Typography;
 
 const ModelBasicInfo = ({ modelData, vendorsMap = {}, t }) => {
+  const totalContext = modelData?.total_context;
+  const maxOutput = modelData?.max_output;
+
   // 获取模型描述（使用后端真实数据）
   const getModelDescription = () => {
     if (!modelData) return t('暂无模型描述');
@@ -72,6 +75,21 @@ const ModelBasicInfo = ({ modelData, vendorsMap = {}, t }) => {
       </div>
       <div className='text-gray-600'>
         <p className='mb-4'>{getModelDescription()}</p>
+
+        {(totalContext || maxOutput) && (
+          <Space wrap style={{ marginBottom: 12 }}>
+            {totalContext ? (
+              <Tag color='white' shape='circle' size='small'>
+                {t('Total Context')}: {totalContext}
+              </Tag>
+            ) : null}
+            {maxOutput ? (
+              <Tag color='white' shape='circle' size='small'>
+                {t('Max Output')}: {maxOutput}
+              </Tag>
+            ) : null}
+          </Space>
+        )}
         {getModelTags().length > 0 && (
           <Space wrap>
             {getModelTags().map((tag, index) => (

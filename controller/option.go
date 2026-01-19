@@ -11,6 +11,7 @@ import (
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/console_setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/pricing_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
 
@@ -166,6 +167,60 @@ func UpdateOption(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
 				"message": "Failed to update audio completion ratio: " + err.Error(),
+			})
+			return
+		}
+	case "ModelInputPrice":
+		err = pricing_setting.UpdateModelInputPriceByJSONString(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "Failed to update model input price: " + err.Error(),
+			})
+			return
+		}
+	case "ModelOutputPrice":
+		err = pricing_setting.UpdateModelOutputPriceByJSONString(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "Failed to update model output price: " + err.Error(),
+			})
+			return
+		}
+	case "ModelCacheReadPrice":
+		err = pricing_setting.UpdateModelCacheReadPriceByJSONString(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "Failed to update model cache read price: " + err.Error(),
+			})
+			return
+		}
+	case "ModelImageInputPrice":
+		err = pricing_setting.UpdateModelImageInputPriceByJSONString(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "Failed to update model image input price: " + err.Error(),
+			})
+			return
+		}
+	case "ModelAudioInputPrice":
+		err = pricing_setting.UpdateModelAudioInputPriceByJSONString(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "Failed to update model audio input price: " + err.Error(),
+			})
+			return
+		}
+	case "ModelAudioOutputPrice":
+		err = pricing_setting.UpdateModelAudioOutputPriceByJSONString(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "Failed to update model audio output price: " + err.Error(),
 			})
 			return
 		}

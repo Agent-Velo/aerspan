@@ -116,7 +116,7 @@ export default function UpstreamRatioSync(props) {
   // 搜索相关状态
   const [searchKeyword, setSearchKeyword] = useState('');
 
-  // 倍率类型过滤
+  // 定价类型过滤
   const [ratioTypeFilter, setRatioTypeFilter] = useState('');
 
   // 冲突确认弹窗相关
@@ -157,7 +157,8 @@ export default function UpstreamRatioSync(props) {
             const isOfficial =
               id === -100 ||
               base === 'https://basellm.github.io' ||
-              name === '官方倍率预设';
+              name === '官方倍率预设' ||
+              name === '官方定价预设';
             if (!merged[id]) {
               merged[id] = isOfficial
                 ? '/llm-metadata/api/newapi/ratio_config-v1-base.json'
@@ -229,7 +230,7 @@ export default function UpstreamRatioSync(props) {
       setHasSynced(true);
 
       if (Object.keys(differences).length === 0) {
-        showSuccess(t('未找到差异化倍率，无需同步'));
+        showSuccess(t('未找到差异化定价，无需同步'));
       }
     } catch (e) {
       showError(t('请求后端接口失败：') + e.message);
@@ -239,7 +240,7 @@ export default function UpstreamRatioSync(props) {
   };
 
   function getBillingCategory(ratioType) {
-    return ratioType === 'model_price' ? 'price' : 'ratio';
+    return ratioType === 'model_price' ? 'price' : 'pricing';
   }
 
   const selectValue = useCallback(
@@ -268,9 +269,12 @@ export default function UpstreamRatioSync(props) {
 
   const applySync = async () => {
     const currentRatios = {
-      ModelRatio: JSON.parse(props.options.ModelRatio || '{}'),
-      CompletionRatio: JSON.parse(props.options.CompletionRatio || '{}'),
-      CacheRatio: JSON.parse(props.options.CacheRatio || '{}'),
+      ModelInputPrice: JSON.parse(props.options.ModelInputPrice || '{}'),
+      ModelOutputPrice: JSON.parse(props.options.ModelOutputPrice || '{}'),
+      ModelCacheReadPrice: JSON.parse(props.options.ModelCacheReadPrice || '{}'),
+      ModelImageInputPrice: JSON.parse(props.options.ModelImageInputPrice || '{}'),
+      ModelAudioInputPrice: JSON.parse(props.options.ModelAudioInputPrice || '{}'),
+      ModelAudioOutputPrice: JSON.parse(props.options.ModelAudioOutputPrice || '{}'),
       ModelPrice: JSON.parse(props.options.ModelPrice || '{}'),
     };
 
@@ -279,11 +283,14 @@ export default function UpstreamRatioSync(props) {
     const getLocalBillingCategory = (model) => {
       if (currentRatios.ModelPrice[model] !== undefined) return 'price';
       if (
-        currentRatios.ModelRatio[model] !== undefined ||
-        currentRatios.CompletionRatio[model] !== undefined ||
-        currentRatios.CacheRatio[model] !== undefined
+        currentRatios.ModelInputPrice[model] !== undefined ||
+        currentRatios.ModelOutputPrice[model] !== undefined ||
+        currentRatios.ModelCacheReadPrice[model] !== undefined ||
+        currentRatios.ModelImageInputPrice[model] !== undefined ||
+        currentRatios.ModelAudioInputPrice[model] !== undefined ||
+        currentRatios.ModelAudioOutputPrice[model] !== undefined
       )
-        return 'ratio';
+        return 'pricing';
       return null;
     };
 
@@ -298,21 +305,21 @@ export default function UpstreamRatioSync(props) {
 
     Object.entries(resolutions).forEach(([model, ratios]) => {
       const localCat = getLocalBillingCategory(model);
-      const newCat = 'model_price' in ratios ? 'price' : 'ratio';
+      const newCat = 'model_price' in ratios ? 'price' : 'pricing';
 
       if (localCat && localCat !== newCat) {
         const currentDesc =
           localCat === 'price'
             ? `${t('固定价格')} : ${currentRatios.ModelPrice[model]}`
-            : `${t('模型倍率')} : ${currentRatios.ModelRatio[model] ?? '-'}\n${t('补全倍率')} : ${currentRatios.CompletionRatio[model] ?? '-'}`;
+            : `${t('输入价格')} : ${currentRatios.ModelInputPrice[model] ?? '-'}\n${t('输出价格')} : ${currentRatios.ModelOutputPrice[model] ?? '-'}`;
 
         let newDesc = '';
         if (newCat === 'price') {
           newDesc = `${t('固定价格')} : ${ratios['model_price']}`;
         } else {
-          const newModelRatio = ratios['model_ratio'] ?? '-';
-          const newCompRatio = ratios['completion_ratio'] ?? '-';
-          newDesc = `${t('模型倍率')} : ${newModelRatio}\n${t('补全倍率')} : ${newCompRatio}`;
+          const newInputPrice = ratios['model_input_price'] ?? '-';
+          const newOutputPrice = ratios['model_output_price'] ?? '-';
+          newDesc = `${t('输入价格')} : ${newInputPrice}\n${t('输出价格')} : ${newOutputPrice}`;
         }
 
         const channels = Object.entries(ratios)
@@ -341,23 +348,29 @@ export default function UpstreamRatioSync(props) {
   const performSync = useCallback(
     async (currentRatios) => {
       const finalRatios = {
-        ModelRatio: { ...currentRatios.ModelRatio },
-        CompletionRatio: { ...currentRatios.CompletionRatio },
-        CacheRatio: { ...currentRatios.CacheRatio },
+        ModelInputPrice: { ...currentRatios.ModelInputPrice },
+        ModelOutputPrice: { ...currentRatios.ModelOutputPrice },
+        ModelCacheReadPrice: { ...currentRatios.ModelCacheReadPrice },
+        ModelImageInputPrice: { ...currentRatios.ModelImageInputPrice },
+        ModelAudioInputPrice: { ...currentRatios.ModelAudioInputPrice },
+        ModelAudioOutputPrice: { ...currentRatios.ModelAudioOutputPrice },
         ModelPrice: { ...currentRatios.ModelPrice },
       };
 
       Object.entries(resolutions).forEach(([model, ratios]) => {
         const selectedTypes = Object.keys(ratios);
         const hasPrice = selectedTypes.includes('model_price');
-        const hasRatio = selectedTypes.some((rt) => rt !== 'model_price');
+        const hasPricing = selectedTypes.some((rt) => rt !== 'model_price');
 
         if (hasPrice) {
-          delete finalRatios.ModelRatio[model];
-          delete finalRatios.CompletionRatio[model];
-          delete finalRatios.CacheRatio[model];
+          delete finalRatios.ModelInputPrice[model];
+          delete finalRatios.ModelOutputPrice[model];
+          delete finalRatios.ModelCacheReadPrice[model];
+          delete finalRatios.ModelImageInputPrice[model];
+          delete finalRatios.ModelAudioInputPrice[model];
+          delete finalRatios.ModelAudioOutputPrice[model];
         }
-        if (hasRatio) {
+        if (hasPricing) {
           delete finalRatios.ModelPrice[model];
         }
 
@@ -466,18 +479,31 @@ export default function UpstreamRatioSync(props) {
             />
 
             <Select
-              placeholder={t('按倍率类型筛选')}
+              placeholder={t('按定价类型筛选')}
               value={ratioTypeFilter}
               onChange={setRatioTypeFilter}
               className='w-full sm:w-48'
               showClear
               onClear={() => setRatioTypeFilter('')}
             >
-              <Select.Option value='model_ratio'>{t('模型倍率')}</Select.Option>
-              <Select.Option value='completion_ratio'>
-                {t('补全倍率')}
+              <Select.Option value='model_input_price'>
+                {t('模型输入价格')}
               </Select.Option>
-              <Select.Option value='cache_ratio'>{t('缓存倍率')}</Select.Option>
+              <Select.Option value='model_output_price'>
+                {t('模型输出价格')}
+              </Select.Option>
+              <Select.Option value='model_cache_read_price'>
+                {t('缓存读取价格')}
+              </Select.Option>
+              <Select.Option value='model_image_input_price'>
+                {t('图片输入价格')}
+              </Select.Option>
+              <Select.Option value='model_audio_input_price'>
+                {t('音频输入价格')}
+              </Select.Option>
+              <Select.Option value='model_audio_output_price'>
+                {t('音频输出价格')}
+              </Select.Option>
               <Select.Option value='model_price'>{t('固定价格')}</Select.Option>
             </Select>
           </div>
@@ -492,12 +518,10 @@ export default function UpstreamRatioSync(props) {
 
       Object.entries(differences).forEach(([model, ratioTypes]) => {
         const hasPrice = 'model_price' in ratioTypes;
-        const hasOtherRatio = [
-          'model_ratio',
-          'completion_ratio',
-          'cache_ratio',
-        ].some((rt) => rt in ratioTypes);
-        const billingConflict = hasPrice && hasOtherRatio;
+        const hasOtherPricing = Object.keys(ratioTypes).some(
+          (rt) => rt !== 'model_price',
+        );
+        const billingConflict = hasPrice && hasOtherPricing;
 
         Object.entries(ratioTypes).forEach(([ratioType, diff]) => {
           tmp.push({
@@ -552,7 +576,7 @@ export default function UpstreamRatioSync(props) {
               ? t('未找到匹配的模型')
               : Object.keys(differences).length === 0
                 ? hasSynced
-                  ? t('暂无差异化倍率显示')
+                  ? t('暂无差异化定价显示')
                   : t('请先选择同步渠道')
                 : t('请先选择同步渠道')
           }
@@ -568,13 +592,16 @@ export default function UpstreamRatioSync(props) {
         fixed: 'left',
       },
       {
-        title: t('倍率类型'),
+        title: t('定价类型'),
         dataIndex: 'ratioType',
         render: (text, record) => {
           const typeMap = {
-            model_ratio: t('模型倍率'),
-            completion_ratio: t('补全倍率'),
-            cache_ratio: t('缓存倍率'),
+            model_input_price: t('模型输入价格'),
+            model_output_price: t('模型输出价格'),
+            model_cache_read_price: t('缓存读取价格'),
+            model_image_input_price: t('图片输入价格'),
+            model_audio_input_price: t('音频输入价格'),
+            model_audio_output_price: t('音频输出价格'),
             model_price: t('固定价格'),
           };
           const baseTag = (
@@ -589,7 +616,7 @@ export default function UpstreamRatioSync(props) {
                 <Tooltip
                   position='top'
                   content={t(
-                    '该模型存在固定价格与倍率计费方式冲突，请确认选择',
+                    '该模型存在固定价格与按量定价方式冲突，请确认选择',
                   )}
                 >
                   <AlertTriangle size={14} className='text-yellow-500' />
@@ -855,9 +882,12 @@ export default function UpstreamRatioSync(props) {
         onOk={async () => {
           setConfirmVisible(false);
           const curRatios = {
-            ModelRatio: JSON.parse(props.options.ModelRatio || '{}'),
-            CompletionRatio: JSON.parse(props.options.CompletionRatio || '{}'),
-            CacheRatio: JSON.parse(props.options.CacheRatio || '{}'),
+            ModelInputPrice: JSON.parse(props.options.ModelInputPrice || '{}'),
+            ModelOutputPrice: JSON.parse(props.options.ModelOutputPrice || '{}'),
+            ModelCacheReadPrice: JSON.parse(props.options.ModelCacheReadPrice || '{}'),
+            ModelImageInputPrice: JSON.parse(props.options.ModelImageInputPrice || '{}'),
+            ModelAudioInputPrice: JSON.parse(props.options.ModelAudioInputPrice || '{}'),
+            ModelAudioOutputPrice: JSON.parse(props.options.ModelAudioOutputPrice || '{}'),
             ModelPrice: JSON.parse(props.options.ModelPrice || '{}'),
           };
           await performSync(curRatios);

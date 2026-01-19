@@ -15,6 +15,7 @@ import (
 	"github.com/QuantumNous/new-api/relay"
 	"github.com/QuantumNous/new-api/relay/channel"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	"github.com/QuantumNous/new-api/setting/pricing_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 )
 
@@ -149,17 +150,17 @@ func updateVideoSingleTask(ctx context.Context, adaptor channel.TaskAdaptor, cha
 			task.FailReason = taskResult.Url
 		}
 
-		// 如果返回了 total_tokens 并且配置了模型倍率(非固定价格),则重新计费
+		// 如果返回了 total_tokens，则根据模型定价重新计费（按次/按量）
 		if taskResult.TotalTokens > 0 {
 			// 获取模型名称
 			var taskData map[string]interface{}
 			if err := json.Unmarshal(task.Data, &taskData); err == nil {
 				if modelName, ok := taskData["model"].(string); ok && modelName != "" {
-					// 获取模型价格和倍率
-					modelRatio, hasRatioSetting, _ := ratio_setting.GetModelRatio(modelName)
-					// 只有配置了倍率(非固定价格)时才按 token 重新计费
-					if hasRatioSetting && modelRatio > 0 {
-						// 获取用户和组的倍率信息
+					modelPrice, hasModelPrice := ratio_setting.GetModelPrice(modelName, false)
+					inputPrice, hasInputPrice, matchName := pricing_setting.GetModelInputPrice(modelName)
+					// 按次计费优先；否则按量计费（输入价格 USD/1M tokens）
+					if (hasModelPrice && modelPrice > 0) || (hasInputPrice && inputPrice > 0) {
+						// 获取用户和组的系数信息
 						group := task.Group
 						if group == "" {
 							user, err := model.GetUserById(task.UserId, false)
@@ -168,18 +169,25 @@ func updateVideoSingleTask(ctx context.Context, adaptor channel.TaskAdaptor, cha
 							}
 						}
 						if group != "" {
-							groupRatio := ratio_setting.GetGroupRatio(group)
-							userGroupRatio, hasUserGroupRatio := ratio_setting.GetGroupGroupRatio(group, group)
+							groupMultiplier := ratio_setting.GetGroupRatio(group)
+							userGroupMultiplier, hasUserGroupMultiplier := ratio_setting.GetGroupGroupRatio(group, group)
 
-							var finalGroupRatio float64
-							if hasUserGroupRatio {
-								finalGroupRatio = userGroupRatio
-							} else {
-								finalGroupRatio = groupRatio
+							finalGroupMultiplier := groupMultiplier
+							if hasUserGroupMultiplier {
+								finalGroupMultiplier = userGroupMultiplier
 							}
 
-							// 计算实际应扣费额度: totalTokens * modelRatio * groupRatio
-							actualQuota := int(float64(taskResult.TotalTokens) * modelRatio * finalGroupRatio)
+							var (
+								actualQuota  int
+								pricingLabel string
+							)
+							if hasModelPrice && modelPrice > 0 {
+								actualQuota = int(modelPrice * finalGroupMultiplier * common.QuotaPerUnit)
+								pricingLabel = fmt.Sprintf("model_price $%.6f/call", modelPrice)
+							} else {
+								actualQuota = int(float64(taskResult.TotalTokens) / float64(pricing_setting.TokensPerMillion) * inputPrice * finalGroupMultiplier * common.QuotaPerUnit)
+								pricingLabel = fmt.Sprintf("input_price $%.6f/1M (match: %s)", inputPrice, matchName)
+							}
 
 							// 计算差额
 							preConsumedQuota := task.Quota
@@ -202,8 +210,8 @@ func updateVideoSingleTask(ctx context.Context, adaptor channel.TaskAdaptor, cha
 									task.Quota = actualQuota // 更新任务记录的实际扣费额度
 
 									// 记录消费日志
-									logContent := fmt.Sprintf("Video task extra charge succeeded. Model ratio %.2f, group ratio %.2f, tokens %d, pre-charged %s, actual %s, extra %s",
-										modelRatio, finalGroupRatio, taskResult.TotalTokens,
+									logContent := fmt.Sprintf("Video task extra charge succeeded. %s, group_multiplier %.2f, tokens %d, pre-charged %s, actual %s, extra %s",
+										pricingLabel, finalGroupMultiplier, taskResult.TotalTokens,
 										logger.LogQuota(preConsumedQuota), logger.LogQuota(actualQuota), logger.LogQuota(quotaDelta))
 									model.RecordLog(task.UserId, model.LogTypeSystem, logContent)
 								}
@@ -223,8 +231,8 @@ func updateVideoSingleTask(ctx context.Context, adaptor channel.TaskAdaptor, cha
 									task.Quota = actualQuota // 更新任务记录的实际扣费额度
 
 									// 记录退款日志
-									logContent := fmt.Sprintf("Video task refund succeeded. Model ratio %.2f, group ratio %.2f, tokens %d, pre-charged %s, actual %s, refunded %s",
-										modelRatio, finalGroupRatio, taskResult.TotalTokens,
+									logContent := fmt.Sprintf("Video task refund succeeded. %s, group_multiplier %.2f, tokens %d, pre-charged %s, actual %s, refunded %s",
+										pricingLabel, finalGroupMultiplier, taskResult.TotalTokens,
 										logger.LogQuota(preConsumedQuota), logger.LogQuota(actualQuota), logger.LogQuota(refundQuota))
 									model.RecordLog(task.UserId, model.LogTypeSystem, logContent)
 								}

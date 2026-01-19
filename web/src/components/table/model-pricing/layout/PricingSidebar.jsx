@@ -35,8 +35,6 @@ const PricingSidebar = ({
   setCurrency,
   handleChange,
   setActiveKey,
-  showRatio,
-  setShowRatio,
   viewMode,
   setViewMode,
   filterGroup,
@@ -79,7 +77,6 @@ const PricingSidebar = ({
       handleChange,
       setShowWithRecharge,
       setCurrency,
-      setShowRatio,
       setViewMode,
       setFilterGroup,
       setFilterQuotaType,
@@ -126,7 +123,6 @@ const PricingSidebar = ({
         filterGroup={filterGroup}
         setFilterGroup={handleGroupClick}
         usableGroup={categoryProps.usableGroup}
-        groupRatio={categoryProps.groupRatio}
         models={groupCountModels}
         loading={loading}
         t={t}

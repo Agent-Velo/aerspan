@@ -119,10 +119,10 @@ export default function GroupRatioSettings(props) {
         <Row gutter={16}>
           <Col xs={24} sm={16}>
             <Form.TextArea
-              label={t('分组倍率')}
-              placeholder={t('为一个 JSON 文本，键为分组名称，值为倍率')}
+              label={t('分组系数')}
+              placeholder={t('为一个 JSON 文本，键为分组名称，值为系数')}
               extraText={t(
-                '分组倍率设置，可以在此处新增分组或修改现有分组的倍率，格式为 JSON 字符串，例如：{"vip": 0.5, "test": 1}，表示 vip 分组的倍率为 0.5，test 分组的倍率为 1',
+                '分组系数设置：可以在此处新增分组或修改现有分组的系数，格式为 JSON 字符串，例如：{"vip": 0.8, "test": 1}，表示 vip 分组价格乘以 0.8（折扣），test 分组价格乘以 1（原价）',
               )}
               field={'GroupRatio'}
               autosize={{ minRows: 6, maxRows: 12 }}
@@ -165,10 +165,10 @@ export default function GroupRatioSettings(props) {
         <Row gutter={16}>
           <Col xs={24} sm={16}>
             <Form.TextArea
-              label={t('分组特殊倍率')}
+              label={t('分组特殊系数')}
               placeholder={t('为一个 JSON 文本')}
               extraText={t(
-                '键为分组名称，值为另一个 JSON 对象，键为分组名称，值为该分组的用户的特殊分组倍率，例如：{"vip": {"default": 0.5, "test": 1}}，表示 vip 分组的用户在使用default分组的令牌时倍率为0.5，使用test分组时倍率为1',
+                '键为用户分组名称，值为另一个 JSON 对象（键为分组名称，值为系数）。例如：{"vip": {"default": 0.8, "test": 1}}，表示 vip 用户在使用 default 分组令牌时价格乘以 0.8，使用 test 分组时价格乘以 1',
               )}
               field={'GroupGroupRatio'}
               autosize={{ minRows: 6, maxRows: 12 }}
@@ -262,7 +262,7 @@ export default function GroupRatioSettings(props) {
           </Col>
         </Row>
       </Form>
-      <Button onClick={onSubmit}>{t('保存分组倍率设置')}</Button>
+      <Button onClick={onSubmit}>{t('保存分组定价设置')}</Button>
     </Spin>
   );
 }

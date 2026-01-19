@@ -19,6 +19,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/router"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting/pricing_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/bytedance/gopkg/util/gopool"
@@ -235,6 +236,7 @@ func InitResources() error {
 
 	// Initialize model settings
 	ratio_setting.InitRatioSettings()
+	pricing_setting.InitPricingSettings()
 
 	service.InitHttpClient()
 
@@ -251,6 +253,8 @@ func InitResources() error {
 
 	// Initialize options, should after model.InitDB()
 	model.InitOptionMap()
+	// Auto-migrate legacy ratio-based pricing into direct USD/1M token prices.
+	model.MigratePricingSettingsIfNeeded()
 
 	// 初始化模型
 	model.GetPricing()

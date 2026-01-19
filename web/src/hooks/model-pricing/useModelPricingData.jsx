@@ -47,7 +47,6 @@ export const useModelPricingData = () => {
   const [models, setModels] = useState([]);
   const [vendorsMap, setVendorsMap] = useState({});
   const [loading, setLoading] = useState(true);
-  const [groupRatio, setGroupRatio] = useState({});
   const [usableGroup, setUsableGroup] = useState({});
   const [endpointMap, setEndpointMap] = useState({});
   const [autoGroups, setAutoGroups] = useState([]);
@@ -171,25 +170,24 @@ export const useModelPricingData = () => {
     [selectedRowKeys],
   );
 
-  const displayPrice = (usdPrice) => {
+  const displayPrice = (usdPrice, precision = 3) => {
     let priceInUSD = usdPrice;
     if (showWithRecharge) {
       priceInUSD = (usdPrice * priceRate) / usdExchangeRate;
     }
 
     if (currency === 'CNY') {
-      return `¥${(priceInUSD * usdExchangeRate).toFixed(3)}`;
+      return `¥${(priceInUSD * usdExchangeRate).toFixed(precision)}`;
     } else if (currency === 'CUSTOM') {
-      return `${customCurrencySymbol}${(priceInUSD * customExchangeRate).toFixed(3)}`;
+      return `${customCurrencySymbol}${(priceInUSD * customExchangeRate).toFixed(precision)}`;
     }
-    return `$${priceInUSD.toFixed(3)}`;
+    return `$${priceInUSD.toFixed(precision)}`;
   };
 
-  const setModelsFormat = (models, groupRatio, vendorMap) => {
+  const setModelsFormat = (models, vendorMap) => {
     for (let i = 0; i < models.length; i++) {
       const m = models[i];
       m.key = m.model_name;
-      m.group_ratio = groupRatio[m.model_name];
 
       if (m.vendor_id && vendorMap[m.vendor_id]) {
         const vendor = vendorMap[m.vendor_id];
@@ -218,24 +216,25 @@ export const useModelPricingData = () => {
     setModels(models);
   };
 
-  const loadPricing = async () => {
+  const loadPricing = async (group = selectedGroup) => {
     setLoading(true);
-    let url = '/api/pricing';
+    const url = `/api/pricing?group=${encodeURIComponent(group || 'all')}`;
     const res = await API.get(url);
     const {
       success,
       message,
       data,
       vendors,
-      group_ratio,
       usable_group,
       supported_endpoint,
       auto_groups,
+      selected_group,
     } = res.data;
     if (success) {
-      setGroupRatio(group_ratio);
       setUsableGroup(usable_group);
-      setSelectedGroup('all');
+      const effectiveGroup = selected_group || group || 'all';
+      setSelectedGroup(effectiveGroup);
+      setFilterGroup(effectiveGroup);
       // 构建供应商 Map 方便查找
       const vendorMap = {};
       if (Array.isArray(vendors)) {
@@ -246,7 +245,7 @@ export const useModelPricingData = () => {
       setVendorsMap(vendorMap);
       setEndpointMap(supported_endpoint || {});
       setAutoGroups(auto_groups || []);
-      setModelsFormat(data, group_ratio, vendorMap);
+      setModelsFormat(data, vendorMap);
     } else {
       showError(message);
     }
@@ -254,7 +253,7 @@ export const useModelPricingData = () => {
   };
 
   const refresh = async () => {
-    await loadPricing();
+    await loadPricing(selectedGroup);
   };
 
   const copyText = async (text) => {
@@ -282,17 +281,11 @@ export const useModelPricingData = () => {
   };
 
   const handleGroupClick = (group) => {
-    setSelectedGroup(group);
-    setFilterGroup(group);
+    loadPricing(group).then();
     if (group === 'all') {
-      showInfo(t('已切换至最优倍率视图，每个模型使用其最低倍率分组'));
+      showInfo(t('已切换至最优价格视图，每个模型使用其最低价格分组'));
     } else {
-      showInfo(
-        t('当前查看的分组为：{{group}}，倍率为：{{ratio}}', {
-          group: group,
-          ratio: groupRatio[group] ?? 1,
-        }),
-      );
+      showInfo(t('当前查看的分组为：{{group}}', { group: group }));
     }
   };
 
@@ -362,7 +355,6 @@ export const useModelPricingData = () => {
     setTokenUnit,
     models,
     loading,
-    groupRatio,
     usableGroup,
     endpointMap,
     autoGroups,

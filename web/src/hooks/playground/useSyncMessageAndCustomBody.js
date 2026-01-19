@@ -130,7 +130,7 @@ export const useSyncMessageAndCustomBody = (
         lastMessageHash.current = getMessageHash(newMessages);
       }
     } catch (error) {
-      console.warn('同步自定义请求体到消息失败:', error);
+      console.warn('Failed to sync custom request body to messages:', error);
     } finally {
       isUpdatingFromCustomBody.current = false;
     }

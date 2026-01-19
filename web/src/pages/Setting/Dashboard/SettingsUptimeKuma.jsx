@@ -159,7 +159,7 @@ const SettingsUptimeKuma = ({ options, refresh }) => {
       await updateOption('console_setting.uptime_kuma_groups', groupsJson);
       setHasChanges(false);
     } catch (error) {
-      console.error('Uptime Kuma配置更新失败', error);
+      console.error('Failed to update Uptime Kuma config:', error);
       showError('Uptime Kuma配置更新失败');
     } finally {
       setLoading(false);
@@ -270,7 +270,7 @@ const SettingsUptimeKuma = ({ options, refresh }) => {
       }));
       setUptimeGroupsList(listWithIds);
     } catch (error) {
-      console.error('解析Uptime Kuma配置失败:', error);
+      console.error('Failed to parse Uptime Kuma config:', error);
       setUptimeGroupsList([]);
     }
   };
@@ -397,10 +397,10 @@ const SettingsUptimeKuma = ({ options, refresh }) => {
       setSelectedRowKeys(selectedRowKeys);
     },
     onSelect: (record, selected, selectedRows) => {
-      console.log(`选择行: ${selected}`, record);
+      console.log(`Row selected: ${selected}`, record);
     },
     onSelectAll: (selected, selectedRows) => {
-      console.log(`全选: ${selected}`, selectedRows);
+      console.log(`Select all: ${selected}`, selectedRows);
     },
     getCheckboxProps: (record) => ({
       disabled: false,
