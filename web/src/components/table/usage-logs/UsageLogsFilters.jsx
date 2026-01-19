@@ -84,17 +84,16 @@ const LogsFilters = ({
             size='small'
           />
 
-          <Form.Input
-            field='group'
-            prefix={<IconSearch />}
-            placeholder={t('分组')}
-            showClear
-            pure
-            size='small'
-          />
-
           {isAdminUser && (
             <>
+              <Form.Input
+                field='group'
+                prefix={<IconSearch />}
+                placeholder={t('分组')}
+                showClear
+                pure
+                size='small'
+              />
               <Form.Input
                 field='channel'
                 prefix={<IconSearch />}

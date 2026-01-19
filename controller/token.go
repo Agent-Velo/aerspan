@@ -12,6 +12,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// sanitizeTokenForUser removes internal-only fields from token responses.
+//
+// NOTE: Token "group" is an internal routing/pricing concept. Users should not
+// be aware of other groups' existence, nor be able to select them.
+func sanitizeTokenForUser(token *model.Token) {
+	if token == nil {
+		return
+	}
+	token.Group = ""
+	token.CrossGroupRetry = false
+}
+
 func GetAllTokens(c *gin.Context) {
 	userId := c.GetInt("id")
 	pageInfo := common.GetPageQuery(c)
@@ -19,6 +31,9 @@ func GetAllTokens(c *gin.Context) {
 	if err != nil {
 		common.ApiError(c, err)
 		return
+	}
+	for _, token := range tokens {
+		sanitizeTokenForUser(token)
 	}
 	total, _ := model.CountUserTokens(userId)
 	pageInfo.SetTotal(int(total))
@@ -30,11 +45,14 @@ func GetAllTokens(c *gin.Context) {
 func SearchTokens(c *gin.Context) {
 	userId := c.GetInt("id")
 	keyword := c.Query("keyword")
-	token := c.Query("token")
-	tokens, err := model.SearchUserTokens(userId, keyword, token)
+	tokenKey := c.Query("token")
+	tokens, err := model.SearchUserTokens(userId, keyword, tokenKey)
 	if err != nil {
 		common.ApiError(c, err)
 		return
+	}
+	for _, tk := range tokens {
+		sanitizeTokenForUser(tk)
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -56,6 +74,7 @@ func GetToken(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	sanitizeTokenForUser(token)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -189,8 +208,9 @@ func AddToken(c *gin.Context) {
 		ModelLimitsEnabled: token.ModelLimitsEnabled,
 		ModelLimits:        token.ModelLimits,
 		AllowIps:           token.AllowIps,
-		Group:              token.Group,
-		CrossGroupRetry:    token.CrossGroupRetry,
+		// group is internal-only; don't allow users to set it.
+		Group:           "",
+		CrossGroupRetry: false,
 	}
 	err = cleanToken.Insert()
 	if err != nil {
@@ -284,14 +304,14 @@ func UpdateToken(c *gin.Context) {
 		cleanToken.ModelLimitsEnabled = token.ModelLimitsEnabled
 		cleanToken.ModelLimits = token.ModelLimits
 		cleanToken.AllowIps = token.AllowIps
-		cleanToken.Group = token.Group
-		cleanToken.CrossGroupRetry = token.CrossGroupRetry
+		// group is internal-only; don't allow users to set or change it.
 	}
 	err = cleanToken.Update()
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
+	sanitizeTokenForUser(cleanToken)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",

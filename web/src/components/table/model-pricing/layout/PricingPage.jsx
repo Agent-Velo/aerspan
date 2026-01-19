@@ -64,13 +64,10 @@ const PricingPage = () => {
         visible={pricingData.showModelDetail}
         onClose={pricingData.closeModelDetail}
         modelData={pricingData.selectedModel}
-        usableGroup={pricingData.usableGroup}
-        currency={pricingData.currency}
         tokenUnit={pricingData.tokenUnit}
         displayPrice={pricingData.displayPrice}
         vendorsMap={pricingData.vendorsMap}
         endpointMap={pricingData.endpointMap}
-        autoGroups={pricingData.autoGroups}
         t={pricingData.t}
       />
     </div>

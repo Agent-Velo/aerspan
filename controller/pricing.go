@@ -1,8 +1,6 @@
 package controller
 
 import (
-	"math"
-
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
@@ -25,62 +23,21 @@ func GetPricing(c *gin.Context) {
 		pricing = filtered
 	}
 
-	selectedGroup := c.Query("group")
-	if selectedGroup == "" {
-		selectedGroup = "all"
-	}
-	userId, exists := c.Get("id")
-	usableGroup := map[string]string{}
-	groupMultiplier := ratio_setting.GetGroupRatioCopy()
-	var group string
-	if exists {
+	// Users should not be aware of other groups, nor be able to choose groups.
+	// Pricing is therefore calculated for the user's own group only.
+	userGroup := "default"
+	if userId, exists := c.Get("id"); exists {
 		user, err := model.GetUserCache(userId.(int))
-		if err == nil {
-			group = user.Group
-			for g := range groupMultiplier {
-				ratio, ok := ratio_setting.GetGroupGroupRatio(group, g)
-				if ok {
-					groupMultiplier[g] = ratio
-				}
-			}
+		if err == nil && user.Group != "" {
+			userGroup = user.Group
 		}
 	}
-
-	usableGroup = service.GetUserUsableGroups(group)
-	// keep only usable groups
-	for g := range groupMultiplier {
-		if _, ok := usableGroup[g]; !ok {
-			delete(groupMultiplier, g)
-		}
-	}
-
-	resolveMultiplier := func(enableGroups []string) (float64, string) {
-		if selectedGroup != "" && selectedGroup != "all" {
-			m, ok := groupMultiplier[selectedGroup]
-			if !ok {
-				m = 1
-			}
-			return m, selectedGroup
-		}
-		min := math.Inf(1)
-		used := ""
-		for _, g := range enableGroups {
-			if m, ok := groupMultiplier[g]; ok {
-				if m < min {
-					min = m
-					used = g
-				}
-			}
-		}
-		if used == "" || math.IsInf(min, 1) {
-			return 1, ""
-		}
-		return min, used
-	}
+	multiplier := service.GetUserGroupRatio(userGroup, userGroup)
 
 	for i := range pricing {
-		multiplier, usedGroup := resolveMultiplier(pricing[i].EnableGroup)
-		pricing[i].UsedGroup = usedGroup
+		// Don't leak group names to user-facing clients.
+		pricing[i].UsedGroup = ""
+		pricing[i].EnableGroup = nil
 		if pricing[i].QuotaType == 1 {
 			pricing[i].ModelPrice *= multiplier
 			continue
@@ -105,10 +62,7 @@ func GetPricing(c *gin.Context) {
 		"success":            true,
 		"data":               pricing,
 		"vendors":            model.GetVendors(),
-		"usable_group":       usableGroup,
 		"supported_endpoint": model.GetSupportedEndpointMap(),
-		"auto_groups":        service.GetUserAutoGroup(group),
-		"selected_group":     selectedGroup,
 	})
 }
 

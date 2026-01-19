@@ -31,7 +31,6 @@ const PricingTable = ({
   rowSelection,
   pageSize,
   setPageSize,
-  selectedGroup,
   copyText,
   tokenUnit,
   displayPrice,
@@ -43,18 +42,11 @@ const PricingTable = ({
   const columns = useMemo(() => {
     return getPricingTableColumns({
       t,
-      selectedGroup,
       copyText,
       tokenUnit,
       displayPrice,
     });
-  }, [
-    t,
-    selectedGroup,
-    copyText,
-    tokenUnit,
-    displayPrice,
-  ]);
+  }, [t, copyText, tokenUnit, displayPrice]);
 
   // 更新列定义中的 searchValue
   const processedColumns = useMemo(() => {

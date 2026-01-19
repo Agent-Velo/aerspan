@@ -19,7 +19,6 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React from 'react';
 import PricingDisplaySettings from '../../filter/PricingDisplaySettings';
-import PricingGroups from '../../filter/PricingGroups';
 import PricingQuotaTypes from '../../filter/PricingQuotaTypes';
 import PricingEndpointTypes from '../../filter/PricingEndpointTypes';
 import PricingVendors from '../../filter/PricingVendors';
@@ -36,8 +35,6 @@ const FilterModalContent = ({ sidebarProps, t }) => {
     setActiveKey,
     viewMode,
     setViewMode,
-    filterGroup,
-    setFilterGroup,
     filterQuotaType,
     setFilterQuotaType,
     filterEndpointType,
@@ -57,10 +54,8 @@ const FilterModalContent = ({ sidebarProps, t }) => {
     endpointTypeModels,
     vendorModels,
     tagModels,
-    groupCountModels,
   } = usePricingFilterCounts({
     models: categoryProps.models,
-    filterGroup,
     filterQuotaType,
     filterEndpointType,
     filterVendor,
@@ -97,15 +92,6 @@ const FilterModalContent = ({ sidebarProps, t }) => {
         setFilterTag={setFilterTag}
         models={tagModels}
         allModels={categoryProps.models}
-        loading={loading}
-        t={t}
-      />
-
-      <PricingGroups
-        filterGroup={filterGroup}
-        setFilterGroup={setFilterGroup}
-        usableGroup={categoryProps.usableGroup}
-        models={groupCountModels}
         loading={loading}
         t={t}
       />

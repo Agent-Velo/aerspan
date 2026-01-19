@@ -46,7 +46,7 @@ type Task struct {
 	TaskID     string                `json:"task_id" gorm:"type:varchar(191);index"` // 第三方id，不一定有/ song id\ Task id
 	Platform   constant.TaskPlatform `json:"platform" gorm:"type:varchar(30);index"` // 平台
 	UserId     int                   `json:"user_id" gorm:"index"`
-	Group      string                `json:"group" gorm:"type:varchar(50)"` // 修正计费用
+	Group      string                `json:"group,omitempty" gorm:"type:varchar(50)"` // 修正计费用
 	ChannelId  int                   `json:"channel_id" gorm:"index"`
 	Quota      int                   `json:"quota"`
 	Action     string                `json:"action" gorm:"type:varchar(40);index"` // 任务类型, song, lyrics, description-mode
@@ -183,7 +183,7 @@ func TaskGetAllUserTask(userId int, startIdx int, num int, queryParams SyncTaskQ
 	}
 
 	// 获取数据
-	err = query.Omit("channel_id").Order("id desc").Limit(num).Offset(startIdx).Find(&tasks).Error
+	err = query.Omit("channel_id", "group").Order("id desc").Limit(num).Offset(startIdx).Find(&tasks).Error
 	if err != nil {
 		return nil
 	}

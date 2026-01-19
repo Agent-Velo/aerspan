@@ -127,6 +127,7 @@ export const useLogsData = () => {
         if (!isAdminUser) {
           merged[COLUMN_KEYS.CHANNEL] = false;
           merged[COLUMN_KEYS.USERNAME] = false;
+          merged[COLUMN_KEYS.GROUP] = false;
           merged[COLUMN_KEYS.RETRY] = false;
         }
         setVisibleColumns(merged);
@@ -146,7 +147,7 @@ export const useLogsData = () => {
       [COLUMN_KEYS.CHANNEL]: isAdminUser,
       [COLUMN_KEYS.USERNAME]: isAdminUser,
       [COLUMN_KEYS.TOKEN]: true,
-      [COLUMN_KEYS.GROUP]: true,
+      [COLUMN_KEYS.GROUP]: isAdminUser,
       [COLUMN_KEYS.TYPE]: true,
       [COLUMN_KEYS.MODEL]: true,
       [COLUMN_KEYS.USE_TIME]: true,
@@ -181,6 +182,7 @@ export const useLogsData = () => {
       if (
         (key === COLUMN_KEYS.CHANNEL ||
           key === COLUMN_KEYS.USERNAME ||
+          key === COLUMN_KEYS.GROUP ||
           key === COLUMN_KEYS.RETRY) &&
         !isAdminUser
       ) {
@@ -235,13 +237,12 @@ export const useLogsData = () => {
       model_name,
       start_timestamp,
       end_timestamp,
-      group,
       logType: formLogType,
     } = getFormValues();
     const currentLogType = formLogType !== undefined ? formLogType : logType;
     let localStartTimestamp = Date.parse(start_timestamp) / 1000;
     let localEndTimestamp = Date.parse(end_timestamp) / 1000;
-    let url = `/api/log/self/stat?type=${currentLogType}&token_name=${token_name}&model_name=${model_name}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}&group=${group}`;
+    let url = `/api/log/self/stat?type=${currentLogType}&token_name=${token_name}&model_name=${model_name}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}`;
     url = encodeURI(url);
     let res = await API.get(url);
     const { success, message, data } = res.data;
@@ -360,7 +361,9 @@ export const useLogsData = () => {
         expandDataLocal.push({
           key: t('日志详情'),
           value: isPricingLog
-            ? renderPricingSummary(other)
+            ? renderPricingSummary(other, {
+                hideGroupMultiplier: !isAdminUser,
+              })
             : other?.claude
               ? renderClaudeLogContent(
                   other?.model_ratio,
@@ -374,6 +377,9 @@ export const useLogsData = () => {
                   other.cache_creation_ratio_5m || other.cache_creation_ratio || 1.0,
                   other.cache_creation_tokens_1h || 0,
                   other.cache_creation_ratio_1h || other.cache_creation_ratio || 1.0,
+                  {
+                    hideGroupMultiplier: !isAdminUser,
+                  },
                 )
               : renderLogContent(
                   other?.model_ratio,
@@ -388,6 +394,9 @@ export const useLogsData = () => {
                   other.web_search_call_count || 0,
                   other.file_search || false,
                   other.file_search_call_count || 0,
+                  {
+                    hideGroupMultiplier: !isAdminUser,
+                  },
                 ),
         });
         if (logs[i]?.content) {
@@ -423,6 +432,9 @@ export const useLogsData = () => {
             logs[i].prompt_tokens,
             logs[i].completion_tokens,
             other,
+            {
+              hideGroupMultiplier: !isAdminUser,
+            },
           );
         } else if (other?.ws || other?.audio) {
           content = renderAudioModelPrice(
@@ -439,6 +451,9 @@ export const useLogsData = () => {
             other?.user_group_ratio,
             other?.cache_tokens || 0,
             other?.cache_ratio || 1.0,
+            {
+              hideGroupMultiplier: !isAdminUser,
+            },
           );
         } else if (other?.claude) {
           content = renderClaudeModelPrice(
@@ -457,6 +472,9 @@ export const useLogsData = () => {
             other.cache_creation_ratio_5m || other.cache_creation_ratio || 1.0,
             other.cache_creation_tokens_1h || 0,
             other.cache_creation_ratio_1h || other.cache_creation_ratio || 1.0,
+            {
+              hideGroupMultiplier: !isAdminUser,
+            },
           );
         } else {
           content = renderModelPrice(
@@ -483,6 +501,9 @@ export const useLogsData = () => {
             other?.audio_input_price || 0,
             other?.image_generation_call || false,
             other?.image_generation_call_price || 0,
+            {
+              hideGroupMultiplier: !isAdminUser,
+            },
           );
         }
         expandDataLocal.push({
@@ -549,7 +570,7 @@ export const useLogsData = () => {
     if (isAdminUser) {
       url = `/api/log/?p=${startIdx}&page_size=${pageSize}&type=${currentLogType}&username=${username}&token_name=${token_name}&model_name=${model_name}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}&channel=${channel}&group=${group}`;
     } else {
-      url = `/api/log/self/?p=${startIdx}&page_size=${pageSize}&type=${currentLogType}&token_name=${token_name}&model_name=${model_name}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}&group=${group}`;
+      url = `/api/log/self/?p=${startIdx}&page_size=${pageSize}&type=${currentLogType}&token_name=${token_name}&model_name=${model_name}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}`;
     }
     url = encodeURI(url);
     const res = await API.get(url);

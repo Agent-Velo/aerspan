@@ -1063,10 +1063,11 @@ function isValidGroupRatio(ratio) {
  */
 function getEffectiveRatio(groupRatio, user_group_ratio) {
   const useUserGroupRatio = isValidGroupRatio(user_group_ratio);
+  const safeGroupRatio = isValidGroupRatio(groupRatio) ? groupRatio : 1;
   const ratioLabel = useUserGroupRatio
     ? i18next.t('专属系数')
     : i18next.t('分组系数');
-  const effectiveRatio = useUserGroupRatio ? user_group_ratio : groupRatio;
+  const effectiveRatio = useUserGroupRatio ? user_group_ratio : safeGroupRatio;
 
   return {
     ratio: effectiveRatio,
@@ -1076,13 +1077,16 @@ function getEffectiveRatio(groupRatio, user_group_ratio) {
 }
 
 // Shared core for simple price rendering (used by OpenAI-like and Claude-like variants)
-function renderPriceSimpleCore({
+function renderPriceSimpleCore(
+  {
   modelRatio,
   modelPrice = -1,
   groupRatio,
   user_group_ratio,
   isSystemPromptOverride = false,
-}) {
+  },
+  options = {},
+) {
   const { ratio: groupMultiplier } = getEffectiveRatio(
     groupRatio,
     user_group_ratio,
@@ -1102,7 +1106,7 @@ function renderPriceSimpleCore({
     legacyPricing.model_input_price = normalizedModelRatio * baseUSDPerMillion;
   }
 
-  let result = renderPricingSummary(legacyPricing);
+  let result = renderPricingSummary(legacyPricing, options);
   if (isSystemPromptOverride) {
     result += '\n\r' + i18next.t('系统提示覆盖');
   }
@@ -1133,7 +1137,10 @@ export function renderModelPrice(
   audioInputPrice = 0,
   imageGenerationCall = false,
   imageGenerationCallPrice = 0,
+  options = {},
 ) {
+  const { hideGroupMultiplier = false } = options || {};
+
   const { ratio: effectiveGroupRatio, label: ratioLabel } = getEffectiveRatio(
     groupRatio,
     user_group_ratio,
@@ -1146,6 +1153,12 @@ export function renderModelPrice(
   const normalizedModelPrice = toSafeNumber(modelPrice, -1);
 
   if (normalizedModelPrice > 0) {
+    if (hideGroupMultiplier) {
+      return i18next.t('模型价格：{{symbol}}{{total}}', {
+        symbol: symbol,
+        total: (normalizedModelPrice * groupRatio * rate).toFixed(6),
+      });
+    }
     const displayPrice = (normalizedModelPrice * rate).toFixed(6);
     const displayTotal = (normalizedModelPrice * groupRatio * rate).toFixed(6);
     return i18next.t(
@@ -1308,53 +1321,85 @@ export function renderModelPrice(
               }
 
               // 构建输出部分描述
-              const outputDesc = i18next.t(
-                '输出 {{completion}} tokens / 1M tokens * {{symbol}}{{compPrice}}) * {{ratioType}} {{ratio}}',
-                {
-                  completion: completionTokens,
-                  symbol: symbol,
-                  compPrice: (completionRatioPrice * rate).toFixed(6),
-                  ratio: groupRatio,
-                  ratioType: ratioLabel,
-                },
-              );
+              const outputDesc = hideGroupMultiplier
+                ? i18next.t(
+                    '输出 {{completion}} tokens / 1M tokens * {{symbol}}{{compPrice}})',
+                    {
+                      completion: completionTokens,
+                      symbol: symbol,
+                      compPrice: (completionRatioPrice * rate).toFixed(6),
+                    },
+                  )
+                : i18next.t(
+                    '输出 {{completion}} tokens / 1M tokens * {{symbol}}{{compPrice}}) * {{ratioType}} {{ratio}}',
+                    {
+                      completion: completionTokens,
+                      symbol: symbol,
+                      compPrice: (completionRatioPrice * rate).toFixed(6),
+                      ratio: groupRatio,
+                      ratioType: ratioLabel,
+                    },
+                  );
 
               // 构建额外服务描述
               const extraServices = [
                 webSearch && webSearchCallCount > 0
-                  ? i18next.t(
-                      ' + Web搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}',
-                      {
-                        count: webSearchCallCount,
-                        symbol: symbol,
-                        price: (webSearchPrice * rate).toFixed(6),
-                        ratio: groupRatio,
-                        ratioType: ratioLabel,
-                      },
-                    )
+                  ? hideGroupMultiplier
+                    ? i18next.t(
+                        ' + Web搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}}',
+                        {
+                          count: webSearchCallCount,
+                          symbol: symbol,
+                          price: (webSearchPrice * rate).toFixed(6),
+                        },
+                      )
+                    : i18next.t(
+                        ' + Web搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}',
+                        {
+                          count: webSearchCallCount,
+                          symbol: symbol,
+                          price: (webSearchPrice * rate).toFixed(6),
+                          ratio: groupRatio,
+                          ratioType: ratioLabel,
+                        },
+                      )
                   : '',
                 fileSearch && fileSearchCallCount > 0
-                  ? i18next.t(
-                      ' + 文件搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}',
-                      {
-                        count: fileSearchCallCount,
-                        symbol: symbol,
-                        price: (fileSearchPrice * rate).toFixed(6),
-                        ratio: groupRatio,
-                        ratioType: ratioLabel,
-                      },
-                    )
+                  ? hideGroupMultiplier
+                    ? i18next.t(
+                        ' + 文件搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}}',
+                        {
+                          count: fileSearchCallCount,
+                          symbol: symbol,
+                          price: (fileSearchPrice * rate).toFixed(6),
+                        },
+                      )
+                    : i18next.t(
+                        ' + 文件搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}',
+                        {
+                          count: fileSearchCallCount,
+                          symbol: symbol,
+                          price: (fileSearchPrice * rate).toFixed(6),
+                          ratio: groupRatio,
+                          ratioType: ratioLabel,
+                        },
+                      )
                   : '',
                 imageGenerationCall && imageGenerationCallPrice > 0
-                  ? i18next.t(
-                      ' + 图片生成调用 {{symbol}}{{price}} / 1次 * {{ratioType}} {{ratio}}',
-                      {
+                  ? hideGroupMultiplier
+                    ? i18next.t(' + 图片生成调用 {{symbol}}{{price}} / 1次', {
                         symbol: symbol,
                         price: (imageGenerationCallPrice * rate).toFixed(6),
-                        ratio: groupRatio,
-                        ratioType: ratioLabel,
-                      },
-                    )
+                      })
+                    : i18next.t(
+                        ' + 图片生成调用 {{symbol}}{{price}} / 1次 * {{ratioType}} {{ratio}}',
+                        {
+                          symbol: symbol,
+                          price: (imageGenerationCallPrice * rate).toFixed(6),
+                          ratio: groupRatio,
+                          ratioType: ratioLabel,
+                        },
+                      )
                   : '',
               ].join('');
 
@@ -1390,6 +1435,7 @@ export function renderLogContent(
   webSearchCallCount = 0,
   fileSearch = false,
   fileSearchCallCount = 0,
+  options = {},
 ) {
   const { ratio: groupMultiplier } = getEffectiveRatio(
     groupRatio,
@@ -1401,7 +1447,7 @@ export function renderLogContent(
     return renderPricingSummary({
       model_price: normalizedModelPrice,
       group_multiplier: groupMultiplier,
-    });
+    }, options);
   }
 
   const baseUSDPerMillion = getLegacyBaseUSDPerMillion();
@@ -1414,7 +1460,7 @@ export function renderLogContent(
     model_input_price: inputPrice,
     model_output_price: outputPrice,
     group_multiplier: groupMultiplier,
-  });
+  }, options);
 }
 
 export function renderModelPriceSimple(
@@ -1434,6 +1480,7 @@ export function renderModelPriceSimple(
   imageRatio = 1.0,
   isSystemPromptOverride = false,
   provider = 'openai',
+  options = {},
 ) {
   return renderPriceSimpleCore({
     modelRatio,
@@ -1451,7 +1498,7 @@ export function renderModelPriceSimple(
     image,
     imageRatio,
     isSystemPromptOverride,
-  });
+  }, options);
 }
 
 function toSafeNumber(value, fallback = 0) {
@@ -1465,9 +1512,11 @@ function toSafeInt(value, fallback = 0) {
   return Math.trunc(num);
 }
 
-export function renderPricingSummary(other = {}) {
+export function renderPricingSummary(other = {}, options = {}) {
   if (!other || typeof other !== 'object') return '';
   const { symbol, rate } = getCurrencyConfig();
+
+  const { hideGroupMultiplier = false } = options || {};
 
   const groupMultiplier = toSafeNumber(
     other.group_multiplier,
@@ -1495,7 +1544,10 @@ export function renderPricingSummary(other = {}) {
       );
     }
   }
-  parts.push(`${i18next.t('分组系数')} ${groupMultiplier}`);
+
+  if (!hideGroupMultiplier) {
+    parts.push(`${i18next.t('分组系数')} ${groupMultiplier}`);
+  }
 
   return parts.join('，');
 }
@@ -1504,9 +1556,12 @@ export function renderPricingBreakdown(
   inputTokens,
   completionTokens,
   other = {},
+  options = {},
 ) {
   if (!other || typeof other !== 'object') return '';
   const { symbol, rate } = getCurrencyConfig();
+
+  const { hideGroupMultiplier = false } = options || {};
 
   const groupMultiplier = toSafeNumber(
     other.group_multiplier,
@@ -1526,9 +1581,11 @@ export function renderPricingBreakdown(
             {i18next.t('模型价格')}: {symbol}
             {(modelPrice * rate).toFixed(6)} / {i18next.t('次')}
           </p>
-          <p>
-            {i18next.t('分组系数')}: {groupMultiplier}
-          </p>
+          {!hideGroupMultiplier && (
+            <p>
+              {i18next.t('分组系数')}: {groupMultiplier}
+            </p>
+          )}
           <p>
             {i18next.t('估算扣费')}: {symbol}
             {(total * rate).toFixed(6)}
@@ -1578,9 +1635,11 @@ export function renderPricingBreakdown(
             {i18next.t('音频输出')}: {symbol}
             {(audioOutputPrice * rate).toFixed(6)} / 1M tokens
           </p>
-          <p>
-            {i18next.t('分组系数')}: {groupMultiplier}
-          </p>
+          {!hideGroupMultiplier && (
+            <p>
+              {i18next.t('分组系数')}: {groupMultiplier}
+            </p>
+          )}
           <p>
             {i18next.t('估算扣费')}: {symbol}
             {(totalUSD * rate).toFixed(6)}
@@ -1707,9 +1766,11 @@ export function renderPricingBreakdown(
             {(audioInputPrice * rate).toFixed(6)} / 1M tokens
           </p>
         )}
-        <p>
-          {i18next.t('分组系数')}: {groupMultiplier}
-        </p>
+        {!hideGroupMultiplier && (
+          <p>
+            {i18next.t('分组系数')}: {groupMultiplier}
+          </p>
+        )}
         <p>
           {i18next.t('估算扣费')}: {symbol}
           {(totalUSD * rate).toFixed(6)}
@@ -1734,7 +1795,10 @@ export function renderAudioModelPrice(
   user_group_ratio,
   cacheTokens = 0,
   cacheRatio = 1.0,
+  options = {},
 ) {
+  const { hideGroupMultiplier = false } = options || {};
+
   const { ratio: effectiveGroupRatio, label: ratioLabel } = getEffectiveRatio(
     groupRatio,
     user_group_ratio,
@@ -1746,6 +1810,12 @@ export function renderAudioModelPrice(
 
   const normalizedModelPrice = toSafeNumber(modelPrice, -1);
   if (normalizedModelPrice > 0) {
+    if (hideGroupMultiplier) {
+      return i18next.t('模型价格：{{symbol}}{{total}}', {
+        symbol: symbol,
+        total: (normalizedModelPrice * groupRatio * rate).toFixed(6),
+      });
+    }
     return i18next.t(
       '模型价格：{{symbol}}{{price}} * {{ratioType}}：{{ratio}} = {{symbol}}{{total}}',
       {
@@ -1913,7 +1983,10 @@ export function renderClaudeModelPrice(
   cacheCreationRatio5m = 1.0,
   cacheCreationTokens1h = 0,
   cacheCreationRatio1h = 1.0,
+  options = {},
 ) {
+  const { hideGroupMultiplier = false } = options || {};
+
   const { ratio: effectiveGroupRatio, label: ratioLabel } = getEffectiveRatio(
     groupRatio,
     user_group_ratio,
@@ -1925,6 +1998,12 @@ export function renderClaudeModelPrice(
 
   const normalizedModelPrice = toSafeNumber(modelPrice, -1);
   if (normalizedModelPrice > 0) {
+    if (hideGroupMultiplier) {
+      return i18next.t('模型价格：{{symbol}}{{total}}', {
+        symbol: symbol,
+        total: (normalizedModelPrice * groupRatio * rate).toFixed(6),
+      });
+    }
     return i18next.t(
       '模型价格：{{symbol}}{{price}} * {{ratioType}}：{{ratio}} = {{symbol}}{{total}}',
       {
@@ -2145,16 +2224,22 @@ export function renderClaudeModelPrice(
           )}
           <p></p>
           <p>
-            {i18next.t(
-              '{{breakdown}} * {{ratioType}} {{ratio}} = {{symbol}}{{total}}',
-              {
-                breakdown: breakdownText,
-                ratioType: ratioLabel,
-                ratio: groupRatio,
-                symbol: symbol,
-                total: (price * rate).toFixed(6),
-              },
-            )}
+            {hideGroupMultiplier
+              ? i18next.t('{{breakdown}} = {{symbol}}{{total}}', {
+                  breakdown: breakdownText,
+                  symbol: symbol,
+                  total: (price * rate).toFixed(6),
+                })
+              : i18next.t(
+                  '{{breakdown}} * {{ratioType}} {{ratio}} = {{symbol}}{{total}}',
+                  {
+                    breakdown: breakdownText,
+                    ratioType: ratioLabel,
+                    ratio: groupRatio,
+                    symbol: symbol,
+                    total: (price * rate).toFixed(6),
+                  },
+                )}
           </p>
           <p>{i18next.t('仅供参考，以实际扣费为准')}</p>
         </article>
@@ -2175,6 +2260,7 @@ export function renderClaudeLogContent(
   cacheCreationRatio5m = 1.0,
   cacheCreationTokens1h = 0,
   cacheCreationRatio1h = 1.0,
+  options = {},
 ) {
   const { ratio: groupMultiplier } = getEffectiveRatio(
     groupRatio,
@@ -2186,7 +2272,7 @@ export function renderClaudeLogContent(
     return renderPricingSummary({
       model_price: normalizedModelPrice,
       group_multiplier: groupMultiplier,
-    });
+    }, options);
   }
 
   const baseUSDPerMillion = getLegacyBaseUSDPerMillion();
@@ -2199,7 +2285,7 @@ export function renderClaudeLogContent(
     model_input_price: inputPrice,
     model_output_price: outputPrice,
     group_multiplier: groupMultiplier,
-  });
+  }, options);
 }
 
 // 已统一至 renderModelPriceSimple，若仍有遗留引用，请改为传入 provider='claude'

@@ -2,8 +2,10 @@ package model
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,7 +36,7 @@ type Log struct {
 	ChannelId        int    `json:"channel" gorm:"index"`
 	ChannelName      string `json:"channel_name" gorm:"->"`
 	TokenId          int    `json:"token_id" gorm:"default:0;index"`
-	Group            string `json:"group" gorm:"index"`
+	Group            string `json:"group,omitempty" gorm:"index"`
 	Ip               string `json:"ip" gorm:"index;default:''"`
 	Other            string `json:"other"`
 }
@@ -53,14 +55,109 @@ const (
 func formatUserLogs(logs []*Log) {
 	for i := range logs {
 		logs[i].ChannelName = ""
+		logs[i].Group = ""
 		var otherMap map[string]interface{}
 		otherMap, _ = common.StrToMap(logs[i].Other)
 		if otherMap != nil {
 			// delete admin
 			delete(otherMap, "admin_info")
+			// Remove group-related fields from user-visible logs.
+			normalizeUserLogOther(otherMap)
 		}
 		logs[i].Other = common.MapToJsonStr(otherMap)
 		logs[i].Id = logs[i].Id % 1024
+	}
+}
+
+func normalizeUserLogOther(other map[string]interface{}) {
+	if other == nil {
+		return
+	}
+
+	multiplier := 1.0
+	if v, ok := getNumberFromOther(other, []string{"group_multiplier", "group_ratio"}); ok {
+		multiplier = v
+	}
+
+	if multiplier != 1.0 {
+		// Pricing fields
+		for _, key := range []string{
+			"model_input_price",
+			"model_output_price",
+			"cache_read_price",
+			"cache_creation_price",
+			"cache_creation_price_5m",
+			"cache_creation_price_1h",
+			"audio_input_price",
+			"audio_output_price",
+			"web_search_price",
+			"file_search_price",
+			"image_generation_call_price",
+			"model_price",
+		} {
+			multiplyOtherNumber(other, key, multiplier)
+		}
+		// Legacy ratio fields
+		for _, key := range []string{
+			"model_ratio",
+			"audio_ratio",
+			"audio_completion_ratio",
+		} {
+			multiplyOtherNumber(other, key, multiplier)
+		}
+	}
+
+	for _, key := range []string{
+		"group_multiplier",
+		"group_ratio",
+		"user_group_multiplier",
+		"user_group_ratio",
+	} {
+		delete(other, key)
+	}
+}
+
+func multiplyOtherNumber(other map[string]interface{}, key string, multiplier float64) {
+	v, ok := getFloat64(other[key])
+	if !ok {
+		return
+	}
+	other[key] = v * multiplier
+}
+
+func getNumberFromOther(other map[string]interface{}, keys []string) (float64, bool) {
+	for _, key := range keys {
+		if v, ok := getFloat64(other[key]); ok {
+			return v, true
+		}
+	}
+	return 0, false
+}
+
+func getFloat64(value interface{}) (float64, bool) {
+	switch v := value.(type) {
+	case float64:
+		return v, true
+	case float32:
+		return float64(v), true
+	case int:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	case json.Number:
+		f, err := v.Float64()
+		if err != nil {
+			return 0, false
+		}
+		return f, true
+	case string:
+		f, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return 0, false
+		}
+		return f, true
+	default:
+		return 0, false
 	}
 }
 

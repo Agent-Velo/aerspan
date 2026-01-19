@@ -280,13 +280,13 @@ func TokenAuth() func(c *gin.Context) {
 		if tokenGroup != "" {
 			// check common.UserUsableGroups[userGroup]
 			if _, ok := service.GetUserUsableGroups(userGroup)[tokenGroup]; !ok {
-				abortWithOpenAiMessage(c, http.StatusForbidden, fmt.Sprintf("Group access denied: %s", tokenGroup))
+				abortWithOpenAiMessage(c, http.StatusForbidden, "This token is not permitted for your account")
 				return
 			}
 			// check group in common.GroupRatio
 			if !ratio_setting.ContainsGroupRatio(tokenGroup) {
 				if tokenGroup != "auto" {
-					abortWithOpenAiMessage(c, http.StatusForbidden, fmt.Sprintf("Group %s is no longer supported", tokenGroup))
+					abortWithOpenAiMessage(c, http.StatusForbidden, "This token configuration is no longer supported")
 					return
 				}
 			}

@@ -106,7 +106,6 @@ function renderSupportedEndpoints(endpoints) {
 
 export const getPricingTableColumns = ({
   t,
-  selectedGroup,
   copyText,
   tokenUnit,
   displayPrice,
@@ -196,19 +195,6 @@ export const getPricingTableColumns = ({
     quotaColumn,
   ];
 
-  const usedGroupColumn = {
-    title: t('定价分组'),
-    dataIndex: 'used_group',
-    render: (text) =>
-      text ? (
-        <Tag color='white' shape='circle'>
-          {text}
-        </Tag>
-      ) : (
-        '-'
-      ),
-  };
-
   const priceColumn = {
     title: t('模型价格'),
     dataIndex: 'model_price',
@@ -240,9 +226,6 @@ export const getPricingTableColumns = ({
 
   const columns = [...baseColumns];
   columns.push(endpointColumn);
-  if (selectedGroup === 'all') {
-    columns.push(usedGroupColumn);
-  }
   columns.push(priceColumn);
   return columns;
 };

@@ -33,7 +33,7 @@ type Pricing struct {
 	ModelPrice             float64                 `json:"model_price"`
 	OwnerBy                string                  `json:"owner_by"`
 	UsedGroup              string                  `json:"used_group,omitempty"`
-	EnableGroup            []string                `json:"enable_groups"`
+	EnableGroup            []string                `json:"enable_groups,omitempty"`
 	SupportedEndpointTypes []constant.EndpointType `json:"supported_endpoint_types"`
 }
 

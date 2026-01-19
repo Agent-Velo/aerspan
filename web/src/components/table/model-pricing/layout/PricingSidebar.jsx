@@ -19,7 +19,6 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React from 'react';
 import { Button } from '@douyinfe/semi-ui';
-import PricingGroups from '../filter/PricingGroups';
 import PricingQuotaTypes from '../filter/PricingQuotaTypes';
 import PricingEndpointTypes from '../filter/PricingEndpointTypes';
 import PricingVendors from '../filter/PricingVendors';
@@ -37,9 +36,6 @@ const PricingSidebar = ({
   setActiveKey,
   viewMode,
   setViewMode,
-  filterGroup,
-  setFilterGroup,
-  handleGroupClick,
   filterQuotaType,
   setFilterQuotaType,
   filterEndpointType,
@@ -61,10 +57,8 @@ const PricingSidebar = ({
     endpointTypeModels,
     vendorModels,
     tagModels,
-    groupCountModels,
   } = usePricingFilterCounts({
     models: categoryProps.models,
-    filterGroup,
     filterQuotaType,
     filterEndpointType,
     filterVendor,
@@ -78,7 +72,6 @@ const PricingSidebar = ({
       setShowWithRecharge,
       setCurrency,
       setViewMode,
-      setFilterGroup,
       setFilterQuotaType,
       setFilterEndpointType,
       setFilterVendor,
@@ -115,15 +108,6 @@ const PricingSidebar = ({
         setFilterTag={setFilterTag}
         models={tagModels}
         allModels={categoryProps.models}
-        loading={loading}
-        t={t}
-      />
-
-      <PricingGroups
-        filterGroup={filterGroup}
-        setFilterGroup={handleGroupClick}
-        usableGroup={categoryProps.usableGroup}
-        models={groupCountModels}
         loading={loading}
         t={t}
       />

@@ -282,15 +282,15 @@ func getChannel(c *gin.Context, info *relaycommon.RelayInfo, retryParam *service
 			AutoBan: &autoBanInt,
 		}, nil
 	}
-	channel, selectGroup, err := service.CacheGetRandomSatisfiedChannel(retryParam)
+	channel, _, err := service.CacheGetRandomSatisfiedChannel(retryParam)
 
 	info.PriceData.GroupRatioInfo = helper.HandleGroupRatio(c, info)
 
 	if err != nil {
-		return nil, types.NewError(fmt.Errorf("Failed to find an available channel for model %s in group %s: %s", info.OriginModelName, selectGroup, err.Error()), types.ErrorCodeGetChannelFailed, types.ErrOptionWithSkipRetry())
+		return nil, types.NewError(fmt.Errorf("Failed to find an available channel for model %s: %s", info.OriginModelName, err.Error()), types.ErrorCodeGetChannelFailed, types.ErrOptionWithSkipRetry())
 	}
 	if channel == nil {
-		return nil, types.NewError(fmt.Errorf("No available channels for model %s in group %s", info.OriginModelName, selectGroup), types.ErrorCodeGetChannelFailed, types.ErrOptionWithSkipRetry())
+		return nil, types.NewError(fmt.Errorf("No available channels for model %s", info.OriginModelName), types.ErrorCodeGetChannelFailed, types.ErrOptionWithSkipRetry())
 	}
 
 	newAPIError := middleware.SetupContextForSelectedChannel(c, channel, info.OriginModelName)

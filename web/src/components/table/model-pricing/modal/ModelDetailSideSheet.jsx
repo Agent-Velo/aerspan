@@ -33,13 +33,10 @@ const ModelDetailSideSheet = ({
   visible,
   onClose,
   modelData,
-  currency,
   tokenUnit,
   displayPrice,
-  usableGroup,
   vendorsMap,
   endpointMap,
-  autoGroups,
   t,
 }) => {
   const isMobile = useIsMobile();
@@ -88,11 +85,8 @@ const ModelDetailSideSheet = ({
             />
             <ModelPricingTable
               modelData={modelData}
-              currency={currency}
               tokenUnit={tokenUnit}
               displayPrice={displayPrice}
-              usableGroup={usableGroup}
-              autoGroups={autoGroups}
               t={t}
             />
           </>

@@ -78,37 +78,15 @@ func Distribute() func(c *gin.Context) {
 					abortWithOpenAiMessage(c, http.StatusBadRequest, "Model is required")
 					return
 				}
-				var selectGroup string
 				usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
-				// check path is /pg/chat/completions
-				if strings.HasPrefix(c.Request.URL.Path, "/pg/chat/completions") {
-					playgroundRequest := &dto.PlayGroundRequest{}
-					err = common.UnmarshalBodyReusable(c, playgroundRequest)
-					if err != nil {
-						abortWithOpenAiMessage(c, http.StatusBadRequest, "Invalid playground request: "+err.Error())
-						return
-					}
-					if playgroundRequest.Group != "" {
-						if !service.GroupInUserUsableGroups(usingGroup, playgroundRequest.Group) && playgroundRequest.Group != usingGroup {
-							abortWithOpenAiMessage(c, http.StatusForbidden, "Group access denied")
-							return
-						}
-						usingGroup = playgroundRequest.Group
-						common.SetContextKey(c, constant.ContextKeyUsingGroup, usingGroup)
-					}
-				}
-				channel, selectGroup, err = service.CacheGetRandomSatisfiedChannel(&service.RetryParam{
+				channel, _, err = service.CacheGetRandomSatisfiedChannel(&service.RetryParam{
 					Ctx:        c,
 					ModelName:  modelRequest.Model,
 					TokenGroup: usingGroup,
 					Retry:      common.GetPointer(0),
 				})
 				if err != nil {
-					showGroup := usingGroup
-					if usingGroup == "auto" {
-						showGroup = fmt.Sprintf("auto(%s)", selectGroup)
-					}
-					message := fmt.Sprintf("Failed to find an available channel for model %s in group %s: %s", modelRequest.Model, showGroup, err.Error())
+					message := fmt.Sprintf("Failed to find an available channel for model %s: %s", modelRequest.Model, err.Error())
 					// 如果错误，但是渠道不为空，说明是数据库一致性问题
 					//if channel != nil {
 					//	common.SysError(fmt.Sprintf("渠道不存在：%d", channel.Id))
@@ -118,7 +96,7 @@ func Distribute() func(c *gin.Context) {
 					return
 				}
 				if channel == nil {
-					abortWithOpenAiMessage(c, http.StatusServiceUnavailable, fmt.Sprintf("No available channels for model %s in group %s", modelRequest.Model, usingGroup), string(types.ErrorCodeModelNotFound))
+					abortWithOpenAiMessage(c, http.StatusServiceUnavailable, fmt.Sprintf("No available channels for model %s", modelRequest.Model), string(types.ErrorCodeModelNotFound))
 					return
 				}
 			}
@@ -297,8 +275,6 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 			return nil, false, err
 		}
 		modelRequest.Model = req.Model
-		modelRequest.Group = req.Group
-		common.SetContextKey(c, constant.ContextKeyTokenGroup, modelRequest.Group)
 	}
 	return &modelRequest, shouldSelectChannel, nil
 }
