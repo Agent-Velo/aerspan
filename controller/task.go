@@ -27,7 +27,7 @@ func UpdateTaskBulk() {
 	//imageModel := "midjourney"
 	for {
 		time.Sleep(time.Duration(15) * time.Second)
-		common.SysLog("任务进度轮询开始")
+		common.SysLog("Task polling started")
 		ctx := context.TODO()
 		allTasks := model.GetAllUnFinishSyncTasks(constant.TaskQueryLimit)
 		platformTask := make(map[constant.TaskPlatform][]*model.Task)
@@ -67,7 +67,7 @@ func UpdateTaskBulk() {
 
 			UpdateTaskByPlatform(platform, taskChannelM, taskM)
 		}
-		common.SysLog("任务进度轮询完成")
+		common.SysLog("Task polling completed")
 	}
 }
 
@@ -88,14 +88,14 @@ func UpdateSunoTaskAll(ctx context.Context, taskChannelM map[int][]string, taskM
 	for channelId, taskIds := range taskChannelM {
 		err := updateSunoTaskAll(ctx, channelId, taskIds, taskM)
 		if err != nil {
-			logger.LogError(ctx, fmt.Sprintf("渠道 #%d 更新异步任务失败: %s", channelId, err.Error()))
+			logger.LogError(ctx, fmt.Sprintf("Failed to update async tasks for channel #%d: %s", channelId, err.Error()))
 		}
 	}
 	return nil
 }
 
 func updateSunoTaskAll(ctx context.Context, channelId int, taskIds []string, taskM map[string]*model.Task) error {
-	logger.LogInfo(ctx, fmt.Sprintf("渠道 #%d 未完成的任务有: %d", channelId, len(taskIds)))
+	logger.LogInfo(ctx, fmt.Sprintf("Channel #%d has %d unfinished tasks", channelId, len(taskIds)))
 	if len(taskIds) == 0 {
 		return nil
 	}
@@ -103,7 +103,7 @@ func updateSunoTaskAll(ctx context.Context, channelId int, taskIds []string, tas
 	if err != nil {
 		common.SysLog(fmt.Sprintf("CacheGetChannel: %v", err))
 		err = model.TaskBulkUpdate(taskIds, map[string]any{
-			"fail_reason": fmt.Sprintf("获取渠道信息失败，请联系管理员，渠道ID：%d", channelId),
+			"fail_reason": fmt.Sprintf("Failed to load channel info. Contact the admin (channel ID: %d)", channelId),
 			"status":      "FAILURE",
 			"progress":    "100%",
 		})
@@ -141,7 +141,7 @@ func updateSunoTaskAll(ctx context.Context, channelId int, taskIds []string, tas
 		return err
 	}
 	if !responseItems.IsSuccess() {
-		common.SysLog(fmt.Sprintf("渠道 #%d 未完成的任务有: %d, 成功获取到任务数: %s", channelId, len(taskIds), string(responseBody)))
+		common.SysLog(fmt.Sprintf("Channel #%d unfinished tasks: %d, response: %s", channelId, len(taskIds), string(responseBody)))
 		return err
 	}
 
@@ -157,7 +157,7 @@ func updateSunoTaskAll(ctx context.Context, channelId int, taskIds []string, tas
 		task.StartTime = lo.If(responseItem.StartTime != 0, responseItem.StartTime).Else(task.StartTime)
 		task.FinishTime = lo.If(responseItem.FinishTime != 0, responseItem.FinishTime).Else(task.FinishTime)
 		if responseItem.FailReason != "" || task.Status == model.TaskStatusFailure {
-			logger.LogInfo(ctx, task.TaskID+" 构建失败，"+task.FailReason)
+			logger.LogInfo(ctx, task.TaskID+" build failed: "+task.FailReason)
 			task.Progress = "100%"
 			//err = model.CacheUpdateUserQuota(task.UserId) ?
 			if err != nil {
@@ -169,7 +169,7 @@ func updateSunoTaskAll(ctx context.Context, channelId int, taskIds []string, tas
 					if err != nil {
 						logger.LogError(ctx, "fail to increase user quota: "+err.Error())
 					}
-					logContent := fmt.Sprintf("异步任务执行失败 %s，补偿 %s", task.TaskID, logger.LogQuota(quota))
+					logContent := fmt.Sprintf("Async task %s failed, refunded %s", task.TaskID, logger.LogQuota(quota))
 					model.RecordLog(task.UserId, model.LogTypeSystem, logContent)
 				}
 			}

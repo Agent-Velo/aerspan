@@ -37,7 +37,7 @@ type OidcUser struct {
 
 func getOidcUserInfoByCode(code string) (*OidcUser, error) {
 	if code == "" {
-		return nil, errors.New("无效的参数")
+		return nil, errors.New("Missing code")
 	}
 
 	values := url.Values{}
@@ -59,7 +59,7 @@ func getOidcUserInfoByCode(code string) (*OidcUser, error) {
 	res, err := client.Do(req)
 	if err != nil {
 		common.SysLog(err.Error())
-		return nil, errors.New("无法连接至 OIDC 服务器，请稍后重试！")
+		return nil, errors.New("Couldn't reach the OIDC provider. Try again later")
 	}
 	defer res.Body.Close()
 	var oidcResponse OidcResponse
@@ -69,8 +69,8 @@ func getOidcUserInfoByCode(code string) (*OidcUser, error) {
 	}
 
 	if oidcResponse.AccessToken == "" {
-		common.SysLog("OIDC 获取 Token 失败，请检查设置！")
-		return nil, errors.New("OIDC 获取 Token 失败，请检查设置！")
+		common.SysLog("OIDC token request failed. Check your settings")
+		return nil, errors.New("OIDC token request failed. Check your settings")
 	}
 
 	req, err = http.NewRequest("GET", system_setting.GetOIDCSettings().UserInfoEndpoint, nil)
@@ -81,12 +81,12 @@ func getOidcUserInfoByCode(code string) (*OidcUser, error) {
 	res2, err := client.Do(req)
 	if err != nil {
 		common.SysLog(err.Error())
-		return nil, errors.New("无法连接至 OIDC 服务器，请稍后重试！")
+		return nil, errors.New("Couldn't reach the OIDC provider. Try again later")
 	}
 	defer res2.Body.Close()
 	if res2.StatusCode != http.StatusOK {
-		common.SysLog("OIDC 获取用户信息失败！请检查设置！")
-		return nil, errors.New("OIDC 获取用户信息失败！请检查设置！")
+		common.SysLog("Failed to fetch OIDC user info. Check your settings")
+		return nil, errors.New("Failed to fetch OIDC user info. Check your settings")
 	}
 
 	var oidcUser OidcUser
@@ -95,8 +95,8 @@ func getOidcUserInfoByCode(code string) (*OidcUser, error) {
 		return nil, err
 	}
 	if oidcUser.OpenID == "" || oidcUser.Email == "" {
-		common.SysLog("OIDC 获取用户信息为空！请检查设置！")
-		return nil, errors.New("OIDC 获取用户信息为空！请检查设置！")
+		common.SysLog("OIDC user info is missing. Check your settings")
+		return nil, errors.New("OIDC user info is missing. Check your settings")
 	}
 	return &oidcUser, nil
 }
@@ -107,7 +107,7 @@ func OidcAuth(c *gin.Context) {
 	if state == "" || session.Get("oauth_state") == nil || state != session.Get("oauth_state").(string) {
 		c.JSON(http.StatusForbidden, gin.H{
 			"success": false,
-			"message": "state is empty or not same",
+			"message": "Invalid state",
 		})
 		return
 	}
@@ -119,7 +119,7 @@ func OidcAuth(c *gin.Context) {
 	if !system_setting.GetOIDCSettings().Enabled {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "管理员未开启通过 OIDC 登录以及注册",
+			"message": "OIDC login is disabled",
 		})
 		return
 	}
@@ -165,7 +165,7 @@ func OidcAuth(c *gin.Context) {
 		} else {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "管理员关闭了新用户注册",
+				"message": "Sign-ups are disabled",
 			})
 			return
 		}
@@ -173,7 +173,7 @@ func OidcAuth(c *gin.Context) {
 
 	if user.Status != common.UserStatusEnabled {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "用户已被封禁",
+			"message": "Account is disabled",
 			"success": false,
 		})
 		return
@@ -185,7 +185,7 @@ func OidcBind(c *gin.Context) {
 	if !system_setting.GetOIDCSettings().Enabled {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "管理员未开启通过 OIDC 登录以及注册",
+			"message": "OIDC login is disabled",
 		})
 		return
 	}
@@ -201,7 +201,7 @@ func OidcBind(c *gin.Context) {
 	if model.IsOidcIdAlreadyTaken(user.OidcId) {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "该 OIDC 账户已被绑定",
+			"message": "This OIDC account is already linked",
 		})
 		return
 	}

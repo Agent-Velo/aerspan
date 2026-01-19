@@ -158,7 +158,7 @@ func ListModels(c *gin.Context, modelType int) {
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "get user group failed",
+				"message": "Failed to get user group",
 			})
 			return
 		}

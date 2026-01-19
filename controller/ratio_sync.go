@@ -83,7 +83,7 @@ func FetchUpstreamRatios(c *gin.Context) {
 		dbChannels, err := model.GetChannelsByIds(intIds)
 		if err != nil {
 			logger.LogError(c.Request.Context(), "failed to query channels: "+err.Error())
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "查询渠道失败"})
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Failed to load channels"})
 			return
 		}
 		for _, ch := range dbChannels {
@@ -99,7 +99,7 @@ func FetchUpstreamRatios(c *gin.Context) {
 	}
 
 	if len(upstreams) == 0 {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无有效上游渠道"})
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "No valid upstream channels"})
 		return
 	}
 
@@ -238,7 +238,7 @@ func FetchUpstreamRatios(c *gin.Context) {
 			}
 			if err := json.Unmarshal(body.Data, &pricingItems); err != nil {
 				logger.LogWarn(c.Request.Context(), "unrecognized data format from "+chItem.Name+": "+err.Error())
-				ch <- upstreamResult{Name: uniqueName, Err: "无法解析上游返回数据"}
+				ch <- upstreamResult{Name: uniqueName, Err: "Failed to parse upstream response"}
 				return
 			}
 
@@ -527,7 +527,7 @@ func GetSyncableChannels(c *gin.Context) {
 
 	syncableChannels = append(syncableChannels, dto.SyncableChannel{
 		ID:      -100,
-		Name:    "官方倍率预设",
+		Name:    "Official presets",
 		BaseURL: "https://basellm.github.io",
 		Status:  1,
 	})

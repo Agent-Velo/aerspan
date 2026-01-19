@@ -30,7 +30,7 @@ type LoginRequest struct {
 func Login(c *gin.Context) {
 	if !common.PasswordLoginEnabled {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "管理员关闭了密码登录",
+			"message": "Password login is disabled",
 			"success": false,
 		})
 		return
@@ -39,7 +39,7 @@ func Login(c *gin.Context) {
 	err := json.NewDecoder(c.Request.Body).Decode(&loginRequest)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "无效的参数",
+			"message": "Invalid parameters",
 			"success": false,
 		})
 		return
@@ -48,7 +48,7 @@ func Login(c *gin.Context) {
 	password := loginRequest.Password
 	if username == "" || password == "" {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "无效的参数",
+			"message": "Invalid parameters",
 			"success": false,
 		})
 		return
@@ -75,14 +75,14 @@ func Login(c *gin.Context) {
 		err := session.Save()
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
-				"message": "无法保存会话信息，请重试",
+				"message": "Couldn't save session. Try again",
 				"success": false,
 			})
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"message": "请输入两步验证码",
+			"message": "Enter your 2FA code",
 			"success": true,
 			"data": map[string]interface{}{
 				"require_2fa": true,
@@ -105,7 +105,7 @@ func setupLogin(user *model.User, c *gin.Context) {
 	err := session.Save()
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "无法保存会话信息，请重试",
+			"message": "Couldn't save session. Try again",
 			"success": false,
 		})
 		return
@@ -144,14 +144,14 @@ func Logout(c *gin.Context) {
 func Register(c *gin.Context) {
 	if !common.RegisterEnabled {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "管理员关闭了新用户注册",
+			"message": "Sign-ups are disabled",
 			"success": false,
 		})
 		return
 	}
 	if !common.PasswordRegisterEnabled {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "管理员关闭了通过密码进行注册，请使用第三方账户验证的形式进行注册",
+			"message": "Password sign-up is disabled. Use OAuth to sign up",
 			"success": false,
 		})
 		return
@@ -161,14 +161,14 @@ func Register(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无效的参数",
+			"message": "Invalid parameters",
 		})
 		return
 	}
 	if err := common.Validate.Struct(&user); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "输入不合法 " + err.Error(),
+			"message": "Invalid input: " + err.Error(),
 		})
 		return
 	}
@@ -176,14 +176,14 @@ func Register(c *gin.Context) {
 		if user.Email == "" || user.VerificationCode == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "管理员开启了邮箱验证，请输入邮箱地址和验证码",
+				"message": "Email verification is required. Enter your email and code",
 			})
 			return
 		}
 		if !common.VerifyCodeWithKey(user.Email, user.VerificationCode, common.EmailVerificationPurpose) {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "验证码错误或已过期",
+				"message": "Invalid or expired code",
 			})
 			return
 		}
@@ -192,7 +192,7 @@ func Register(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "数据库错误，请稍后重试",
+			"message": "Database error. Try again later",
 		})
 		common.SysLog(fmt.Sprintf("CheckUserExistOrDeleted error: %v", err))
 		return
@@ -200,7 +200,7 @@ func Register(c *gin.Context) {
 	if exist {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "用户名已存在，或已注销",
+			"message": "Username is unavailable",
 		})
 		return
 	}
@@ -226,7 +226,7 @@ func Register(c *gin.Context) {
 	if err := model.DB.Where("username = ?", cleanUser.Username).First(&insertedUser).Error; err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "用户注册失败或用户ID获取失败",
+			"message": "Registration failed",
 		})
 		return
 	}
@@ -236,7 +236,7 @@ func Register(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "生成默认令牌失败",
+				"message": "Failed to generate default token",
 			})
 			common.SysLog("failed to generate token key: " + err.Error())
 			return
@@ -244,7 +244,7 @@ func Register(c *gin.Context) {
 		// 生成默认令牌
 		token := model.Token{
 			UserId:             insertedUser.Id, // 使用插入后的用户ID
-			Name:               cleanUser.Username + "的初始令牌",
+			Name:               cleanUser.Username + " default token",
 			Key:                key,
 			CreatedTime:        common.GetTimestamp(),
 			AccessedTime:       common.GetTimestamp(),
@@ -259,7 +259,7 @@ func Register(c *gin.Context) {
 		if err := token.Insert(); err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "创建默认令牌失败",
+				"message": "Failed to create default token",
 			})
 			return
 		}
@@ -318,7 +318,7 @@ func GetUser(c *gin.Context) {
 	if myRole <= user.Role && myRole != common.RoleRootUser {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无权获取同级或更高等级用户的信息",
+			"message": "Insufficient permissions to view this user",
 		})
 		return
 	}
@@ -343,7 +343,7 @@ func GenerateAccessToken(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "生成失败",
+			"message": "Failed to generate access token",
 		})
 		common.SysLog("failed to generate key: " + err.Error())
 		return
@@ -353,7 +353,7 @@ func GenerateAccessToken(c *gin.Context) {
 	if model.DB.Where("access_token = ?", user.AccessToken).First(user).RowsAffected != 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "请重试，系统生成的 UUID 竟然重复了！",
+			"message": "Token already exists. Try again.",
 		})
 		return
 	}
@@ -391,13 +391,13 @@ func TransferAffQuota(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "划转失败 " + err.Error(),
+			"message": "Transfer failed: " + err.Error(),
 		})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "划转成功",
+		"message": "Transfer complete",
 	})
 }
 
@@ -563,7 +563,7 @@ func generateDefaultSidebarConfig(userRole int) string {
 	// 转换为JSON字符串
 	configBytes, err := json.Marshal(defaultConfig)
 	if err != nil {
-		common.SysLog("生成默认边栏配置失败: " + err.Error())
+		common.SysLog("failed to generate default sidebar config: " + err.Error())
 		return ""
 	}
 
@@ -603,7 +603,7 @@ func UpdateUser(c *gin.Context) {
 	if err != nil || updatedUser.Id == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无效的参数",
+			"message": "Invalid parameters",
 		})
 		return
 	}
@@ -613,7 +613,7 @@ func UpdateUser(c *gin.Context) {
 	if err := common.Validate.Struct(&updatedUser); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "输入不合法 " + err.Error(),
+			"message": "Invalid input: " + err.Error(),
 		})
 		return
 	}
@@ -626,14 +626,14 @@ func UpdateUser(c *gin.Context) {
 	if myRole <= originUser.Role && myRole != common.RoleRootUser {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无权更新同权限等级或更高权限等级的用户信息",
+			"message": "Insufficient permissions to update this user",
 		})
 		return
 	}
 	if myRole <= updatedUser.Role && myRole != common.RoleRootUser {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无权将其他用户权限等级提升到大于等于自己的权限等级",
+			"message": "You can't assign a role equal to or higher than your own",
 		})
 		return
 	}
@@ -646,7 +646,7 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 	if originUser.Quota != updatedUser.Quota {
-		model.RecordLog(originUser.Id, model.LogTypeManage, fmt.Sprintf("管理员将用户额度从 %s修改为 %s", logger.LogQuota(originUser.Quota), logger.LogQuota(updatedUser.Quota)))
+		model.RecordLog(originUser.Id, model.LogTypeManage, fmt.Sprintf("Admin changed user quota from %s to %s", logger.LogQuota(originUser.Quota), logger.LogQuota(updatedUser.Quota)))
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -661,7 +661,7 @@ func UpdateSelf(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无效的参数",
+			"message": "Invalid parameters",
 		})
 		return
 	}
@@ -688,14 +688,14 @@ func UpdateSelf(c *gin.Context) {
 		if err := user.Update(false); err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "更新设置失败: " + err.Error(),
+				"message": "Failed to update settings: " + err.Error(),
 			})
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
-			"message": "设置更新成功",
+			"message": "Settings updated",
 		})
 		return
 	}
@@ -706,7 +706,7 @@ func UpdateSelf(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无效的参数",
+			"message": "Invalid parameters",
 		})
 		return
 	}
@@ -714,7 +714,7 @@ func UpdateSelf(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无效的参数",
+			"message": "Invalid parameters",
 		})
 		return
 	}
@@ -725,7 +725,7 @@ func UpdateSelf(c *gin.Context) {
 	if err := common.Validate.Struct(&user); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "输入不合法 " + err.Error(),
+			"message": "Invalid input: " + err.Error(),
 		})
 		return
 	}
@@ -767,7 +767,7 @@ func checkUpdatePassword(originalPassword string, newPassword string, userId int
 	// 密码不为空,需要验证原密码
 	// 支持第一次账号绑定时原密码为空的情况
 	if !common.ValidatePasswordAndHash(originalPassword, currentUser.Password) && currentUser.Password != "" {
-		err = fmt.Errorf("原密码错误")
+		err = fmt.Errorf("Incorrect current password")
 		return
 	}
 	if newPassword == "" {
@@ -792,7 +792,7 @@ func DeleteUser(c *gin.Context) {
 	if myRole <= originUser.Role {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无权删除同权限等级或更高权限等级的用户",
+			"message": "Insufficient permissions to delete this user",
 		})
 		return
 	}
@@ -813,7 +813,7 @@ func DeleteSelf(c *gin.Context) {
 	if user.Role == common.RoleRootUser {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "不能删除超级管理员账户",
+			"message": "Can't delete the root account",
 		})
 		return
 	}
@@ -837,14 +837,14 @@ func CreateUser(c *gin.Context) {
 	if err != nil || user.Username == "" || user.Password == "" {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无效的参数",
+			"message": "Invalid parameters",
 		})
 		return
 	}
 	if err := common.Validate.Struct(&user); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "输入不合法 " + err.Error(),
+			"message": "Invalid input: " + err.Error(),
 		})
 		return
 	}
@@ -855,7 +855,7 @@ func CreateUser(c *gin.Context) {
 	if user.Role >= myRole {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无法创建权限大于等于自己的用户",
+			"message": "You can't create a user with a role equal to or higher than yours",
 		})
 		return
 	}
@@ -891,7 +891,7 @@ func ManageUser(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无效的参数",
+			"message": "Invalid parameters",
 		})
 		return
 	}
@@ -903,7 +903,7 @@ func ManageUser(c *gin.Context) {
 	if user.Id == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "用户不存在",
+			"message": "User not found",
 		})
 		return
 	}
@@ -911,7 +911,7 @@ func ManageUser(c *gin.Context) {
 	if myRole <= user.Role && myRole != common.RoleRootUser {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无权更新同权限等级或更高权限等级的用户信息",
+			"message": "Insufficient permissions to update this user",
 		})
 		return
 	}
@@ -921,7 +921,7 @@ func ManageUser(c *gin.Context) {
 		if user.Role == common.RoleRootUser {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无法禁用超级管理员用户",
+				"message": "Can't disable the root user",
 			})
 			return
 		}
@@ -931,7 +931,7 @@ func ManageUser(c *gin.Context) {
 		if user.Role == common.RoleRootUser {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无法删除超级管理员用户",
+				"message": "Can't delete the root user",
 			})
 			return
 		}
@@ -946,14 +946,14 @@ func ManageUser(c *gin.Context) {
 		if myRole != common.RoleRootUser {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "普通管理员用户无法提升其他用户为管理员",
+				"message": "Only root users can promote admins",
 			})
 			return
 		}
 		if user.Role >= common.RoleAdminUser {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "该用户已经是管理员",
+				"message": "User is already an admin",
 			})
 			return
 		}
@@ -962,14 +962,14 @@ func ManageUser(c *gin.Context) {
 		if user.Role == common.RoleRootUser {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无法降级超级管理员用户",
+				"message": "Can't demote the root user",
 			})
 			return
 		}
 		if user.Role == common.RoleCommonUser {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "该用户已经是普通用户",
+				"message": "User is already a regular user",
 			})
 			return
 		}
@@ -998,7 +998,7 @@ func EmailBind(c *gin.Context) {
 	if !common.VerifyCodeWithKey(email, code, common.EmailVerificationPurpose) {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "验证码错误或已过期",
+			"message": "Invalid or expired code",
 		})
 		return
 	}
@@ -1077,7 +1077,7 @@ func TopUp(c *gin.Context) {
 	if !lock.TryLock() {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "充值处理中，请稍后重试",
+			"message": "Top-up in progress. Try again",
 		})
 		return
 	}
@@ -1119,7 +1119,7 @@ func UpdateUserSetting(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无效的参数",
+			"message": "Invalid parameters",
 		})
 		return
 	}
@@ -1128,7 +1128,7 @@ func UpdateUserSetting(c *gin.Context) {
 	if req.QuotaWarningType != dto.NotifyTypeEmail && req.QuotaWarningType != dto.NotifyTypeWebhook && req.QuotaWarningType != dto.NotifyTypeBark && req.QuotaWarningType != dto.NotifyTypeGotify {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无效的预警类型",
+			"message": "Invalid notification type",
 		})
 		return
 	}
@@ -1137,7 +1137,7 @@ func UpdateUserSetting(c *gin.Context) {
 	if req.QuotaWarningThreshold <= 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "预警阈值必须大于0",
+			"message": "Threshold must be greater than 0",
 		})
 		return
 	}
@@ -1147,7 +1147,7 @@ func UpdateUserSetting(c *gin.Context) {
 		if req.WebhookUrl == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "Webhook地址不能为空",
+				"message": "Webhook URL is required",
 			})
 			return
 		}
@@ -1155,7 +1155,7 @@ func UpdateUserSetting(c *gin.Context) {
 		if _, err := url.ParseRequestURI(req.WebhookUrl); err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无效的Webhook地址",
+				"message": "Invalid webhook URL",
 			})
 			return
 		}
@@ -1167,7 +1167,7 @@ func UpdateUserSetting(c *gin.Context) {
 		if !strings.Contains(req.NotificationEmail, "@") {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无效的邮箱地址",
+				"message": "Invalid email address",
 			})
 			return
 		}
@@ -1178,7 +1178,7 @@ func UpdateUserSetting(c *gin.Context) {
 		if req.BarkUrl == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "Bark推送URL不能为空",
+				"message": "Bark URL is required",
 			})
 			return
 		}
@@ -1186,7 +1186,7 @@ func UpdateUserSetting(c *gin.Context) {
 		if _, err := url.ParseRequestURI(req.BarkUrl); err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无效的Bark推送URL",
+				"message": "Invalid Bark URL",
 			})
 			return
 		}
@@ -1194,7 +1194,7 @@ func UpdateUserSetting(c *gin.Context) {
 		if !strings.HasPrefix(req.BarkUrl, "https://") && !strings.HasPrefix(req.BarkUrl, "http://") {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "Bark推送URL必须以http://或https://开头",
+				"message": "Bark URL must start with http:// or https://",
 			})
 			return
 		}
@@ -1205,14 +1205,14 @@ func UpdateUserSetting(c *gin.Context) {
 		if req.GotifyUrl == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "Gotify服务器地址不能为空",
+				"message": "Gotify server URL is required",
 			})
 			return
 		}
 		if req.GotifyToken == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "Gotify令牌不能为空",
+				"message": "Gotify token is required",
 			})
 			return
 		}
@@ -1220,7 +1220,7 @@ func UpdateUserSetting(c *gin.Context) {
 		if _, err := url.ParseRequestURI(req.GotifyUrl); err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无效的Gotify服务器地址",
+				"message": "Invalid Gotify server URL",
 			})
 			return
 		}
@@ -1228,7 +1228,7 @@ func UpdateUserSetting(c *gin.Context) {
 		if !strings.HasPrefix(req.GotifyUrl, "https://") && !strings.HasPrefix(req.GotifyUrl, "http://") {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "Gotify服务器地址必须以http://或https://开头",
+				"message": "Gotify server URL must start with http:// or https://",
 			})
 			return
 		}
@@ -1284,13 +1284,13 @@ func UpdateUserSetting(c *gin.Context) {
 	if err := user.Update(false); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "更新设置失败: " + err.Error(),
+			"message": "Failed to update settings: " + err.Error(),
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "设置已更新",
+		"message": "Settings updated",
 	})
 }

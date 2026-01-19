@@ -68,21 +68,21 @@ func AddRedemption(c *gin.Context) {
 	if utf8.RuneCountInString(redemption.Name) == 0 || utf8.RuneCountInString(redemption.Name) > 20 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "兑换码名称长度必须在1-20之间",
+			"message": "Name must be 1-20 characters",
 		})
 		return
 	}
 	if redemption.Count <= 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "兑换码个数必须大于0",
+			"message": "Number of codes must be greater than 0",
 		})
 		return
 	}
 	if redemption.Count > 100 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "一次兑换码批量生成的个数不能大于 100",
+			"message": "You can generate up to 100 codes at a time",
 		})
 		return
 	}
@@ -189,7 +189,7 @@ func DeleteInvalidRedemption(c *gin.Context) {
 
 func validateExpiredTime(expired int64) error {
 	if expired != 0 && expired < common.GetTimestamp() {
-		return errors.New("过期时间不能早于当前时间")
+		return errors.New("Expiration time can't be in the past")
 	}
 	return nil
 }

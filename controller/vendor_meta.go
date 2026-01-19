@@ -17,6 +17,9 @@ func GetAllVendors(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	for _, v := range vendors {
+		v.Name = model.NormalizeVendorName(v.Name, v.Icon)
+	}
 	var total int64
 	model.DB.Model(&model.Vendor{}).Count(&total)
 	pageInfo.SetTotal(int(total))
@@ -32,6 +35,9 @@ func SearchVendors(c *gin.Context) {
 	if err != nil {
 		common.ApiError(c, err)
 		return
+	}
+	for _, v := range vendors {
+		v.Name = model.NormalizeVendorName(v.Name, v.Icon)
 	}
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(vendors)
@@ -51,6 +57,7 @@ func GetVendorMeta(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	v.Name = model.NormalizeVendorName(v.Name, v.Icon)
 	common.ApiSuccess(c, v)
 }
 
@@ -62,7 +69,7 @@ func CreateVendorMeta(c *gin.Context) {
 		return
 	}
 	if v.Name == "" {
-		common.ApiErrorMsg(c, "供应商名称不能为空")
+		common.ApiErrorMsg(c, "Vendor name is required")
 		return
 	}
 	// 创建前先检查名称
@@ -70,7 +77,7 @@ func CreateVendorMeta(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	} else if dup {
-		common.ApiErrorMsg(c, "供应商名称已存在")
+		common.ApiErrorMsg(c, "Vendor name already exists")
 		return
 	}
 
@@ -89,7 +96,7 @@ func UpdateVendorMeta(c *gin.Context) {
 		return
 	}
 	if v.Id == 0 {
-		common.ApiErrorMsg(c, "缺少供应商 ID")
+		common.ApiErrorMsg(c, "Missing vendor ID")
 		return
 	}
 	// 名称冲突检查
@@ -97,7 +104,7 @@ func UpdateVendorMeta(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	} else if dup {
-		common.ApiErrorMsg(c, "供应商名称已存在")
+		common.ApiErrorMsg(c, "Vendor name already exists")
 		return
 	}
 

@@ -161,28 +161,35 @@ func Bytes2Size(num int64) string {
 }
 
 func Seconds2Time(num int) (time string) {
-	if num/31104000 > 0 {
-		time += strconv.Itoa(num/31104000) + " 年 "
-		num %= 31104000
+	appendUnit := func(value int, unit string) {
+		if value == 0 {
+			return
+		}
+		if value == 1 {
+			time += "1 " + unit + " "
+			return
+		}
+		time += strconv.Itoa(value) + " " + unit + "s "
 	}
-	if num/2592000 > 0 {
-		time += strconv.Itoa(num/2592000) + " 个月 "
-		num %= 2592000
+
+	appendUnit(num/31104000, "year")
+	num %= 31104000
+	appendUnit(num/2592000, "month")
+	num %= 2592000
+	appendUnit(num/86400, "day")
+	num %= 86400
+	appendUnit(num/3600, "hour")
+	num %= 3600
+	appendUnit(num/60, "minute")
+	num %= 60
+
+	if num == 1 {
+		time += "1 second"
+	} else {
+		time += strconv.Itoa(num) + " seconds"
 	}
-	if num/86400 > 0 {
-		time += strconv.Itoa(num/86400) + " 天 "
-		num %= 86400
-	}
-	if num/3600 > 0 {
-		time += strconv.Itoa(num/3600) + " 小时 "
-		num %= 3600
-	}
-	if num/60 > 0 {
-		time += strconv.Itoa(num/60) + " 分钟 "
-		num %= 60
-	}
-	time += strconv.Itoa(num) + " 秒"
-	return
+
+	return strings.TrimSpace(time)
 }
 
 func Interface2String(inter interface{}) string {

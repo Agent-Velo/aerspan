@@ -31,7 +31,7 @@ func LinuxDoBind(c *gin.Context) {
 	if !common.LinuxDOOAuthEnabled {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "管理员未开启通过 Linux DO 登录以及注册",
+			"message": "Linux DO login is disabled",
 		})
 		return
 	}
@@ -50,7 +50,7 @@ func LinuxDoBind(c *gin.Context) {
 	if model.IsLinuxDOIdAlreadyTaken(user.LinuxDOId) {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "该 Linux DO 账户已被绑定",
+			"message": "This Linux DO account is already linked",
 		})
 		return
 	}
@@ -172,7 +172,7 @@ func LinuxdoOAuth(c *gin.Context) {
 	if state == "" || session.Get("oauth_state") == nil || state != session.Get("oauth_state").(string) {
 		c.JSON(http.StatusForbidden, gin.H{
 			"success": false,
-			"message": "state is empty or not same",
+			"message": "Invalid state",
 		})
 		return
 	}
@@ -186,7 +186,7 @@ func LinuxdoOAuth(c *gin.Context) {
 	if !common.LinuxDOOAuthEnabled {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "管理员未开启通过 Linux DO 登录以及注册",
+			"message": "Linux DO login is disabled",
 		})
 		return
 	}
@@ -215,7 +215,7 @@ func LinuxdoOAuth(c *gin.Context) {
 		if user.Id == 0 {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "用户已注销",
+				"message": "Account no longer exists",
 			})
 			return
 		}
@@ -243,14 +243,14 @@ func LinuxdoOAuth(c *gin.Context) {
 			} else {
 				c.JSON(http.StatusOK, gin.H{
 					"success": false,
-					"message": "Linux DO 信任等级未达到管理员设置的最低信任等级",
+					"message": "Linux DO trust level is below the required minimum",
 				})
 				return
 			}
 		} else {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "管理员关闭了新用户注册",
+				"message": "Sign-ups are disabled",
 			})
 			return
 		}
@@ -258,7 +258,7 @@ func LinuxdoOAuth(c *gin.Context) {
 
 	if user.Status != common.UserStatusEnabled {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "用户已被封禁",
+			"message": "Account is disabled",
 			"success": false,
 		})
 		return

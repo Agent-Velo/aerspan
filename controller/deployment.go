@@ -486,7 +486,7 @@ func DeleteDeployment(c *gin.Context) {
 	data := gin.H{
 		"status":        resp.Status,
 		"deployment_id": resp.DeploymentID,
-		"message":       "Deployment termination requested successfully",
+		"message":       "Termination requested",
 	}
 	common.ApiSuccess(c, data)
 }
@@ -512,7 +512,7 @@ func CreateDeployment(c *gin.Context) {
 	data := gin.H{
 		"deployment_id": resp.DeploymentID,
 		"status":        resp.Status,
-		"message":       "Deployment created successfully",
+		"message":       "Deployment created",
 	}
 	common.ApiSuccess(c, data)
 }

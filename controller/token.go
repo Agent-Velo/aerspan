@@ -146,7 +146,7 @@ func AddToken(c *gin.Context) {
 	if len(token.Name) > 50 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "令牌名称过长",
+			"message": "Token name is too long",
 		})
 		return
 	}
@@ -155,7 +155,7 @@ func AddToken(c *gin.Context) {
 		if token.RemainQuota < 0 {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "额度值不能为负数",
+				"message": "Quota cannot be negative",
 			})
 			return
 		}
@@ -163,7 +163,7 @@ func AddToken(c *gin.Context) {
 		if token.RemainQuota > maxQuotaValue {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": fmt.Sprintf("额度值超出有效范围，最大值为 %d", maxQuotaValue),
+				"message": fmt.Sprintf("Quota is too large (max %d)", maxQuotaValue),
 			})
 			return
 		}
@@ -172,7 +172,7 @@ func AddToken(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "生成令牌失败",
+			"message": "Failed to generate token",
 		})
 		common.SysLog("failed to generate token key: " + err.Error())
 		return
@@ -231,7 +231,7 @@ func UpdateToken(c *gin.Context) {
 	if len(token.Name) > 50 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "令牌名称过长",
+			"message": "Token name is too long",
 		})
 		return
 	}
@@ -239,7 +239,7 @@ func UpdateToken(c *gin.Context) {
 		if token.RemainQuota < 0 {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "额度值不能为负数",
+				"message": "Quota cannot be negative",
 			})
 			return
 		}
@@ -247,7 +247,7 @@ func UpdateToken(c *gin.Context) {
 		if token.RemainQuota > maxQuotaValue {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": fmt.Sprintf("额度值超出有效范围，最大值为 %d", maxQuotaValue),
+				"message": fmt.Sprintf("Quota is too large (max %d)", maxQuotaValue),
 			})
 			return
 		}
@@ -261,14 +261,14 @@ func UpdateToken(c *gin.Context) {
 		if cleanToken.Status == common.TokenStatusExpired && cleanToken.ExpiredTime <= common.GetTimestamp() && cleanToken.ExpiredTime != -1 {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "令牌已过期，无法启用，请先修改令牌过期时间，或者设置为永不过期",
+				"message": "Token is expired. Update the expiry time or set it to never expire",
 			})
 			return
 		}
 		if cleanToken.Status == common.TokenStatusExhausted && cleanToken.RemainQuota <= 0 && !cleanToken.UnlimitedQuota {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "令牌可用额度已用尽，无法启用，请先修改令牌剩余额度，或者设置为无限额度",
+				"message": "Token quota is exhausted. Update the quota or set it to unlimited",
 			})
 			return
 		}
@@ -308,7 +308,7 @@ func DeleteTokenBatch(c *gin.Context) {
 	if err := c.ShouldBindJSON(&tokenBatch); err != nil || len(tokenBatch.Ids) == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "参数错误",
+			"message": "Invalid parameters",
 		})
 		return
 	}

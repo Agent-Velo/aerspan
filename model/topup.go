@@ -57,7 +57,7 @@ func GetTopUpByTradeNo(tradeNo string) *TopUp {
 
 func Recharge(referenceId string, customerId string) (err error) {
 	if referenceId == "" {
-		return errors.New("未提供支付单号")
+		return errors.New("Missing payment reference ID")
 	}
 
 	var quota float64
@@ -71,11 +71,11 @@ func Recharge(referenceId string, customerId string) (err error) {
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", referenceId).First(topUp).Error
 		if err != nil {
-			return errors.New("充值订单不存在")
+			return errors.New("Top-up order not found")
 		}
 
 		if topUp.Status != common.TopUpStatusPending {
-			return errors.New("充值订单状态错误")
+			return errors.New("Invalid top-up order status")
 		}
 
 		topUp.CompleteTime = common.GetTimestamp()
@@ -95,10 +95,10 @@ func Recharge(referenceId string, customerId string) (err error) {
 	})
 
 	if err != nil {
-		return errors.New("充值失败，" + err.Error())
+		return errors.New("Top-up failed: " + err.Error())
 	}
 
-	RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%d", logger.FormatQuota(int(quota)), topUp.Amount))
+	RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("Online top-up completed: %v added, paid %d", logger.FormatQuota(int(quota)), topUp.Amount))
 
 	return nil
 }
@@ -237,7 +237,7 @@ func SearchAllTopUps(keyword string, pageInfo *common.PageInfo) (topups []*TopUp
 // ManualCompleteTopUp 管理员手动完成订单并给用户充值
 func ManualCompleteTopUp(tradeNo string) error {
 	if tradeNo == "" {
-		return errors.New("未提供订单号")
+		return errors.New("Missing order number")
 	}
 
 	refCol := "`trade_no`"
@@ -253,7 +253,7 @@ func ManualCompleteTopUp(tradeNo string) error {
 		topUp := &TopUp{}
 		// 行级锁，避免并发补单
 		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
-			return errors.New("充值订单不存在")
+			return errors.New("Top-up order not found")
 		}
 
 		// 幂等处理：已成功直接返回
@@ -262,7 +262,7 @@ func ManualCompleteTopUp(tradeNo string) error {
 		}
 
 		if topUp.Status != common.TopUpStatusPending {
-			return errors.New("订单状态不是待支付，无法补单")
+			return errors.New("Order isn't pending and can't be completed manually")
 		}
 
 		// 计算应充值额度：
@@ -277,7 +277,7 @@ func ManualCompleteTopUp(tradeNo string) error {
 			quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
 		}
 		if quotaToAdd <= 0 {
-			return errors.New("无效的充值额度")
+			return errors.New("Invalid top-up amount")
 		}
 
 		// 标记完成
@@ -302,6 +302,6 @@ func ManualCompleteTopUp(tradeNo string) error {
 	}
 
 	// 事务外记录日志，避免阻塞
-	RecordLog(userId, LogTypeTopup, fmt.Sprintf("管理员补单成功，充值金额: %v，支付金额：%f", logger.FormatQuota(quotaToAdd), payMoney))
+	RecordLog(userId, LogTypeTopup, fmt.Sprintf("Admin completed top-up: %v added, paid %f", logger.FormatQuota(quotaToAdd), payMoney))
 	return nil
 }

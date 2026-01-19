@@ -15,25 +15,25 @@ var defaultVendorRules = map[string]string{
 	"gemini":   "Google",
 	"moonshot": "Moonshot",
 	"kimi":     "Moonshot",
-	"chatglm":  "智谱",
-	"glm-":     "智谱",
-	"qwen":     "阿里巴巴",
+	"chatglm":  "Zhipu",
+	"glm-":     "Zhipu",
+	"qwen":     "Alibaba",
 	"deepseek": "DeepSeek",
 	"abab":     "MiniMax",
-	"ernie":    "百度",
-	"spark":    "讯飞",
-	"hunyuan":  "腾讯",
+	"ernie":    "Baidu",
+	"spark":    "iFLYTEK",
+	"hunyuan":  "Tencent",
 	"command":  "Cohere",
 	"@cf/":     "Cloudflare",
 	"360":      "360",
-	"yi":       "零一万物",
+	"yi":       "01.AI",
 	"jina":     "Jina",
 	"mistral":  "Mistral",
 	"grok":     "xAI",
 	"llama":    "Meta",
-	"doubao":   "字节跳动",
-	"kling":    "快手",
-	"jimeng":   "即梦",
+	"doubao":   "ByteDance",
+	"kling":    "Kuaishou",
+	"jimeng":   "Jimeng",
 	"vidu":     "Vidu",
 }
 
@@ -43,26 +43,25 @@ var defaultVendorIcons = map[string]string{
 	"Anthropic":  "Claude.Color",
 	"Google":     "Gemini.Color",
 	"Moonshot":   "Moonshot",
-	"智谱":         "Zhipu.Color",
-	"阿里巴巴":       "Qwen.Color",
+	"Zhipu":      "Zhipu.Color",
+	"Alibaba":    "Qwen.Color",
 	"DeepSeek":   "DeepSeek.Color",
 	"MiniMax":    "Minimax.Color",
-	"百度":         "Wenxin.Color",
-	"讯飞":         "Spark.Color",
-	"腾讯":         "Hunyuan.Color",
+	"Baidu":      "Wenxin.Color",
+	"iFLYTEK":    "Spark.Color",
+	"Tencent":    "Hunyuan.Color",
 	"Cohere":     "Cohere.Color",
 	"Cloudflare": "Cloudflare.Color",
 	"360":        "Ai360.Color",
-	"零一万物":       "Yi.Color",
+	"01.AI":      "Yi.Color",
 	"Jina":       "Jina",
 	"Mistral":    "Mistral.Color",
 	"xAI":        "XAI",
 	"Meta":       "Ollama",
-	"字节跳动":       "Doubao.Color",
-	"快手":         "Kling.Color",
-	"即梦":         "Jimeng.Color",
+	"ByteDance":  "Doubao.Color",
+	"Kuaishou":   "Kling.Color",
+	"Jimeng":     "Jimeng.Color",
 	"Vidu":       "Vidu",
-	"微软":         "AzureAI",
 	"Microsoft":  "AzureAI",
 	"Azure":      "AzureAI",
 }
@@ -104,11 +103,20 @@ func getOrCreateVendor(vendorName string, vendorMap map[int]*Vendor) int {
 		}
 	}
 
+	icon := getDefaultVendorIcon(vendorName)
+	if icon != "" {
+		for id, vendor := range vendorMap {
+			if vendor.Icon == icon {
+				return id
+			}
+		}
+	}
+
 	// 创建新供应商
 	newVendor := &Vendor{
 		Name:   vendorName,
 		Status: 1,
-		Icon:   getDefaultVendorIcon(vendorName),
+		Icon:   icon,
 	}
 
 	if err := newVendor.Insert(); err != nil {

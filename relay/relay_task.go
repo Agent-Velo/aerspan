@@ -222,10 +222,10 @@ func RelayTaskSubmit(c *gin.Context, info *relaycommon.RelayInfo) (taskErr *dto.
 				//if hasUserGroupRatio {
 				//	gRatio = userGroupRatio
 				//}
-				logContent := fmt.Sprintf("操作 %s", info.Action)
+				logContent := fmt.Sprintf("Action %s", info.Action)
 				// FIXME: 临时修补，支持任务仅按次计费
 				if common.StringsContains(constant.TaskPricePatches, modelName) {
-					logContent = fmt.Sprintf("%s，按次计费", logContent)
+					logContent = fmt.Sprintf("%s, billed per call", logContent)
 				} else {
 					if len(info.PriceData.OtherRatios) > 0 {
 						var contents []string
@@ -235,7 +235,7 @@ func RelayTaskSubmit(c *gin.Context, info *relaycommon.RelayInfo) (taskErr *dto.
 							}
 						}
 						if len(contents) > 0 {
-							logContent = fmt.Sprintf("%s, 计算参数：%s", logContent, strings.Join(contents, ", "))
+							logContent = fmt.Sprintf("%s, params: %s", logContent, strings.Join(contents, ", "))
 						}
 					}
 				}
