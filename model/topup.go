@@ -74,6 +74,10 @@ func Recharge(referenceId string, customerId string) (err error) {
 			return errors.New("Top-up order not found")
 		}
 
+		// Idempotency: Stripe webhooks may be delivered more than once.
+		if topUp.Status == common.TopUpStatusSuccess {
+			return nil
+		}
 		if topUp.Status != common.TopUpStatusPending {
 			return errors.New("Invalid top-up order status")
 		}
@@ -232,6 +236,20 @@ func SearchAllTopUps(keyword string, pageInfo *common.PageInfo) (topups []*TopUp
 		return nil, 0, err
 	}
 	return topups, total, nil
+}
+
+func HasRecentPendingTopUp(userId int, paymentMethod string, sinceUnix int64) (bool, error) {
+	var count int64
+	err := DB.Model(&TopUp{}).
+		Where("user_id = ?", userId).
+		Where("payment_method = ?", paymentMethod).
+		Where("status = ?", common.TopUpStatusPending).
+		Where("create_time >= ?", sinceUnix).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 // ManualCompleteTopUp 管理员手动完成订单并给用户充值

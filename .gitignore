@@ -8,6 +8,7 @@ build
 *.db-journal
 logs
 web/dist
+web/.tmp/
 .env
 one-api
 new-api
@@ -27,3 +28,9 @@ data/
 .gomodcache/
 .gocache-temp
 .gopath
+
+web-v2/node_modules/
+web-v2/dist/
+web-v2/.tmp/
+web-v2/bun.lock
+web-v2/tsconfig.tsbuildinfo

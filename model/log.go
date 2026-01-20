@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -112,6 +111,8 @@ func normalizeUserLogOther(other map[string]interface{}) {
 		"group_ratio",
 		"user_group_multiplier",
 		"user_group_ratio",
+		"is_model_mapped",
+		"upstream_model_name",
 	} {
 		delete(other, key)
 	}
@@ -162,14 +163,15 @@ func getFloat64(value interface{}) (float64, bool) {
 }
 
 func GetLogByKey(key string) (logs []*Log, err error) {
+	tokenKey, _ := common.ParseTokenAPIKey(key)
 	if os.Getenv("LOG_SQL_DSN") != "" {
 		var tk Token
-		if err = DB.Model(&Token{}).Where(logKeyCol+"=?", strings.TrimPrefix(key, "sk-")).First(&tk).Error; err != nil {
+		if err = DB.Model(&Token{}).Where(logKeyCol+"=?", tokenKey).First(&tk).Error; err != nil {
 			return nil, err
 		}
 		err = LOG_DB.Model(&Log{}).Where("token_id=?", tk.Id).Find(&logs).Error
 	} else {
-		err = LOG_DB.Joins("left join tokens on tokens.id = logs.token_id").Where("tokens.key = ?", strings.TrimPrefix(key, "sk-")).Find(&logs).Error
+		err = LOG_DB.Joins("left join tokens on tokens.id = logs.token_id").Where("tokens.key = ?", tokenKey).Find(&logs).Error
 	}
 	formatUserLogs(logs)
 	return logs, err

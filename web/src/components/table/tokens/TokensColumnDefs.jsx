@@ -18,41 +18,20 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import {
-  Button,
-  Dropdown,
-  Space,
-  SplitButtonGroup,
-  Tag,
-  AvatarGroup,
-  Avatar,
-  Tooltip,
-  Progress,
-  Popover,
-  Typography,
-  Input,
-  Modal,
-} from '@douyinfe/semi-ui';
+import { Button, Dropdown, Space, SplitButtonGroup, Tag, Input, Modal } from '@douyinfe/semi-ui';
 import {
   timestamp2string,
-  renderQuota,
-  getModelCategories,
   showError,
+  formatTokenApiKey,
+  getTokenApiKeyPrefix,
 } from '../../../helpers';
 import {
   IconTreeTriangleDown,
   IconCopy,
   IconEyeOpened,
   IconEyeClosed,
+  IconRefresh,
 } from '@douyinfe/semi-icons';
-
-// progress color helper
-const getProgressColor = (pct) => {
-  if (pct === 100) return 'var(--semi-color-success)';
-  if (pct <= 10) return 'var(--semi-color-danger)';
-  if (pct <= 30) return 'var(--semi-color-warning)';
-  return undefined;
-};
 
 // Render functions
 function renderTimestamp(timestamp) {
@@ -61,23 +40,9 @@ function renderTimestamp(timestamp) {
 
 // Render status column only (no usage)
 const renderStatus = (text, record, t) => {
-  const enabled = text === 1;
-
-  let tagColor = 'black';
-  let tagText = t('未知状态');
-  if (enabled) {
-    tagColor = 'green';
-    tagText = t('已启用');
-  } else if (text === 2) {
-    tagColor = 'red';
-    tagText = t('已禁用');
-  } else if (text === 3) {
-    tagColor = 'yellow';
-    tagText = t('已过期');
-  } else if (text === 4) {
-    tagColor = 'grey';
-    tagText = t('已耗尽');
-  }
+  const disabled = text === 2;
+  const tagColor = disabled ? 'red' : 'green';
+  const tagText = disabled ? t('已禁用') : t('已启用');
 
   return (
     <Tag color={tagColor} shape='circle' size='small'>
@@ -87,10 +52,19 @@ const renderStatus = (text, record, t) => {
 };
 
 // Render token key column with show/hide and copy functionality
-const renderTokenKey = (text, record, showKeys, setShowKeys, copyText) => {
-  const fullKey = 'sk-' + record.key;
+const renderTokenKey = (
+  text,
+  record,
+  showKeys,
+  setShowKeys,
+  copyText,
+  manageToken,
+  t,
+) => {
+  const fullKey = formatTokenApiKey(record.key);
+  const prefix = getTokenApiKeyPrefix(record.key);
   const maskedKey =
-    'sk-' + record.key.slice(0, 4) + '**********' + record.key.slice(-4);
+    prefix + record.key.slice(0, 4) + '**********' + record.key.slice(-4);
   const revealed = !!showKeys[record.id];
 
   return (
@@ -123,165 +97,28 @@ const renderTokenKey = (text, record, showKeys, setShowKeys, copyText) => {
                 await copyText(fullKey);
               }}
             />
+            <Button
+              theme='borderless'
+              size='small'
+              type='tertiary'
+              icon={<IconRefresh />}
+              aria-label='roll token key'
+              onClick={(e) => {
+                e.stopPropagation();
+                Modal.confirm({
+                  title: t('确定是否要重新生成密钥？'),
+                  content: t('旧密钥将立即失效，请确认已更新所有使用方。'),
+                  onOk: async () => {
+                    await manageToken(record.id, 'roll', record);
+                    setShowKeys((prev) => ({ ...prev, [record.id]: true }));
+                  },
+                });
+              }}
+            />
           </div>
         }
       />
     </div>
-  );
-};
-
-// Render model limits column
-const renderModelLimits = (text, record, t) => {
-  if (record.model_limits_enabled && text) {
-    const models = text.split(',').filter(Boolean);
-    const categories = getModelCategories(t);
-
-    const vendorAvatars = [];
-    const matchedModels = new Set();
-    Object.entries(categories).forEach(([key, category]) => {
-      if (key === 'all') return;
-      if (!category.icon || !category.filter) return;
-      const vendorModels = models.filter((m) =>
-        category.filter({ model_name: m }),
-      );
-      if (vendorModels.length > 0) {
-        vendorAvatars.push(
-          <Tooltip
-            key={key}
-            content={vendorModels.join(', ')}
-            position='top'
-            showArrow
-          >
-            <Avatar
-              size='extra-extra-small'
-              alt={category.label}
-              color='transparent'
-            >
-              {category.icon}
-            </Avatar>
-          </Tooltip>,
-        );
-        vendorModels.forEach((m) => matchedModels.add(m));
-      }
-    });
-
-    const unmatchedModels = models.filter((m) => !matchedModels.has(m));
-    if (unmatchedModels.length > 0) {
-      vendorAvatars.push(
-        <Tooltip
-          key='unknown'
-          content={unmatchedModels.join(', ')}
-          position='top'
-          showArrow
-        >
-          <Avatar size='extra-extra-small' alt='unknown'>
-            {t('其他')}
-          </Avatar>
-        </Tooltip>,
-      );
-    }
-
-    return <AvatarGroup size='extra-extra-small'>{vendorAvatars}</AvatarGroup>;
-  } else {
-    return (
-      <Tag color='white' shape='circle'>
-        {t('无限制')}
-      </Tag>
-    );
-  }
-};
-
-// Render IP restrictions column
-const renderAllowIps = (text, t) => {
-  if (!text || text.trim() === '') {
-    return (
-      <Tag color='white' shape='circle'>
-        {t('无限制')}
-      </Tag>
-    );
-  }
-
-  const ips = text
-    .split('\n')
-    .map((ip) => ip.trim())
-    .filter(Boolean);
-
-  const displayIps = ips.slice(0, 1);
-  const extraCount = ips.length - displayIps.length;
-
-  const ipTags = displayIps.map((ip, idx) => (
-    <Tag key={idx} shape='circle'>
-      {ip}
-    </Tag>
-  ));
-
-  if (extraCount > 0) {
-    ipTags.push(
-      <Tooltip
-        key='extra'
-        content={ips.slice(1).join(', ')}
-        position='top'
-        showArrow
-      >
-        <Tag shape='circle'>{'+' + extraCount}</Tag>
-      </Tooltip>,
-    );
-  }
-
-  return <Space wrap>{ipTags}</Space>;
-};
-
-// Render separate quota usage column
-const renderQuotaUsage = (text, record, t) => {
-  const { Paragraph } = Typography;
-  const used = parseInt(record.used_quota) || 0;
-  const remain = parseInt(record.remain_quota) || 0;
-  const total = used + remain;
-  if (record.unlimited_quota) {
-    const popoverContent = (
-      <div className='text-xs p-2'>
-        <Paragraph copyable={{ content: renderQuota(used) }}>
-          {t('已用额度')}: {renderQuota(used)}
-        </Paragraph>
-      </div>
-    );
-    return (
-      <Popover content={popoverContent} position='top'>
-        <Tag color='white' shape='circle'>
-          {t('无限额度')}
-        </Tag>
-      </Popover>
-    );
-  }
-  const percent = total > 0 ? (remain / total) * 100 : 0;
-  const popoverContent = (
-    <div className='text-xs p-2'>
-      <Paragraph copyable={{ content: renderQuota(used) }}>
-        {t('已用额度')}: {renderQuota(used)}
-      </Paragraph>
-      <Paragraph copyable={{ content: renderQuota(remain) }}>
-        {t('剩余额度')}: {renderQuota(remain)} ({percent.toFixed(0)}%)
-      </Paragraph>
-      <Paragraph copyable={{ content: renderQuota(total) }}>
-        {t('总额度')}: {renderQuota(total)}
-      </Paragraph>
-    </div>
-  );
-  return (
-    <Popover content={popoverContent} position='top'>
-      <Tag color='white' shape='circle'>
-        <div className='flex flex-col items-end'>
-          <span className='text-xs leading-none'>{`${renderQuota(remain)} / ${renderQuota(total)}`}</span>
-          <Progress
-            percent={percent}
-            stroke={getProgressColor(percent)}
-            aria-label='quota usage'
-            format={() => `${percent.toFixed(0)}%`}
-            style={{ width: '100%', marginTop: '1px', marginBottom: 0 }}
-          />
-        </div>
-      </Tag>
-    </Popover>
   );
 };
 
@@ -347,7 +184,17 @@ const renderOperations = (
         </Dropdown>
       </SplitButtonGroup>
 
-      {record.status === 1 ? (
+      {record.status === 2 ? (
+        <Button
+          size='small'
+          onClick={async () => {
+            await manageToken(record.id, 'enable', record);
+            await refresh();
+          }}
+        >
+          {t('启用')}
+        </Button>
+      ) : (
         <Button
           type='danger'
           size='small'
@@ -357,16 +204,6 @@ const renderOperations = (
           }}
         >
           {t('禁用')}
-        </Button>
-      ) : (
-        <Button
-          size='small'
-          onClick={async () => {
-            await manageToken(record.id, 'enable', record);
-            await refresh();
-          }}
-        >
-          {t('启用')}
         </Button>
       )}
 
@@ -426,42 +263,24 @@ export const getTokensColumns = ({
       render: (text, record) => renderStatus(text, record, t),
     },
     {
-      title: t('剩余额度/总额度'),
-      key: 'quota_usage',
-      render: (text, record) => renderQuotaUsage(text, record, t),
-    },
-    {
       title: t('密钥'),
       key: 'token_key',
       render: (text, record) =>
-        renderTokenKey(text, record, showKeys, setShowKeys, copyText),
-    },
-    {
-      title: t('可用模型'),
-      dataIndex: 'model_limits',
-      render: (text, record) => renderModelLimits(text, record, t),
-    },
-    {
-      title: t('IP限制'),
-      dataIndex: 'allow_ips',
-      render: (text) => renderAllowIps(text, t),
+        renderTokenKey(
+          text,
+          record,
+          showKeys,
+          setShowKeys,
+          copyText,
+          manageToken,
+          t,
+        ),
     },
     {
       title: t('创建时间'),
       dataIndex: 'created_time',
       render: (text, record, index) => {
         return <div>{renderTimestamp(text)}</div>;
-      },
-    },
-    {
-      title: t('过期时间'),
-      dataIndex: 'expired_time',
-      render: (text, record, index) => {
-        return (
-          <div>
-            {record.expired_time === -1 ? t('永不过期') : renderTimestamp(text)}
-          </div>
-        );
       },
     },
     {

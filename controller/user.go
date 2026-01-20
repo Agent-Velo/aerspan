@@ -248,8 +248,8 @@ func Register(c *gin.Context) {
 			Key:                key,
 			CreatedTime:        common.GetTimestamp(),
 			AccessedTime:       common.GetTimestamp(),
-			ExpiredTime:        -1,     // 永不过期
-			RemainQuota:        500000, // 示例额度
+			ExpiredTime:        -1, // 永不过期
+			RemainQuota:        0,
 			UnlimitedQuota:     true,
 			ModelLimitsEnabled: false,
 		}
@@ -589,10 +589,28 @@ func GetUserModels(c *gin.Context) {
 			}
 		}
 	}
+
+	displayNameMap, err := model.GetModelDisplayNameMap(models)
+	if err != nil {
+		// Display name is purely for UI; never fail model list on best-effort errors.
+		displayNameMap = map[string]string{}
+	}
+
+	type userModelItem struct {
+		ID          string `json:"id"`
+		DisplayName string `json:"display_name,omitempty"`
+	}
+	items := make([]userModelItem, 0, len(models))
+	for _, name := range models {
+		items = append(items, userModelItem{
+			ID:          name,
+			DisplayName: displayNameMap[name],
+		})
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    models,
+		"data":    items,
 	})
 	return
 }
@@ -1241,37 +1259,38 @@ func UpdateUserSetting(c *gin.Context) {
 		return
 	}
 
-	// 构建设置
-	settings := dto.UserSetting{
-		NotifyType:            req.QuotaWarningType,
-		QuotaWarningThreshold: req.QuotaWarningThreshold,
-		AcceptUnsetRatioModel: req.AcceptUnsetModelRatioModel,
-		RecordIpLog:           req.RecordIpLog,
-	}
+	// 更新设置：只修改本接口涉及的字段，保留其他模块（如 Stripe 自动充值/默认卡、侧边栏配置等）
+	settings := user.GetSetting()
+	settings.NotifyType = req.QuotaWarningType
+	settings.QuotaWarningThreshold = req.QuotaWarningThreshold
+	settings.AcceptUnsetRatioModel = req.AcceptUnsetModelRatioModel
+	settings.RecordIpLog = req.RecordIpLog
 
-	// 如果是webhook类型,添加webhook相关设置
+	// 清空通知相关字段，避免在切换通知类型时残留旧配置
+	settings.WebhookUrl = ""
+	settings.WebhookSecret = ""
+	settings.NotificationEmail = ""
+	settings.BarkUrl = ""
+	settings.GotifyUrl = ""
+	settings.GotifyToken = ""
+	settings.GotifyPriority = 0
+
 	if req.QuotaWarningType == dto.NotifyTypeWebhook {
 		settings.WebhookUrl = req.WebhookUrl
 		if req.WebhookSecret != "" {
 			settings.WebhookSecret = req.WebhookSecret
 		}
 	}
-
-	// 如果提供了通知邮箱，添加到设置中
 	if req.QuotaWarningType == dto.NotifyTypeEmail && req.NotificationEmail != "" {
 		settings.NotificationEmail = req.NotificationEmail
 	}
-
-	// 如果是Bark类型，添加Bark URL到设置中
 	if req.QuotaWarningType == dto.NotifyTypeBark {
 		settings.BarkUrl = req.BarkUrl
 	}
-
-	// 如果是Gotify类型，添加Gotify配置到设置中
 	if req.QuotaWarningType == dto.NotifyTypeGotify {
 		settings.GotifyUrl = req.GotifyUrl
 		settings.GotifyToken = req.GotifyToken
-		// Gotify优先级范围0-10，超出范围则使用默认值5
+		// Gotify 优先级范围 0-10，超出范围则使用默认值 5
 		if req.GotifyPriority < 0 || req.GotifyPriority > 10 {
 			settings.GotifyPriority = 5
 		} else {
@@ -1279,7 +1298,6 @@ func UpdateUserSetting(c *gin.Context) {
 		}
 	}
 
-	// 更新用户设置
 	user.SetSetting(settings)
 	if err := user.Update(false); err != nil {
 		c.JSON(http.StatusOK, gin.H{

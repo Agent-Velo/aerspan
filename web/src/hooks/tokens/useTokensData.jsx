@@ -26,6 +26,7 @@ import {
   showError,
   showSuccess,
   encodeToBase64,
+  formatTokenApiKey,
 } from '../../helpers';
 import { ITEMS_PER_PAGE } from '../../constants';
 import { useTableCompactMode } from '../common/useTableCompactMode';
@@ -139,7 +140,7 @@ export const useTokensData = (openFluentNotification) => {
       let cherryConfig = {
         id: 'new-api',
         baseUrl: serverAddress,
-        apiKey: 'sk-' + record.key,
+        apiKey: formatTokenApiKey(record.key),
       };
       let encodedConfig = encodeURIComponent(
         encodeToBase64(JSON.stringify(cherryConfig)),
@@ -148,7 +149,7 @@ export const useTokensData = (openFluentNotification) => {
     } else {
       let encodedServerAddress = encodeURIComponent(serverAddress);
       url = url.replaceAll('{address}', encodedServerAddress);
-      url = url.replaceAll('{key}', 'sk-' + record.key);
+      url = url.replaceAll('{key}', formatTokenApiKey(record.key));
     }
 
     window.open(url, '_blank');
@@ -171,6 +172,9 @@ export const useTokensData = (openFluentNotification) => {
         data.status = 2;
         res = await API.put('/api/token/?status_only=true', data);
         break;
+      case 'roll':
+        res = await API.post(`/api/token/${id}/roll`);
+        break;
     }
     const { success, message } = res.data;
     if (success) {
@@ -178,7 +182,11 @@ export const useTokensData = (openFluentNotification) => {
       let token = res.data.data;
       let newTokens = [...tokens];
       if (action !== 'delete') {
-        record.status = token.status;
+        if (action === 'roll') {
+          record.key = token.key;
+        } else {
+          record.status = token.status;
+        }
       }
       setTokens(newTokens);
     } else {
@@ -245,7 +253,7 @@ export const useTokensData = (openFluentNotification) => {
 
   // Handle row styling
   const handleRow = (record, index) => {
-    if (record.status !== 1) {
+    if (record.status === 2) {
       return {
         style: {
           background: 'var(--semi-color-disabled-border)',
@@ -304,7 +312,10 @@ export const useTokensData = (openFluentNotification) => {
               let content = '';
               for (let i = 0; i < selectedKeys.length; i++) {
                 content +=
-                  selectedKeys[i].name + '    sk-' + selectedKeys[i].key + '\n';
+                  selectedKeys[i].name +
+                  '    ' +
+                  formatTokenApiKey(selectedKeys[i].key) +
+                  '\n';
               }
               await copyText(content);
               Modal.destroyAll();
@@ -317,7 +328,7 @@ export const useTokensData = (openFluentNotification) => {
             onClick={async () => {
               let content = '';
               for (let i = 0; i < selectedKeys.length; i++) {
-                content += 'sk-' + selectedKeys[i].key + '\n';
+                content += formatTokenApiKey(selectedKeys[i].key) + '\n';
               }
               await copyText(content);
               Modal.destroyAll();

@@ -1,0 +1,146 @@
+/* src/themes/graphite.css */
+@layer base {
+    /* Graphite Light (rarely used, still provided) */
+    [data-theme="graphite"] {
+        color-scheme: light;
+
+        /* Primitive Colors (Do not change between light and dark) */
+        --white: oklch(100% 0 0);
+        --black: oklch(0% 0 0);
+        --snow: oklch(0.9911 0 0);
+        --eclipse: oklch(0.2103 0.0059 260);
+
+        /* Spacing & Layout */
+        --spacing: 0.25rem;
+        --border-width: 0px;
+        --field-border-width: var(--border-width);
+        --disabled-opacity: 0.45;
+        --ring-offset-width: 2px;
+        --cursor-interactive: pointer;
+        --cursor-disabled: not-allowed;
+
+        /* Radius (engineering, not bubbly) */
+        --radius: 0.1rem !important;
+        --field-radius: calc(var(--radius) * 1.25) !important;
+
+        /* Base Colors */
+        --background: oklch(0.985 0.002 260);
+        --foreground: var(--eclipse);
+
+        /* Surface */
+        --surface: var(--white);
+        --surface-foreground: var(--foreground);
+
+        /* Overlay */
+        --overlay: var(--white);
+        --overlay-foreground: var(--foreground);
+
+        --muted: oklch(0.55 0.01 260);
+        --scrollbar: oklch(86% 0.004 260);
+
+        --default: oklch(94% 0.001 260);
+        --default-foreground: var(--eclipse);
+
+        /* Graphite accent (steel blue) */
+        --accent: oklch(0.46 0.07 240);
+        --accent-foreground: var(--snow);
+
+        /* Form Field Defaults */
+        --field-background: var(--white);
+        --field-foreground: var(--eclipse);
+        --field-placeholder: var(--muted);
+        --field-border: transparent;
+
+        /* Status */
+        --success: oklch(0.72 0.18 150);
+        --success-foreground: var(--eclipse);
+
+        --warning: oklch(0.78 0.14 80);
+        --warning-foreground: var(--eclipse);
+
+        --danger: oklch(0.63 0.22 25);
+        --danger-foreground: var(--snow);
+
+        /* Component Colors */
+        --segment: var(--white);
+        --segment-foreground: var(--foreground);
+
+        /* Misc */
+        --border: oklch(0.50 0.02 240 / 20%);
+        --separator: oklch(92% 0.003 260);
+        --focus: var(--accent);
+        --link: var(--accent);
+
+        /* Shadows (very restrained) */
+        --surface-shadow:
+                0 1px 2px 0 rgba(0, 0, 0, 0.04),
+                0 0 0 1px rgba(0, 0, 0, 0.04);
+        --overlay-shadow:
+                0 8px 24px 0 rgba(15, 23, 42, 0.08);
+        --field-shadow:
+                0 0 0 1px rgba(0, 0, 0, 0.06);
+
+        /* Skeleton */
+        --skeleton-animation: shimmer;
+    }
+
+    /* Graphite Dark (primary mode) */
+    [data-theme="graphite-dark"] {
+        color-scheme: dark;
+
+        /* Base Colors */
+        --background: oklch(0.095 0.015 260);        /* graphite black */
+        --foreground: var(--snow);
+
+        /* Surface */
+        --surface: oklch(0.145 0.012 260);
+        --surface-foreground: var(--foreground);
+
+        /* Radius (engineering, not bubbly) */
+        --radius: 0.1rem !important;
+        --field-radius: calc(var(--radius) * 1.25) !important;
+
+        /* Overlay */
+        --overlay: oklch(0.165 0.012 260);
+        --overlay-foreground: var(--foreground);
+
+        --muted: oklch(0.72 0.015 260);
+        --scrollbar: oklch(0.72 0.015 260);
+
+        --default: oklch(0.24 0.01 260);
+        --default-foreground: var(--snow);
+
+        /* Form Field Defaults */
+        --field-background: var(--default);
+        --field-foreground: var(--foreground);
+
+        /* Graphite accent (steel blue highlight) */
+        --accent: oklch(0.78 0.06 240);
+        --accent-foreground: var(--eclipse);
+
+        /* Status */
+        --success: oklch(0.72 0.18 150);
+        --success-foreground: var(--eclipse);
+
+        --warning: oklch(0.82 0.13 80);
+        --warning-foreground: var(--eclipse);
+
+        --danger: oklch(0.59 0.20 25);
+        --danger-foreground: var(--snow);
+
+        /* Component Colors */
+        --segment: oklch(0.32 0.01 260);
+        --segment-foreground: var(--foreground);
+
+        /* Misc */
+        --border: oklch(1 0 0 / 0%);
+        --separator: oklch(22% 0.006 260);
+        --focus: var(--accent);
+        --link: var(--accent);
+
+        /* Shadows (none, true system feel) */
+        --surface-shadow: 0 0 0 0 transparent inset;
+        --overlay-shadow: 0 0 0 0 transparent inset;
+        --field-shadow: 0 0 0 0 transparent inset;
+    }
+}

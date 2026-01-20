@@ -46,21 +46,8 @@ func PreConsumeQuota(c *gin.Context, preConsumedQuota int, relayInfo *relaycommo
 
 	relayInfo.UserQuota = userQuota
 	if userQuota > trustQuota {
-		// 用户额度充足，判断令牌额度是否充足
-		if !relayInfo.TokenUnlimited {
-			// 非无限令牌，判断令牌额度是否充足
-			tokenQuota := c.GetInt("token_quota")
-			if tokenQuota > trustQuota {
-				// 令牌额度充足，信任令牌
-				preConsumedQuota = 0
-				logger.LogInfo(c, fmt.Sprintf("User %d has %s remaining and token %d has %d available; trusted, no pre-consume needed", relayInfo.UserId, logger.FormatQuota(userQuota), relayInfo.TokenId, tokenQuota))
-			}
-		} else {
-			// in this case, we do not pre-consume quota
-			// because the user has enough quota
-			preConsumedQuota = 0
-			logger.LogInfo(c, fmt.Sprintf("User %d has sufficient quota and an unlimited token; trusted, no pre-consume needed", relayInfo.UserId))
-		}
+		preConsumedQuota = 0
+		logger.LogInfo(c, fmt.Sprintf("User %d has %s remaining; trusted, no pre-consume needed", relayInfo.UserId, logger.FormatQuota(userQuota)))
 	}
 
 	if preConsumedQuota > 0 {

@@ -4448,7 +4448,7 @@
       "BearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "使用 Bearer Token 认证。\n格式: `Authorization: Bearer sk-xxxxxx`\n"
+        "description": "使用 Bearer Token 认证。\n格式: `Authorization: Bearer sk-ae-v1-[32位随机 HEX]`\n"
       },
       "SessionAuth": {
         "type": "apiKey",

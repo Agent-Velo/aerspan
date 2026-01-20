@@ -113,6 +113,7 @@ const EditModelModal = (props) => {
 
   const getInitValues = () => ({
     model_name: props.editingModel?.model_name || '',
+    display_name: props.editingModel?.display_name || '',
     description: '',
     icon: '',
     tags: [],
@@ -305,9 +306,18 @@ const EditModelModal = (props) => {
                   <Col span={24}>
                     <Form.Input
                       field='model_name'
+                      label={t('模型 ID')}
+                      placeholder={t('请输入模型 ID，如：gpt-4')}
+                      rules={[{ required: true, message: t('请输入模型 ID') }]}
+                      showClear
+                    />
+                  </Col>
+
+                  <Col span={24}>
+                    <Form.Input
+                      field='display_name'
                       label={t('模型名称')}
-                      placeholder={t('请输入模型名称，如：gpt-4')}
-                      rules={[{ required: true, message: t('请输入模型名称') }]}
+                      placeholder={t('用于前端展示的名称（可选）')}
                       showClear
                     />
                   </Col>

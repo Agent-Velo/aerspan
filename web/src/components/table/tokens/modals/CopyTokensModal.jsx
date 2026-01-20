@@ -19,13 +19,18 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React from 'react';
 import { Modal, Button, Space } from '@douyinfe/semi-ui';
+import { formatTokenApiKey } from '../../../../helpers';
 
 const CopyTokensModal = ({ visible, onCancel, selectedKeys, copyText, t }) => {
   // Handle copy with name and key format
   const handleCopyWithName = async () => {
     let content = '';
     for (let i = 0; i < selectedKeys.length; i++) {
-      content += selectedKeys[i].name + '    sk-' + selectedKeys[i].key + '\n';
+      content +=
+        selectedKeys[i].name +
+        '    ' +
+        formatTokenApiKey(selectedKeys[i].key) +
+        '\n';
     }
     await copyText(content);
     onCancel();
@@ -35,7 +40,7 @@ const CopyTokensModal = ({ visible, onCancel, selectedKeys, copyText, t }) => {
   const handleCopyKeyOnly = async () => {
     let content = '';
     for (let i = 0; i < selectedKeys.length; i++) {
-      content += 'sk-' + selectedKeys[i].key + '\n';
+      content += formatTokenApiKey(selectedKeys[i].key) + '\n';
     }
     await copyText(content);
     onCancel();

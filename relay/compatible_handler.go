@@ -447,7 +447,9 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 		))
 	}
 
-	if quotaDelta != 0 {
+	// When quotaDelta == 0, the actual consumption equals the pre-consumed quota.
+	// In this case, we still need to run post-consume side effects (e.g. auto top-up, quota notifications).
+	if quotaDelta != 0 || relayInfo.FinalPreConsumedQuota != 0 {
 		err := service.PostConsumeQuota(relayInfo, quotaDelta, relayInfo.FinalPreConsumedQuota, true)
 		if err != nil {
 			logger.LogError(ctx, "error consuming token remain quota: "+err.Error())

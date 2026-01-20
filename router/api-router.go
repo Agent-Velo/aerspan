@@ -80,6 +80,14 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/topup", middleware.CriticalRateLimit(), controller.TopUp)
 				selfRoute.POST("/stripe/pay", middleware.CriticalRateLimit(), controller.RequestStripePay)
 				selfRoute.POST("/stripe/amount", controller.RequestStripeAmount)
+				// Stripe Elements (card-on-file) flow
+				selfRoute.POST("/stripe/setup_intent", middleware.CriticalRateLimit(), controller.CreateStripeSetupIntent)
+				selfRoute.GET("/stripe/payment_methods", controller.ListStripePaymentMethods)
+				selfRoute.PUT("/stripe/payment_methods/default", middleware.CriticalRateLimit(), controller.SetStripeDefaultPaymentMethod)
+				selfRoute.DELETE("/stripe/payment_methods/:id", middleware.CriticalRateLimit(), controller.DeleteStripePaymentMethod)
+				selfRoute.POST("/stripe/payment_intent", middleware.CriticalRateLimit(), controller.CreateStripePaymentIntent)
+				selfRoute.GET("/stripe/auto_topup", controller.GetStripeAutoTopup)
+				selfRoute.PUT("/stripe/auto_topup", middleware.CriticalRateLimit(), controller.UpdateStripeAutoTopup)
 				selfRoute.POST("/aff_transfer", controller.TransferAffQuota)
 				selfRoute.PUT("/setting", controller.UpdateUserSetting)
 
@@ -175,6 +183,7 @@ func SetApiRouter(router *gin.Engine) {
 			tokenRoute.GET("/:id", controller.GetToken)
 			tokenRoute.POST("/", controller.AddToken)
 			tokenRoute.PUT("/", controller.UpdateToken)
+			tokenRoute.POST("/:id/roll", controller.RollTokenKey)
 			tokenRoute.DELETE("/:id", controller.DeleteToken)
 			tokenRoute.POST("/batch", controller.DeleteTokenBatch)
 		}

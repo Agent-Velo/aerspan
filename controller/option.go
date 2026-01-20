@@ -24,7 +24,7 @@ func GetOptions(c *gin.Context) {
 	for k, v := range common.OptionMap {
 		if strings.HasSuffix(k, "Token") ||
 			strings.HasSuffix(k, "Secret") ||
-			strings.HasSuffix(k, "Key") ||
+			(strings.HasSuffix(k, "Key") && k != "StripePublishableKey") ||
 			strings.HasSuffix(k, "secret") ||
 			strings.HasSuffix(k, "api_key") {
 			continue

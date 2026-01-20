@@ -167,10 +167,20 @@ export const handleApiError = (error, response = null) => {
 
 // 处理模型数据
 export const processModelsData = (data, currentModel) => {
-  const modelOptions = data.map((model) => ({
-    label: model,
-    value: model,
-  }));
+  const modelOptions = (data || [])
+    .map((model) => {
+      if (typeof model === 'string') {
+        return { label: model, value: model };
+      }
+      if (model && typeof model === 'object') {
+        const id = model.id || model.model_name || '';
+        const label = model.display_name || model.displayName || id;
+        return { label, value: id };
+      }
+      const fallback = String(model ?? '');
+      return { label: fallback, value: fallback };
+    })
+    .filter((opt) => opt.value);
 
   const hasCurrentModel = modelOptions.some(
     (option) => option.value === currentModel,
