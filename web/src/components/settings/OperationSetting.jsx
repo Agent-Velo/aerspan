@@ -27,6 +27,7 @@ import SettingsLog from '../../pages/Setting/Operation/SettingsLog';
 import SettingsMonitoring from '../../pages/Setting/Operation/SettingsMonitoring';
 import SettingsCreditLimit from '../../pages/Setting/Operation/SettingsCreditLimit';
 import SettingsCheckin from '../../pages/Setting/Operation/SettingsCheckin';
+import SettingsLLMEndpoints from '../../pages/Setting/Operation/SettingsLLMEndpoints';
 import { API, showError, toBoolean } from '../../helpers';
 
 const OperationSetting = () => {
@@ -76,6 +77,19 @@ const OperationSetting = () => {
     'checkin_setting.enabled': false,
     'checkin_setting.min_quota': 1000,
     'checkin_setting.max_quota': 10000,
+
+    /* LLM 端点开关 */
+    'llm_endpoint_setting.enable_completions': true,
+    'llm_endpoint_setting.enable_chat_completions': true,
+    'llm_endpoint_setting.enable_responses': false,
+    'llm_endpoint_setting.enable_claude_messages': false,
+    'llm_endpoint_setting.enable_embeddings': false,
+    'llm_endpoint_setting.enable_images': false,
+    'llm_endpoint_setting.enable_audio': false,
+    'llm_endpoint_setting.enable_moderations': false,
+    'llm_endpoint_setting.enable_rerank': false,
+    'llm_endpoint_setting.enable_realtime': false,
+    'llm_endpoint_setting.enable_gemini': false,
   });
 
   let [loading, setLoading] = useState(false);
@@ -120,6 +134,10 @@ const OperationSetting = () => {
         {/* 通用设置 */}
         <Card style={{ marginTop: '10px' }}>
           <SettingsGeneral options={inputs} refresh={onRefresh} />
+        </Card>
+        {/* LLM 端点开关 */}
+        <Card style={{ marginTop: '10px' }}>
+          <SettingsLLMEndpoints options={inputs} refresh={onRefresh} />
         </Card>
         {/* 顶栏模块管理 */}
         <div style={{ marginTop: '10px' }}>
