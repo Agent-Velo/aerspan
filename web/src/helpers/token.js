@@ -19,6 +19,24 @@ For commercial licensing, please contact support@quantumnous.com
 
 import { API } from './api';
 
+export const TOKEN_API_KEY_PREFIX = 'sk-ae-v1-';
+export const LEGACY_TOKEN_API_KEY_PREFIX = 'sk-';
+
+export function isNewTokenKeyFormat(tokenKey) {
+  return typeof tokenKey === 'string' && /^[0-9a-f]{32}$/i.test(tokenKey);
+}
+
+export function getTokenApiKeyPrefix(tokenKey) {
+  return isNewTokenKeyFormat(tokenKey)
+    ? TOKEN_API_KEY_PREFIX
+    : LEGACY_TOKEN_API_KEY_PREFIX;
+}
+
+export function formatTokenApiKey(tokenKey) {
+  if (!tokenKey) return '';
+  return `${getTokenApiKeyPrefix(tokenKey)}${tokenKey}`;
+}
+
 /**
  * 获取可用的token keys
  * @returns {Promise<string[]>} 返回active状态的token key数组

@@ -89,7 +89,7 @@ const ModelsActions = ({
     if (!text) return;
     const ok = await copy(text);
     if (ok) {
-      showSuccess(t('已复制模型名称'));
+      showSuccess(t('已复制模型 ID'));
     } else {
       showError(t('复制失败'));
     }

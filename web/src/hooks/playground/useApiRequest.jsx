@@ -28,6 +28,9 @@ import {
 import {
   getUserIdFromLocalStorage,
   handleApiError,
+  buildServerUrl,
+  getServerBaseUrl,
+  getServerFetchCredentials,
   processThinkTags,
   processIncompleteThinkTags,
 } from '../../helpers';
@@ -185,12 +188,13 @@ export const useApiRequest = (
       setActiveDebugTab(DEBUG_TABS.REQUEST);
 
       try {
-        const response = await fetch(API_ENDPOINTS.CHAT_COMPLETIONS, {
+        const response = await fetch(buildServerUrl(API_ENDPOINTS.CHAT_COMPLETIONS), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'New-Api-User': getUserIdFromLocalStorage(),
           },
+          credentials: getServerFetchCredentials(),
           body: JSON.stringify(payload),
         });
 
@@ -298,11 +302,12 @@ export const useApiRequest = (
       }));
       setActiveDebugTab(DEBUG_TABS.REQUEST);
 
-      const source = new SSE(API_ENDPOINTS.CHAT_COMPLETIONS, {
+      const source = new SSE(buildServerUrl(API_ENDPOINTS.CHAT_COMPLETIONS), {
         headers: {
           'Content-Type': 'application/json',
           'New-Api-User': getUserIdFromLocalStorage(),
         },
+        withCredentials: Boolean(getServerBaseUrl()),
         method: 'POST',
         payload: JSON.stringify(payload),
       });

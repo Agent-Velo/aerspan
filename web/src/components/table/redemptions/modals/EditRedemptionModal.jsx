@@ -63,6 +63,7 @@ const EditRedemptionModal = (props) => {
     quota: 100000,
     count: 1,
     expired_time: null,
+    grant_valid_months: 0,
   });
 
   const handleCancel = () => {
@@ -105,6 +106,8 @@ const EditRedemptionModal = (props) => {
     let localInputs = { ...values };
     localInputs.count = parseInt(localInputs.count) || 0;
     localInputs.quota = parseInt(localInputs.quota) || 0;
+    localInputs.grant_valid_months =
+      parseInt(localInputs.grant_valid_months, 10) || 0;
     localInputs.name = name;
     if (!localInputs.expired_time) {
       localInputs.expired_time = 0;
@@ -257,6 +260,16 @@ const EditRedemptionModal = (props) => {
                         label={t('过期时间')}
                         type='dateTime'
                         placeholder={t('选择过期时间（可选，留空为永久）')}
+                        style={{ width: '100%' }}
+                        showClear
+                      />
+                    </Col>
+                    <Col span={24}>
+                      <Form.InputNumber
+                        field='grant_valid_months'
+                        label={t('额度有效期（月）')}
+                        min={0}
+                        placeholder={t('0 表示永久')}
                         style={{ width: '100%' }}
                         showClear
                       />

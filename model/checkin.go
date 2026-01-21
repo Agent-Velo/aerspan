@@ -100,10 +100,17 @@ func userCheckinWithTransaction(checkin *Checkin, userId int, quotaAwarded int) 
 			return errors.New("Check-in failed. Try again later")
 		}
 
-		// 步骤2: 在事务中增加用户额度
-		if err := tx.Model(&User{}).Where("id = ?", userId).
-			Update("quota", gorm.Expr("quota + ?", quotaAwarded)).Error; err != nil {
-			return errors.New("Check-in failed. Couldn't update quota")
+		// 步骤2: 在事务中创建 Credit Grant
+		if _, err := CreateCreditGrantTx(tx, CreateCreditGrantParams{
+			UserId:      userId,
+			Quota:       quotaAwarded,
+			GrantType:   "checkin",
+			Reference:   checkin.CheckinDate,
+			Remark:      "check-in bonus",
+			CreatedTime: checkin.CreatedAt,
+			ExpiredTime: 0,
+		}); err != nil {
+			return errors.New("Check-in failed. Couldn't create credit grant")
 		}
 
 		return nil
@@ -129,12 +136,19 @@ func userCheckinWithoutTransaction(checkin *Checkin, userId int, quotaAwarded in
 		return nil, errors.New("Check-in failed. Try again later")
 	}
 
-	// 步骤2: 增加用户额度
-	// 使用 db=true 强制直接写入数据库，不使用批量更新
-	if err := IncreaseUserQuota(userId, quotaAwarded, true); err != nil {
+	// 步骤2: 创建 Credit Grant
+	if _, err := CreateCreditGrant(CreateCreditGrantParams{
+		UserId:      userId,
+		Quota:       quotaAwarded,
+		GrantType:   "checkin",
+		Reference:   checkin.CheckinDate,
+		Remark:      "check-in bonus",
+		CreatedTime: checkin.CreatedAt,
+		ExpiredTime: 0,
+	}); err != nil {
 		// 如果增加额度失败，需要回滚签到记录
 		DB.Delete(checkin)
-		return nil, errors.New("Check-in failed. Couldn't update quota")
+		return nil, errors.New("Check-in failed. Couldn't create credit grant")
 	}
 
 	return checkin, nil

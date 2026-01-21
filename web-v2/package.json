@@ -1,0 +1,46 @@
+{
+  "name": "aerspan-web-v2",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/vite.mjs",
+    "build": "tsc -b && node scripts/vite.mjs build",
+    "preview": "node scripts/vite.mjs preview"
+  },
+  "dependencies": {
+    "@heroui/react": "^3.0.0-beta.3",
+    "@heroui/styles": "^3.0.0-beta.3",
+    "@tremor/react": "^3.18.7",
+    "@stripe/react-stripe-js": "^3.0.0",
+    "@stripe/stripe-js": "^4.7.0",
+    "@visactor/react-vchart": "~1.8.8",
+    "@visactor/vchart": "~1.8.8",
+    "i18next": "^23.16.8",
+    "i18next-browser-languagedetector": "^7.2.0",
+    "katex": "^0.16.22",
+    "lucide-react": "^0.511.0",
+    "mermaid": "^11.6.0",
+    "qrcode.react": "^4.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-i18next": "^13.0.0",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^6.3.0",
+    "react-turnstile": "^1.0.5",
+    "rehype-highlight": "^7.0.2",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "tailwind-variants": "^3.2.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.0"
+  }
+}

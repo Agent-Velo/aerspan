@@ -19,13 +19,14 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React from 'react';
 import { useTokenKeys } from '../../hooks/chat/useTokenKeys';
+import { formatTokenApiKey } from '../../helpers';
 
 const chat2page = () => {
   const { keys, chatLink, serverAddress, isLoading } = useTokenKeys();
 
   const comLink = (key) => {
     if (!chatLink || !serverAddress || !key) return '';
-    return `${chatLink}/#/?settings={"key":"sk-${key}","url":"${encodeURIComponent(serverAddress)}"}`;
+    return `${chatLink}/#/?settings={"key":"${formatTokenApiKey(key)}","url":"${encodeURIComponent(serverAddress)}"}`;
   };
 
   if (keys.length > 0) {

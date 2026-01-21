@@ -47,6 +47,9 @@ func GetPricing(c *gin.Context) {
 		if pricing[i].CacheReadPrice != 0 {
 			pricing[i].CacheReadPrice *= multiplier
 		}
+		if pricing[i].CacheWritePrice != 0 {
+			pricing[i].CacheWritePrice *= multiplier
+		}
 		if pricing[i].ImageInputPrice != 0 {
 			pricing[i].ImageInputPrice *= multiplier
 		}

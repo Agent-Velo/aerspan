@@ -82,6 +82,7 @@ func stopReasonCohere2OpenAI(reason string) string {
 func cohereStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {
 	responseId := helper.GetResponseID(c)
 	createdTime := common.GetTimestamp()
+	responseModel := relaycommon.MaskMappedModelName(c, info, info.UpstreamModelName)
 	usage := &dto.Usage{}
 	responseText := ""
 	scanner := bufio.NewScanner(resp.Body)
@@ -126,7 +127,7 @@ func cohereStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http
 			openaiResp.Id = responseId
 			openaiResp.Created = createdTime
 			openaiResp.Object = "chat.completion.chunk"
-			openaiResp.Model = info.UpstreamModelName
+			openaiResp.Model = responseModel
 			if cohereResp.IsFinished {
 				finishReason := stopReasonCohere2OpenAI(cohereResp.FinishReason)
 				openaiResp.Choices = []dto.ChatCompletionsStreamResponseChoice{
@@ -191,7 +192,7 @@ func cohereHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 	openaiResp.Id = cohereResp.ResponseId
 	openaiResp.Created = createdTime
 	openaiResp.Object = "chat.completion"
-	openaiResp.Model = info.UpstreamModelName
+	openaiResp.Model = relaycommon.MaskMappedModelName(c, info, info.UpstreamModelName)
 	openaiResp.Usage = usage
 
 	openaiResp.Choices = []dto.OpenAITextResponseChoice{

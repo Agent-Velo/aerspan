@@ -31,6 +31,7 @@ import {
   showError,
   getModelCategories,
   selectFilter,
+  formatTokenApiKey,
 } from '../../../helpers';
 import CardPro from '../../common/ui/CardPro';
 import TokensTable from './TokensTable';
@@ -84,10 +85,19 @@ function TokensPage() {
       const { success, message, data } = res.data || {};
       if (success) {
         const categories = getModelCategories(tokensData.t);
-        const options = (data || []).map((model) => {
+        const options = (data || [])
+          .map((item) => {
+            const modelId =
+              typeof item === 'string' ? item : item?.id || item?.model_name;
+            if (!modelId) return null;
+            const displayName =
+              typeof item === 'string'
+                ? item
+                : item?.display_name || item?.displayName || modelId;
+
           let icon = null;
           for (const [key, category] of Object.entries(categories)) {
-            if (key !== 'all' && category.filter({ model_name: model })) {
+            if (key !== 'all' && category.filter({ model_name: modelId })) {
               icon = category.icon;
               break;
             }
@@ -96,12 +106,13 @@ function TokensPage() {
             label: (
               <span className='flex items-center gap-1'>
                 {icon}
-                {model}
+                {displayName}
               </span>
             ),
-            value: model,
+            value: modelId,
           };
-        });
+          })
+          .filter(Boolean);
         setModelOptions(options);
       } else {
         showError(tokensData.t(message));
@@ -215,7 +226,7 @@ function TokensPage() {
 
     let apiKeyToUse = '';
     if (overrideKey) {
-      apiKeyToUse = 'sk-' + overrideKey;
+      apiKeyToUse = formatTokenApiKey(overrideKey);
     } else {
       const token =
         selectedKeys && selectedKeys.length === 1
@@ -227,7 +238,7 @@ function TokensPage() {
         Toast.warning(t('没有可用令牌用于填充'));
         return;
       }
-      apiKeyToUse = 'sk-' + token.key;
+      apiKeyToUse = formatTokenApiKey(token.key);
     }
 
     const payload = {

@@ -38,11 +38,14 @@ func GetTopUpInfo(c *gin.Context) {
 	}
 
 	data := gin.H{
-		"enable_stripe_topup": setting.StripeApiSecret != "" && setting.StripeWebhookSecret != "" && setting.StripePriceId != "",
-		"pay_methods":         payMethods,
-		"stripe_min_topup":    setting.StripeMinTopUp,
-		"amount_options":      operation_setting.GetPaymentSetting().AmountOptions,
-		"discount":            operation_setting.GetPaymentSetting().AmountDiscount,
+		"enable_stripe_topup":          setting.StripeApiSecret != "" && setting.StripeWebhookSecret != "" && setting.StripePriceId != "",
+		"enable_stripe_elements_topup": setting.StripeApiSecret != "" && setting.StripeWebhookSecret != "" && setting.StripePublishableKey != "",
+		"stripe_publishable_key":       setting.StripePublishableKey,
+		"stripe_currency":              setting.StripeCurrency,
+		"pay_methods":                  payMethods,
+		"stripe_min_topup":             setting.StripeMinTopUp,
+		"amount_options":               operation_setting.GetPaymentSetting().AmountOptions,
+		"discount":                     operation_setting.GetPaymentSetting().AmountDiscount,
 	}
 	common.ApiSuccess(c, data)
 }

@@ -38,6 +38,34 @@ import {
 
 const { Text } = Typography;
 
+const renderModelName = (record, t) => {
+  const modelId = record?.model_name || '';
+  const displayName = (record?.display_name || '').trim();
+  const showIdLine = displayName && displayName !== modelId;
+
+  return (
+    <div className='flex flex-col'>
+      <Text
+        copyable={!showIdLine}
+        onClick={(e) => e.stopPropagation()}
+        className='leading-5'
+      >
+        {displayName || modelId}
+      </Text>
+      {showIdLine ? (
+        <Text
+          type='tertiary'
+          size='small'
+          copyable={{ content: modelId }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {t('模型 ID')}: {modelId}
+        </Text>
+      ) : null}
+    </div>
+  );
+};
+
 const renderTokenCount = (value) => {
   if (value === undefined || value === null || value === 0) return '-';
   return value;
@@ -297,11 +325,7 @@ export const getModelsColumns = ({
     {
       title: t('模型名称'),
       dataIndex: 'model_name',
-      render: (text) => (
-        <Text copyable onClick={(e) => e.stopPropagation()}>
-          {text}
-        </Text>
-      ),
+      render: (text, record) => renderModelName(record, t),
     },
     {
       title: t('匹配类型'),

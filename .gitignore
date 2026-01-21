@@ -9,6 +9,7 @@ build
 *.db-journal
 logs
 web/dist
+web/.tmp/
 .env
 one-api
 new-api
@@ -28,11 +29,9 @@ data/
 .gocache-temp
 .gopath
 
-
 web/node_modules
-web-v2/node_modules
-
-web-v2/dist
-
+web-v2/node_modules/
+web-v2/dist/
 web/.tmp
-web-v2/.tmp
+web-v2/.tmp/
+web-v2/bun.lock

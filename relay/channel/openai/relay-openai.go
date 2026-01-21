@@ -28,6 +28,7 @@ func sendStreamData(c *gin.Context, info *relaycommon.RelayInfo, data string, fo
 	}
 
 	if !forceFormat && !thinkToContent {
+		data = relaycommon.MaskJSONModelFieldIfMappedString(c, info, data, "model")
 		return helper.StringData(c, data)
 	}
 
@@ -36,6 +37,7 @@ func sendStreamData(c *gin.Context, info *relaycommon.RelayInfo, data string, fo
 		return err
 	}
 
+	lastStreamResponse.Model = relaycommon.MaskMappedModelName(c, info, lastStreamResponse.Model)
 	if !thinkToContent {
 		return helper.ObjectData(c, lastStreamResponse)
 	}
@@ -57,6 +59,7 @@ func sendStreamData(c *gin.Context, info *relaycommon.RelayInfo, data string, fo
 	if info.ThinkingContentInfo.IsFirstThinkingContent {
 		if hasThinkingContent {
 			response := lastStreamResponse.Copy()
+			response.Model = relaycommon.MaskMappedModelName(c, info, response.Model)
 			for i := range response.Choices {
 				// send `think` tag with thinking content
 				response.Choices[i].Delta.SetContentString("<think>\n" + thinkingContent.String())
@@ -188,7 +191,8 @@ func OaiStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Re
 
 	applyUsagePostProcessing(info, usage, common.StringToByteSlice(lastStreamData))
 
-	HandleFinalResponse(c, info, lastStreamData, responseId, createAt, model, systemFingerprint, usage, containStreamUsage)
+	responseModel := relaycommon.MaskMappedModelName(c, info, model)
+	HandleFinalResponse(c, info, lastStreamData, responseId, createAt, responseModel, systemFingerprint, usage, containStreamUsage)
 
 	return usage, nil
 }
@@ -224,6 +228,8 @@ func OpenaiHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 	if err != nil {
 		return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponseBody, http.StatusInternalServerError)
 	}
+
+	simpleResponse.Model = relaycommon.MaskMappedModelName(c, info, simpleResponse.Model)
 
 	if oaiError := simpleResponse.GetOpenAIError(); oaiError != nil && oaiError.Type != "" {
 		return nil, types.WithOpenAIError(*oaiError, resp.StatusCode)
@@ -287,6 +293,8 @@ func OpenaiHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 		}
 		responseBody = geminiRespStr
 	}
+
+	responseBody = relaycommon.MaskJSONModelFieldIfMapped(c, info, responseBody, "model")
 
 	service.IOCopyBytesGracefully(c, resp, responseBody)
 

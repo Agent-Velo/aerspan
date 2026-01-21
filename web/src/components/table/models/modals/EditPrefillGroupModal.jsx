@@ -41,12 +41,12 @@ const { Text, Title } = Typography;
 
 // Example endpoint template for quick fill
 const ENDPOINT_TEMPLATE = {
-  openai: { path: '/v1/chat/completions', method: 'POST' },
-  'openai-response': { path: '/v1/responses', method: 'POST' },
-  anthropic: { path: '/v1/messages', method: 'POST' },
-  gemini: { path: '/v1beta/models/{model}:generateContent', method: 'POST' },
-  'jina-rerank': { path: '/rerank', method: 'POST' },
-  'image-generation': { path: '/v1/images/generations', method: 'POST' },
+  openai: { name: 'Chat Completions', uri: '/v1/chat/completions' },
+  'openai-response': { name: 'Responses', uri: '/v1/responses' },
+  anthropic: { name: 'Messages', uri: '/v1/messages' },
+  gemini: { name: 'Generate Content', uri: '/v1beta/models/{model}:generateContent' },
+  'jina-rerank': { name: 'Rerank', uri: '/rerank' },
+  'image-generation': { name: 'Image Generation', uri: '/v1/images/generations' },
 };
 
 const EditPrefillGroupModal = ({
@@ -245,11 +245,11 @@ const EditPrefillGroupModal = ({
                       }
                       editorType='object'
                       placeholder={
-                        '{\n  "openai": {"path": "/v1/chat/completions", "method": "POST"}\n}'
+                        '{\n  "openai": {"name": "Chat Completions", "uri": "/v1/chat/completions"}\n}'
                       }
                       template={ENDPOINT_TEMPLATE}
                       templateLabel={t('填入模板')}
-                      extraText={t('键为端点类型，值为路径和方法对象')}
+                      extraText={t('键为端点类型，值为 string(URI) 或 {name, uri} 对象')}
                     />
                   ) : (
                     <Form.TagInput

@@ -90,16 +90,21 @@ func AddRedemption(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
 		return
 	}
+	if err := validateGrantValidMonths(redemption.GrantValidMonths); err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		return
+	}
 	var keys []string
 	for i := 0; i < redemption.Count; i++ {
 		key := common.GetUUID()
 		cleanRedemption := model.Redemption{
-			UserId:      c.GetInt("id"),
-			Name:        redemption.Name,
-			Key:         key,
-			CreatedTime: common.GetTimestamp(),
-			Quota:       redemption.Quota,
-			ExpiredTime: redemption.ExpiredTime,
+			UserId:           c.GetInt("id"),
+			Name:             redemption.Name,
+			Key:              key,
+			CreatedTime:      common.GetTimestamp(),
+			Quota:            redemption.Quota,
+			ExpiredTime:      redemption.ExpiredTime,
+			GrantValidMonths: redemption.GrantValidMonths,
 		}
 		err = cleanRedemption.Insert()
 		if err != nil {
@@ -152,10 +157,15 @@ func UpdateRedemption(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
 			return
 		}
+		if err := validateGrantValidMonths(redemption.GrantValidMonths); err != nil {
+			c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+			return
+		}
 		// If you add more fields, please also update redemption.Update()
 		cleanRedemption.Name = redemption.Name
 		cleanRedemption.Quota = redemption.Quota
 		cleanRedemption.ExpiredTime = redemption.ExpiredTime
+		cleanRedemption.GrantValidMonths = redemption.GrantValidMonths
 	}
 	if statusOnly != "" {
 		cleanRedemption.Status = redemption.Status
@@ -190,6 +200,16 @@ func DeleteInvalidRedemption(c *gin.Context) {
 func validateExpiredTime(expired int64) error {
 	if expired != 0 && expired < common.GetTimestamp() {
 		return errors.New("Expiration time can't be in the past")
+	}
+	return nil
+}
+
+func validateGrantValidMonths(months int) error {
+	if months < 0 {
+		return errors.New("Grant validity months can't be negative")
+	}
+	if months > 120 {
+		return errors.New("Grant validity months is too large")
 	}
 	return nil
 }

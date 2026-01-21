@@ -13,6 +13,13 @@ type UserSetting struct {
 	AcceptUnsetRatioModel bool    `json:"accept_unset_model_ratio_model,omitempty"` // AcceptUnsetRatioModel 是否接受未设置价格的模型
 	RecordIpLog           bool    `json:"record_ip_log,omitempty"`                  // 是否记录请求和错误日志IP
 	SidebarModules        string  `json:"sidebar_modules,omitempty"`                // SidebarModules 左侧边栏模块配置
+
+	// Stripe (card-on-file) settings
+	StripeDefaultPaymentMethodID   string `json:"stripe_default_payment_method_id,omitempty"`
+	StripeAutoTopUpEnabled         bool   `json:"stripe_auto_topup_enabled,omitempty"`
+	StripeAutoTopUpThreshold       int64  `json:"stripe_auto_topup_threshold,omitempty"`
+	StripeAutoTopUpAmount          int64  `json:"stripe_auto_topup_amount,omitempty"`
+	StripeAutoTopUpPaymentMethodID string `json:"stripe_auto_topup_payment_method_id,omitempty"`
 }
 
 var (

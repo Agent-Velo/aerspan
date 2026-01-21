@@ -24,7 +24,7 @@ func GetOptions(c *gin.Context) {
 	for k, v := range common.OptionMap {
 		if strings.HasSuffix(k, "Token") ||
 			strings.HasSuffix(k, "Secret") ||
-			strings.HasSuffix(k, "Key") ||
+			(strings.HasSuffix(k, "Key") && k != "StripePublishableKey") ||
 			strings.HasSuffix(k, "secret") ||
 			strings.HasSuffix(k, "api_key") {
 			continue
@@ -185,6 +185,24 @@ func UpdateOption(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
 				"message": "Failed to update model output price: " + err.Error(),
+			})
+			return
+		}
+	case "ModelInputTokenPriceMultiplier":
+		err = pricing_setting.UpdateModelInputTokenPriceMultiplierByJSONString(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "Failed to update model input token tier multipliers: " + err.Error(),
+			})
+			return
+		}
+	case "ModelOutputTokenPriceMultiplier":
+		err = pricing_setting.UpdateModelOutputTokenPriceMultiplierByJSONString(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "Failed to update model output token tier multipliers: " + err.Error(),
 			})
 			return
 		}

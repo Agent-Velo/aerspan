@@ -39,6 +39,8 @@ func OaiResponsesToChatHandler(c *gin.Context, info *relaycommon.RelayInfo, resp
 		return nil, types.WithOpenAIError(*oaiError, resp.StatusCode)
 	}
 
+	responsesResp.Model = relaycommon.MaskMappedModelName(c, info, responsesResp.Model)
+
 	chatId := helper.GetResponseID(c)
 	chatResp, usage, err := service.ResponsesResponseToChatCompletionsResponse(&responsesResp, chatId)
 	if err != nil {
@@ -70,6 +72,7 @@ func OaiResponsesToChatStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 	responseId := helper.GetResponseID(c)
 	createAt := time.Now().Unix()
 	model := info.UpstreamModelName
+	modelForClient := relaycommon.MaskMappedModelName(c, info, model)
 
 	var (
 		usage       = &dto.Usage{}
@@ -91,7 +94,7 @@ func OaiResponsesToChatStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 		if sentStart {
 			return true
 		}
-		if err := helper.ObjectData(c, helper.GenerateStartEmptyResponse(responseId, createAt, model, nil)); err != nil {
+		if err := helper.ObjectData(c, helper.GenerateStartEmptyResponse(responseId, createAt, modelForClient, nil)); err != nil {
 			streamErr = types.NewOpenAIError(err, types.ErrorCodeBadResponse, http.StatusInternalServerError)
 			return false
 		}
@@ -140,7 +143,7 @@ func OaiResponsesToChatStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 			Id:      responseId,
 			Object:  "chat.completion.chunk",
 			Created: createAt,
-			Model:   model,
+			Model:   modelForClient,
 			Choices: []dto.ChatCompletionsStreamResponseChoice{
 				{
 					Index: 0,
@@ -182,6 +185,7 @@ func OaiResponsesToChatStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 			if streamResp.Response != nil {
 				if streamResp.Response.Model != "" {
 					model = streamResp.Response.Model
+					modelForClient = relaycommon.MaskMappedModelName(c, info, model)
 				}
 				if streamResp.Response.CreatedAt != 0 {
 					createAt = int64(streamResp.Response.CreatedAt)
@@ -201,7 +205,7 @@ func OaiResponsesToChatStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 					Id:      responseId,
 					Object:  "chat.completion.chunk",
 					Created: createAt,
-					Model:   model,
+					Model:   modelForClient,
 					Choices: []dto.ChatCompletionsStreamResponseChoice{
 						{
 							Index: 0,
@@ -274,6 +278,7 @@ func OaiResponsesToChatStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 			if streamResp.Response != nil {
 				if streamResp.Response.Model != "" {
 					model = streamResp.Response.Model
+					modelForClient = relaycommon.MaskMappedModelName(c, info, model)
 				}
 				if streamResp.Response.CreatedAt != 0 {
 					createAt = int64(streamResp.Response.CreatedAt)
@@ -311,7 +316,7 @@ func OaiResponsesToChatStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 				if sawToolCall && outputText.Len() == 0 {
 					finishReason = "tool_calls"
 				}
-				stop := helper.GenerateStopResponse(responseId, createAt, model, finishReason)
+				stop := helper.GenerateStopResponse(responseId, createAt, modelForClient, finishReason)
 				if err := helper.ObjectData(c, stop); err != nil {
 					streamErr = types.NewOpenAIError(err, types.ErrorCodeBadResponse, http.StatusInternalServerError)
 					return false
@@ -344,7 +349,7 @@ func OaiResponsesToChatStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 	}
 
 	if !sentStart {
-		if err := helper.ObjectData(c, helper.GenerateStartEmptyResponse(responseId, createAt, model, nil)); err != nil {
+		if err := helper.ObjectData(c, helper.GenerateStartEmptyResponse(responseId, createAt, modelForClient, nil)); err != nil {
 			return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponse, http.StatusInternalServerError)
 		}
 	}
@@ -353,13 +358,13 @@ func OaiResponsesToChatStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 		if sawToolCall && outputText.Len() == 0 {
 			finishReason = "tool_calls"
 		}
-		stop := helper.GenerateStopResponse(responseId, createAt, model, finishReason)
+		stop := helper.GenerateStopResponse(responseId, createAt, modelForClient, finishReason)
 		if err := helper.ObjectData(c, stop); err != nil {
 			return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponse, http.StatusInternalServerError)
 		}
 	}
 	if info.ShouldIncludeUsage && usage != nil {
-		if err := helper.ObjectData(c, helper.GenerateFinalUsageResponse(responseId, createAt, model, *usage)); err != nil {
+		if err := helper.ObjectData(c, helper.GenerateFinalUsageResponse(responseId, createAt, modelForClient, *usage)); err != nil {
 			return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponse, http.StatusInternalServerError)
 		}
 	}

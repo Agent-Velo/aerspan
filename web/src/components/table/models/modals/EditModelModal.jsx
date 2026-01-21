@@ -43,12 +43,12 @@ const { Text, Title } = Typography;
 
 // Example endpoint template for quick fill
 const ENDPOINT_TEMPLATE = {
-  openai: { path: '/v1/chat/completions', method: 'POST' },
-  'openai-response': { path: '/v1/responses', method: 'POST' },
-  anthropic: { path: '/v1/messages', method: 'POST' },
-  gemini: { path: '/v1beta/models/{model}:generateContent', method: 'POST' },
-  'jina-rerank': { path: '/rerank', method: 'POST' },
-  'image-generation': { path: '/v1/images/generations', method: 'POST' },
+  openai: { name: 'Chat Completions', uri: '/v1/chat/completions' },
+  'openai-response': { name: 'Responses', uri: '/v1/responses' },
+  anthropic: { name: 'Messages', uri: '/v1/messages' },
+  gemini: { name: 'Generate Content', uri: '/v1beta/models/{model}:generateContent' },
+  'jina-rerank': { name: 'Rerank', uri: '/rerank' },
+  'image-generation': { name: 'Image Generation', uri: '/v1/images/generations' },
 };
 
 const nameRuleOptions = [
@@ -113,6 +113,7 @@ const EditModelModal = (props) => {
 
   const getInitValues = () => ({
     model_name: props.editingModel?.model_name || '',
+    display_name: props.editingModel?.display_name || '',
     description: '',
     icon: '',
     tags: [],
@@ -120,8 +121,24 @@ const EditModelModal = (props) => {
     vendor: '',
     vendor_icon: '',
     endpoints: '',
+    input_types: [],
+    output_types: [],
     total_context: undefined,
     max_output: undefined,
+    openrouter_slug: '',
+    openrouter_created: undefined,
+    openrouter_hugging_face_id: '',
+    openrouter_input_modalities: [],
+    openrouter_output_modalities: [],
+    openrouter_quantization: '',
+    openrouter_pricing_prompt: '',
+    openrouter_pricing_completion: '',
+    openrouter_pricing_image: '',
+    openrouter_pricing_request: '',
+    openrouter_pricing_input_cache_read: '',
+    openrouter_pricing_input_cache_write: '',
+    openrouter_supported_sampling_parameters: [],
+    openrouter_supported_features: [],
     name_rule: props.editingModel?.model_name ? 0 : undefined, // 通过未配置模型过来的固定为精确匹配
     status: true,
     sync_official: true,
@@ -139,12 +156,37 @@ const EditModelModal = (props) => {
       const res = await API.get(`/api/models/${props.editingModel.id}`);
       const { success, message, data } = res.data;
       if (success) {
+        const splitCsv = (val) => {
+          if (!val) return [];
+          if (Array.isArray(val)) {
+            return val.map((v) => String(v).trim()).filter(Boolean);
+          }
+          if (typeof val !== 'string') return [];
+          return val
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean);
+        };
         // 处理tags
         if (data.tags) {
           data.tags = data.tags.split(',').filter(Boolean);
         } else {
           data.tags = [];
         }
+
+        // OpenRouter list fields are stored as CSV in backend.
+        data.openrouter_input_modalities = splitCsv(data.openrouter_input_modalities);
+        data.openrouter_output_modalities = splitCsv(data.openrouter_output_modalities);
+        data.openrouter_supported_sampling_parameters = splitCsv(
+          data.openrouter_supported_sampling_parameters,
+        );
+        data.openrouter_supported_features = splitCsv(
+          data.openrouter_supported_features,
+        );
+
+        data.input_types = splitCsv(data.input_types);
+        data.output_types = splitCsv(data.output_types);
+
         // endpoints 保持原始 JSON 字符串，若为空设为空串
         if (!data.endpoints) {
           data.endpoints = '';
@@ -193,10 +235,28 @@ const EditModelModal = (props) => {
   const submit = async (values) => {
     setLoading(true);
     try {
+      const joinCsv = (val) => {
+        if (!val) return '';
+        if (Array.isArray(val)) {
+          return val
+            .map((v) => String(v).trim())
+            .filter(Boolean)
+            .join(',');
+        }
+        return String(val);
+      };
       const submitData = {
         ...values,
         tags: Array.isArray(values.tags) ? values.tags.join(',') : values.tags,
         endpoints: values.endpoints || '',
+        input_types: joinCsv(values.input_types).toLowerCase(),
+        output_types: joinCsv(values.output_types).toLowerCase(),
+        openrouter_input_modalities: joinCsv(values.openrouter_input_modalities),
+        openrouter_output_modalities: joinCsv(values.openrouter_output_modalities),
+        openrouter_supported_sampling_parameters: joinCsv(
+          values.openrouter_supported_sampling_parameters,
+        ),
+        openrouter_supported_features: joinCsv(values.openrouter_supported_features),
         status: values.status ? 1 : 0,
         sync_official: values.sync_official ? 1 : 0,
       };
@@ -305,9 +365,18 @@ const EditModelModal = (props) => {
                   <Col span={24}>
                     <Form.Input
                       field='model_name'
+                      label={t('模型 ID')}
+                      placeholder={t('请输入模型 ID，如：gpt-4')}
+                      rules={[{ required: true, message: t('请输入模型 ID') }]}
+                      showClear
+                    />
+                  </Col>
+
+                  <Col span={24}>
+                    <Form.Input
+                      field='display_name'
                       label={t('模型名称')}
-                      placeholder={t('请输入模型名称，如：gpt-4')}
-                      rules={[{ required: true, message: t('请输入模型名称') }]}
+                      placeholder={t('用于前端展示的名称（可选）')}
                       showClear
                     />
                   </Col>
@@ -470,6 +539,28 @@ const EditModelModal = (props) => {
                     />
                   </Col>
                   <Col span={24}>
+                    <Form.TagInput
+                      field='input_types'
+                      label={t('支持输入类型')}
+                      placeholder='Text / Image / Video / Audio'
+                      addOnBlur
+                      showClear
+                      extraText={t('可选：text, image, video, audio')}
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+                  <Col span={24}>
+                    <Form.TagInput
+                      field='output_types'
+                      label={t('支持输出类型')}
+                      placeholder='Text / Image / Video / Audio'
+                      addOnBlur
+                      showClear
+                      extraText={t('可选：text, image, video, audio')}
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+                  <Col span={24}>
                     <JSONEditor
                       field='endpoints'
                       label={
@@ -489,7 +580,7 @@ const EditModelModal = (props) => {
                         </span>
                       }
                       placeholder={
-                        '{\n  "openai": {"path": "/v1/chat/completions", "method": "POST"}\n}'
+                        '{\n  "openai": {"name": "Chat Completions", "uri": "/v1/chat/completions"}\n}'
                       }
                       value={values.endpoints}
                       onChange={(val) =>
@@ -499,7 +590,7 @@ const EditModelModal = (props) => {
                       editorType='object'
                       template={ENDPOINT_TEMPLATE}
                       templateLabel={t('填入模板')}
-                      extraText={t('留空则使用默认端点；支持 {path, method}')}
+                      extraText={t('用于模型详情页展示；支持 string(URI) 或 {name, uri}（历史 {path, method} 仍兼容）')}
                       extraFooter={
                         endpointGroups.length > 0 && (
                           <Space wrap>
@@ -563,6 +654,162 @@ const EditModelModal = (props) => {
                       field='status'
                       label={t('状态')}
                       size='large'
+                    />
+                  </Col>
+                </Row>
+              </Card>
+
+              {/* OpenRouter 元数据 */}
+              <Card className='!rounded-2xl shadow-sm border-0 mt-3'>
+                <div className='flex items-center mb-2'>
+                  <Avatar size='small' color='violet' className='mr-2 shadow-md'>
+                    <FileText size={16} />
+                  </Avatar>
+                  <div>
+                    <Text className='text-lg font-medium'>
+                      {t('OpenRouter 元数据')}
+                    </Text>
+                    <div className='text-xs text-gray-600'>
+                      {t(
+                        '用于 /v1/models/openrouter 输出展示；不影响真实计费与调用。',
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <Row gutter={12}>
+                  <Col span={24}>
+                    <Form.Input
+                      field='openrouter_slug'
+                      label={t('OpenRouter Slug')}
+                      placeholder={t('留空则默认等于模型 ID')}
+                      showClear
+                    />
+                  </Col>
+
+                  <Col span={24}>
+                    <Form.InputNumber
+                      field='openrouter_created'
+                      label={t('Created (Unix Timestamp)')}
+                      placeholder='e.g. 1690502400'
+                      min={0}
+                      extraText={t('留空则使用本条元数据的创建时间')}
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+
+                  <Col span={24}>
+                    <Form.Input
+                      field='openrouter_hugging_face_id'
+                      label={t('HuggingFace ID')}
+                      placeholder={t('模型位于 Hugging Face 时填写（可选）')}
+                      showClear
+                    />
+                  </Col>
+
+                  <Col span={24}>
+                    <Form.Input
+                      field='openrouter_quantization'
+                      label={t('Quantization')}
+                      placeholder='e.g. fp8'
+                      showClear
+                    />
+                  </Col>
+
+                  <Col span={24}>
+                    <Form.TagInput
+                      field='openrouter_input_modalities'
+                      label={t('Input Modalities')}
+                      placeholder={t('例如：text,image,file')}
+                      addOnBlur
+                      showClear
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+
+                  <Col span={24}>
+                    <Form.TagInput
+                      field='openrouter_output_modalities'
+                      label={t('Output Modalities')}
+                      placeholder={t('例如：text,image,file')}
+                      addOnBlur
+                      showClear
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+
+                  <Col span={24}>
+                    <Form.TagInput
+                      field='openrouter_supported_sampling_parameters'
+                      label={t('Supported Sampling Parameters')}
+                      placeholder={t('例如：temperature,stop')}
+                      addOnBlur
+                      showClear
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+
+                  <Col span={24}>
+                    <Form.TagInput
+                      field='openrouter_supported_features'
+                      label={t('Supported Features')}
+                      placeholder={t(
+                        '例如：tools,json_mode,structured_outputs,web_search,reasoning',
+                      )}
+                      addOnBlur
+                      showClear
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+
+                  <Col span={12}>
+                    <Form.Input
+                      field='openrouter_pricing_prompt'
+                      label={t('Pricing: prompt (per token)')}
+                      placeholder='e.g. 0.000008'
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.Input
+                      field='openrouter_pricing_completion'
+                      label={t('Pricing: completion (per token)')}
+                      placeholder='e.g. 0.000024'
+                      showClear
+                    />
+                  </Col>
+
+                  <Col span={12}>
+                    <Form.Input
+                      field='openrouter_pricing_image'
+                      label={t('Pricing: image (per image)')}
+                      placeholder='e.g. 0'
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.Input
+                      field='openrouter_pricing_request'
+                      label={t('Pricing: request (per request)')}
+                      placeholder='e.g. 0'
+                      showClear
+                    />
+                  </Col>
+
+                  <Col span={12}>
+                    <Form.Input
+                      field='openrouter_pricing_input_cache_read'
+                      label={t('Pricing: input_cache_read (per token)')}
+                      placeholder='e.g. 0'
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.Input
+                      field='openrouter_pricing_input_cache_write'
+                      label={t('Pricing: input_cache_write (per token)')}
+                      placeholder='e.g. 0'
+                      showClear
                     />
                   </Col>
                 </Row>

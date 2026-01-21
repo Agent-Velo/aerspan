@@ -381,8 +381,22 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 				extraContent = append(extraContent, fmt.Sprintf("Audio input cost %s", audioInputQuota.String()))
 			}
 		}
-		promptTextUSD := baseTokens.Mul(dInputPrice).Div(unitTokens)
-		completionUSD := dCompletionTokens.Mul(dOutputPrice).Div(unitTokens)
+		inputTokensForTier := int(baseTokens.IntPart())
+		if inputTokensForTier < 0 {
+			inputTokensForTier = 0
+		}
+		inputMultiplier, inputTierMatched := pricing_setting.GetModelInputTokenPriceMultiplier(modelName, inputTokensForTier)
+		outputMultiplier, outputTierMatched := pricing_setting.GetModelOutputTokenPriceMultiplier(modelName, completionTokens)
+		dInputMultiplier := decimal.NewFromFloat(inputMultiplier)
+		dOutputMultiplier := decimal.NewFromFloat(outputMultiplier)
+		if inputTierMatched && inputMultiplier != 1 {
+			extraContent = append(extraContent, fmt.Sprintf("Input tier multiplier %g", inputMultiplier))
+		}
+		if outputTierMatched && outputMultiplier != 1 {
+			extraContent = append(extraContent, fmt.Sprintf("Output tier multiplier %g", outputMultiplier))
+		}
+		promptTextUSD := baseTokens.Mul(dInputPrice).Mul(dInputMultiplier).Div(unitTokens)
+		completionUSD := dCompletionTokens.Mul(dOutputPrice).Mul(dOutputMultiplier).Div(unitTokens)
 		totalUSD := promptTextUSD.Add(cachedTokensUSD).Add(imageTokensUSD).Add(cachedCreationUSD).Add(completionUSD)
 
 		quotaCalculateDecimal = totalUSD.Mul(dGroupRatio).Mul(dQuotaPerUnit)
@@ -447,7 +461,9 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 		))
 	}
 
-	if quotaDelta != 0 {
+	// When quotaDelta == 0, the actual consumption equals the pre-consumed quota.
+	// In this case, we still need to run post-consume side effects (e.g. auto top-up, quota notifications).
+	if quotaDelta != 0 || relayInfo.FinalPreConsumedQuota != 0 {
 		err := service.PostConsumeQuota(relayInfo, quotaDelta, relayInfo.FinalPreConsumedQuota, true)
 		if err != nil {
 			logger.LogError(ctx, "error consuming token remain quota: "+err.Error())

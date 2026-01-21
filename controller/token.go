@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -22,6 +21,14 @@ func sanitizeTokenForUser(token *model.Token) {
 	}
 	token.Group = ""
 	token.CrossGroupRetry = false
+	// Token-level restrictions are removed from the product. Keep the columns for
+	// backward compatibility, but always present them as unrestricted.
+	token.ExpiredTime = -1
+	token.RemainQuota = 0
+	token.UnlimitedQuota = true
+	token.ModelLimitsEnabled = false
+	token.ModelLimits = ""
+	token.AllowIps = nil
 }
 
 func GetAllTokens(c *gin.Context) {
@@ -86,21 +93,20 @@ func GetToken(c *gin.Context) {
 func GetTokenStatus(c *gin.Context) {
 	tokenId := c.GetInt("token_id")
 	userId := c.GetInt("id")
-	token, err := model.GetTokenByIds(tokenId, userId)
+	_, err := model.GetTokenByIds(tokenId, userId)
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
-	expiredAt := token.ExpiredTime
-	if expiredAt == -1 {
-		expiredAt = 0
-	}
+	userQuota, _ := model.GetUserQuota(userId, false)
+	usedQuota, _ := model.GetUserUsedQuota(userId)
+	quota := userQuota + usedQuota
 	c.JSON(http.StatusOK, gin.H{
 		"object":          "credit_summary",
-		"total_granted":   token.RemainQuota,
+		"total_granted":   quota,
 		"total_used":      0, // not supported currently
-		"total_available": token.RemainQuota,
-		"expires_at":      expiredAt * 1000,
+		"total_available": userQuota,
+		"expires_at":      0,
 	})
 }
 
@@ -124,7 +130,8 @@ func GetTokenUsage(c *gin.Context) {
 	}
 	tokenKey := parts[1]
 
-	token, err := model.GetTokenByKey(strings.TrimPrefix(tokenKey, "sk-"), false)
+	rawKey, _ := common.ParseTokenAPIKey(tokenKey)
+	token, err := model.GetTokenByKey(rawKey, false)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -133,10 +140,9 @@ func GetTokenUsage(c *gin.Context) {
 		return
 	}
 
-	expiredAt := token.ExpiredTime
-	if expiredAt == -1 {
-		expiredAt = 0
-	}
+	userQuota, _ := model.GetUserQuota(token.UserId, false)
+	usedQuota, _ := model.GetUserUsedQuota(token.UserId)
+	quota := userQuota + usedQuota
 
 	c.JSON(http.StatusOK, gin.H{
 		"code":    true,
@@ -144,13 +150,13 @@ func GetTokenUsage(c *gin.Context) {
 		"data": gin.H{
 			"object":               "token_usage",
 			"name":                 token.Name,
-			"total_granted":        token.RemainQuota + token.UsedQuota,
-			"total_used":           token.UsedQuota,
-			"total_available":      token.RemainQuota,
-			"unlimited_quota":      token.UnlimitedQuota,
-			"model_limits":         token.GetModelLimitsMap(),
-			"model_limits_enabled": token.ModelLimitsEnabled,
-			"expires_at":           expiredAt,
+			"total_granted":        quota,
+			"total_used":           usedQuota,
+			"total_available":      userQuota,
+			"unlimited_quota":      true,
+			"model_limits":         map[string]bool{},
+			"model_limits_enabled": false,
+			"expires_at":           0,
 		},
 	})
 }
@@ -169,24 +175,6 @@ func AddToken(c *gin.Context) {
 		})
 		return
 	}
-	// 非无限额度时，检查额度值是否超出有效范围
-	if !token.UnlimitedQuota {
-		if token.RemainQuota < 0 {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": "Quota cannot be negative",
-			})
-			return
-		}
-		maxQuotaValue := int((1000000000 * common.QuotaPerUnit))
-		if token.RemainQuota > maxQuotaValue {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": fmt.Sprintf("Quota is too large (max %d)", maxQuotaValue),
-			})
-			return
-		}
-	}
 	key, err := common.GenerateKey()
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -200,14 +188,15 @@ func AddToken(c *gin.Context) {
 		UserId:             c.GetInt("id"),
 		Name:               token.Name,
 		Key:                key,
+		Status:             common.TokenStatusEnabled,
 		CreatedTime:        common.GetTimestamp(),
 		AccessedTime:       common.GetTimestamp(),
-		ExpiredTime:        token.ExpiredTime,
-		RemainQuota:        token.RemainQuota,
-		UnlimitedQuota:     token.UnlimitedQuota,
-		ModelLimitsEnabled: token.ModelLimitsEnabled,
-		ModelLimits:        token.ModelLimits,
-		AllowIps:           token.AllowIps,
+		ExpiredTime:        -1,
+		RemainQuota:        0,
+		UnlimitedQuota:     true,
+		ModelLimitsEnabled: false,
+		ModelLimits:        "",
+		AllowIps:           nil,
 		// group is internal-only; don't allow users to set it.
 		Group:           "",
 		CrossGroupRetry: false,
@@ -239,6 +228,26 @@ func DeleteToken(c *gin.Context) {
 	return
 }
 
+func RollTokenKey(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	userId := c.GetInt("id")
+	token, err := model.RollTokenKey(id, userId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	sanitizeTokenForUser(token)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    token,
+	})
+}
+
 func UpdateToken(c *gin.Context) {
 	userId := c.GetInt("id")
 	statusOnly := c.Query("status_only")
@@ -255,55 +264,23 @@ func UpdateToken(c *gin.Context) {
 		})
 		return
 	}
-	if !token.UnlimitedQuota {
-		if token.RemainQuota < 0 {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": "Quota cannot be negative",
-			})
-			return
-		}
-		maxQuotaValue := int((1000000000 * common.QuotaPerUnit))
-		if token.RemainQuota > maxQuotaValue {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": fmt.Sprintf("Quota is too large (max %d)", maxQuotaValue),
-			})
-			return
-		}
-	}
 	cleanToken, err := model.GetTokenByIds(token.Id, userId)
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
-	if token.Status == common.TokenStatusEnabled {
-		if cleanToken.Status == common.TokenStatusExpired && cleanToken.ExpiredTime <= common.GetTimestamp() && cleanToken.ExpiredTime != -1 {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": "Token is expired. Update the expiry time or set it to never expire",
-			})
-			return
-		}
-		if cleanToken.Status == common.TokenStatusExhausted && cleanToken.RemainQuota <= 0 && !cleanToken.UnlimitedQuota {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": "Token quota is exhausted. Update the quota or set it to unlimited",
-			})
-			return
-		}
-	}
 	if statusOnly != "" {
+		if token.Status != common.TokenStatusEnabled && token.Status != common.TokenStatusDisabled {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "Invalid token status",
+			})
+			return
+		}
 		cleanToken.Status = token.Status
 	} else {
 		// If you add more fields, please also update token.Update()
 		cleanToken.Name = token.Name
-		cleanToken.ExpiredTime = token.ExpiredTime
-		cleanToken.RemainQuota = token.RemainQuota
-		cleanToken.UnlimitedQuota = token.UnlimitedQuota
-		cleanToken.ModelLimitsEnabled = token.ModelLimitsEnabled
-		cleanToken.ModelLimits = token.ModelLimits
-		cleanToken.AllowIps = token.AllowIps
 		// group is internal-only; don't allow users to set or change it.
 	}
 	err = cleanToken.Update()

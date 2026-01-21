@@ -74,10 +74,12 @@ func InitOptionMap() {
 	common.OptionMap["WorkerAllowHttpImageRequestEnabled"] = strconv.FormatBool(system_setting.WorkerAllowHttpImageRequestEnabled)
 	common.OptionMap["StripeMinTopUp"] = strconv.Itoa(setting.StripeMinTopUp)
 	common.OptionMap["StripeApiSecret"] = setting.StripeApiSecret
+	common.OptionMap["StripePublishableKey"] = setting.StripePublishableKey
 	common.OptionMap["StripeWebhookSecret"] = setting.StripeWebhookSecret
 	common.OptionMap["StripePriceId"] = setting.StripePriceId
 	common.OptionMap["StripeUnitPrice"] = strconv.FormatFloat(setting.StripeUnitPrice, 'f', -1, 64)
 	common.OptionMap["StripePromotionCodesEnabled"] = strconv.FormatBool(setting.StripePromotionCodesEnabled)
+	common.OptionMap["StripeCurrency"] = setting.StripeCurrency
 	common.OptionMap["TopupGroupRatio"] = common.TopupGroupRatio2JSONString()
 	common.OptionMap["Chats"] = setting.Chats2JsonString()
 	common.OptionMap["AutoGroups"] = setting.AutoGroups2JsonString()
@@ -137,6 +139,8 @@ func InitOptionMap() {
 	common.OptionMap["ExposePricingEnabled"] = strconv.FormatBool(pricing_setting.IsExposePricingEnabled())
 	common.OptionMap["ModelInputPrice"] = pricing_setting.ModelInputPrice2JSONString()
 	common.OptionMap["ModelOutputPrice"] = pricing_setting.ModelOutputPrice2JSONString()
+	common.OptionMap["ModelInputTokenPriceMultiplier"] = pricing_setting.ModelInputTokenPriceMultiplier2JSONString()
+	common.OptionMap["ModelOutputTokenPriceMultiplier"] = pricing_setting.ModelOutputTokenPriceMultiplier2JSONString()
 	common.OptionMap["ModelCacheReadPrice"] = pricing_setting.ModelCacheReadPrice2JSONString()
 	common.OptionMap["ModelImageInputPrice"] = pricing_setting.ModelImageInputPrice2JSONString()
 	common.OptionMap["ModelAudioInputPrice"] = pricing_setting.ModelAudioInputPrice2JSONString()
@@ -321,6 +325,8 @@ func updateOptionMap(key string, value string) (err error) {
 		err = setting.UpdateAutoGroupsByJsonString(value)
 	case "StripeApiSecret":
 		setting.StripeApiSecret = value
+	case "StripePublishableKey":
+		setting.StripePublishableKey = value
 	case "StripeWebhookSecret":
 		setting.StripeWebhookSecret = value
 	case "StripePriceId":
@@ -331,6 +337,8 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.StripeMinTopUp, _ = strconv.Atoi(value)
 	case "StripePromotionCodesEnabled":
 		setting.StripePromotionCodesEnabled = value == "true"
+	case "StripeCurrency":
+		setting.StripeCurrency = strings.ToLower(strings.TrimSpace(value))
 	case "TopupGroupRatio":
 		err = common.UpdateTopupGroupRatioByJSONString(value)
 	case "GitHubClientId":
@@ -411,6 +419,10 @@ func updateOptionMap(key string, value string) (err error) {
 		err = pricing_setting.UpdateModelInputPriceByJSONString(value)
 	case "ModelOutputPrice":
 		err = pricing_setting.UpdateModelOutputPriceByJSONString(value)
+	case "ModelInputTokenPriceMultiplier":
+		err = pricing_setting.UpdateModelInputTokenPriceMultiplierByJSONString(value)
+	case "ModelOutputTokenPriceMultiplier":
+		err = pricing_setting.UpdateModelOutputTokenPriceMultiplierByJSONString(value)
 	case "ModelCacheReadPrice":
 		err = pricing_setting.UpdateModelCacheReadPriceByJSONString(value)
 	case "ModelImageInputPrice":

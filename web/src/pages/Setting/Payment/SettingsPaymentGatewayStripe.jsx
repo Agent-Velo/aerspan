@@ -41,11 +41,13 @@ export default function SettingsPaymentGateway(props) {
   const [loading, setLoading] = useState(false);
   const [inputs, setInputs] = useState({
     StripeApiSecret: '',
+    StripePublishableKey: '',
     StripeWebhookSecret: '',
     StripePriceId: '',
     StripeUnitPrice: 8.0,
     StripeMinTopUp: 1,
     StripePromotionCodesEnabled: false,
+    StripeCurrency: '',
   });
   const [originInputs, setOriginInputs] = useState({});
   const formApiRef = useRef(null);
@@ -54,6 +56,10 @@ export default function SettingsPaymentGateway(props) {
     if (props.options && formApiRef.current) {
       const currentInputs = {
         StripeApiSecret: props.options.StripeApiSecret || '',
+        // Publishable key is safe to expose to users but still optional here.
+        // Note: /api/option will not return keys ending with "Key" for security
+        // reasons, so this field may be empty even if it has been set.
+        StripePublishableKey: props.options.StripePublishableKey || '',
         StripeWebhookSecret: props.options.StripeWebhookSecret || '',
         StripePriceId: props.options.StripePriceId || '',
         StripeUnitPrice:
@@ -68,6 +74,7 @@ export default function SettingsPaymentGateway(props) {
           props.options.StripePromotionCodesEnabled !== undefined
             ? props.options.StripePromotionCodesEnabled
             : false,
+        StripeCurrency: props.options.StripeCurrency || '',
       };
       setInputs(currentInputs);
       setOriginInputs({ ...currentInputs });
@@ -92,6 +99,12 @@ export default function SettingsPaymentGateway(props) {
       if (inputs.StripeApiSecret && inputs.StripeApiSecret !== '') {
         options.push({ key: 'StripeApiSecret', value: inputs.StripeApiSecret });
       }
+      if (inputs.StripePublishableKey && inputs.StripePublishableKey !== '') {
+        options.push({
+          key: 'StripePublishableKey',
+          value: inputs.StripePublishableKey,
+        });
+      }
       if (inputs.StripeWebhookSecret && inputs.StripeWebhookSecret !== '') {
         options.push({
           key: 'StripeWebhookSecret',
@@ -100,6 +113,12 @@ export default function SettingsPaymentGateway(props) {
       }
       if (inputs.StripePriceId !== '') {
         options.push({ key: 'StripePriceId', value: inputs.StripePriceId });
+      }
+      if (inputs.StripeCurrency && inputs.StripeCurrency !== '') {
+        options.push({
+          key: 'StripeCurrency',
+          value: inputs.StripeCurrency,
+        });
       }
       if (
         inputs.StripeUnitPrice !== undefined &&
@@ -192,7 +211,7 @@ export default function SettingsPaymentGateway(props) {
           />
           <Banner
             type='warning'
-            description={`需要包含事件：checkout.session.completed 和 checkout.session.expired`}
+            description={`需要包含事件：checkout.session.completed、checkout.session.expired；若启用 Stripe Elements（绑卡支付 / 自动充值），请增加：payment_intent.succeeded、payment_intent.payment_failed、setup_intent.succeeded`}
           />
           <Row gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}>
             <Col xs={24} sm={24} md={8} lg={8} xl={8}>
@@ -207,17 +226,36 @@ export default function SettingsPaymentGateway(props) {
             </Col>
             <Col xs={24} sm={24} md={8} lg={8} xl={8}>
               <Form.Input
+                field='StripePublishableKey'
+                label={t('Publishable Key')}
+                placeholder={t('pk_xxx 的 Publishable Key（Stripe Elements 必需）')}
+              />
+            </Col>
+            <Col xs={24} sm={24} md={8} lg={8} xl={8}>
+              <Form.Input
                 field='StripeWebhookSecret'
                 label={t('Webhook 签名密钥')}
                 placeholder={t('whsec_xxx 的 Webhook 签名密钥，敏感信息不显示')}
                 type='password'
               />
             </Col>
-            <Col xs={24} sm={24} md={8} lg={8} xl={8}>
+          </Row>
+          <Row
+            gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
+            style={{ marginTop: 16 }}
+          >
+            <Col xs={24} sm={24} md={12} lg={12} xl={12}>
               <Form.Input
                 field='StripePriceId'
                 label={t('商品价格 ID')}
-                placeholder={t('price_xxx 的商品价格 ID，新建产品后可获得')}
+                placeholder={t('price_xxx 的商品价格 ID，新建产品后可获得（用于旧版 Checkout）')}
+              />
+            </Col>
+            <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+              <Form.Input
+                field='StripeCurrency'
+                label={t('PaymentIntent 货币')}
+                placeholder={t('例如：usd / cny（留空则尝试从 Price ID 推断，默认 usd）')}
               />
             </Col>
           </Row>

@@ -2,7 +2,6 @@ package model
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -65,7 +64,13 @@ func GetAllUserTokens(userId int, startIdx int, num int) ([]*Token, error) {
 
 func SearchUserTokens(userId int, keyword string, token string) (tokens []*Token, err error) {
 	if token != "" {
-		token = strings.Trim(token, "sk-")
+		trimmed := strings.TrimSpace(token)
+		if strings.HasPrefix(trimmed, common.TokenAPIKeyPrefix) || strings.HasPrefix(trimmed, common.LegacyTokenAPIKeyPrefix) {
+			if tokenKey, _ := common.ParseTokenAPIKey(trimmed); tokenKey != "" {
+				trimmed = tokenKey
+			}
+		}
+		token = trimmed
 	}
 	err = DB.Where("user_id = ?", userId).Where("name LIKE ?", "%"+keyword+"%").Where(commonKeyCol+" LIKE ?", "%"+token+"%").Find(&tokens).Error
 	return tokens, err
@@ -77,38 +82,10 @@ func ValidateUserToken(key string) (token *Token, err error) {
 	}
 	token, err = GetTokenByKey(key, false)
 	if err == nil {
-		if token.Status == common.TokenStatusExhausted {
-			keyPrefix := key[:3]
-			keySuffix := key[len(key)-3:]
-			return token, errors.New("Token quota exhausted TokenStatusExhausted[sk-" + keyPrefix + "***" + keySuffix + "]")
-		} else if token.Status == common.TokenStatusExpired {
-			return token, errors.New("Token has expired")
-		}
-		if token.Status != common.TokenStatusEnabled {
+		// Token-level expiry/quota/model/ip restrictions are intentionally not enforced.
+		// Only the enabled/disabled status remains effective.
+		if token.Status == common.TokenStatusDisabled {
 			return token, errors.New("Token is unavailable")
-		}
-		if token.ExpiredTime != -1 && token.ExpiredTime < common.GetTimestamp() {
-			if !common.RedisEnabled {
-				token.Status = common.TokenStatusExpired
-				err := token.SelectUpdate()
-				if err != nil {
-					common.SysLog("failed to update token status" + err.Error())
-				}
-			}
-			return token, errors.New("Token has expired")
-		}
-		if !token.UnlimitedQuota && token.RemainQuota <= 0 {
-			if !common.RedisEnabled {
-				// in this case, we can make sure the token is exhausted
-				token.Status = common.TokenStatusExhausted
-				err := token.SelectUpdate()
-				if err != nil {
-					common.SysLog("failed to update token status" + err.Error())
-				}
-			}
-			keyPrefix := key[:3]
-			keySuffix := key[len(key)-3:]
-			return token, errors.New(fmt.Sprintf("[sk-%s***%s] Token quota exhausted !token.UnlimitedQuota && token.RemainQuota = %d", keyPrefix, keySuffix, token.RemainQuota))
 		}
 		return token, nil
 	}
@@ -177,6 +154,55 @@ func (token *Token) Insert() error {
 	return err
 }
 
+func isDuplicateKeyErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "duplicate") || strings.Contains(msg, "unique")
+}
+
+// RollTokenKey rotates a token's Key while keeping the same token record.
+// The old key becomes invalid immediately.
+func RollTokenKey(id int, userId int) (*Token, error) {
+	token, err := GetTokenByIds(id, userId)
+	if err != nil {
+		return nil, err
+	}
+	oldKey := token.Key
+
+	var newKey string
+	for i := 0; i < 5; i++ {
+		newKey, err = common.GenerateKey()
+		if err != nil {
+			return nil, err
+		}
+		err = DB.Model(&Token{}).
+			Where("id = ? AND user_id = ?", id, userId).
+			Updates(map[string]interface{}{
+				"key":           newKey,
+				"accessed_time": common.GetTimestamp(),
+			}).Error
+		if err == nil {
+			break
+		}
+		if !isDuplicateKeyErr(err) {
+			return nil, err
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	token.Key = newKey
+	// Best-effort: invalidate old cache entry and cache the new key.
+	if common.RedisEnabled {
+		_ = cacheDeleteToken(oldKey)
+		_ = cacheSetToken(*token)
+	}
+	return token, nil
+}
+
 // Update Make sure your token's fields is completed, because this will update non-zero values
 func (token *Token) Update() (err error) {
 	defer func() {
@@ -189,8 +215,8 @@ func (token *Token) Update() (err error) {
 			})
 		}
 	}()
-	err = DB.Model(token).Select("name", "status", "expired_time", "remain_quota", "unlimited_quota",
-		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry").Updates(token).Error
+	// Token-level restrictions are deprecated; do not allow updates through this method.
+	err = DB.Model(token).Select("name", "status", "group", "cross_group_retry").Updates(token).Error
 	return err
 }
 
@@ -271,14 +297,6 @@ func IncreaseTokenQuota(id int, key string, quota int) (err error) {
 	if quota < 0 {
 		return errors.New("Quota can't be negative")
 	}
-	if common.RedisEnabled {
-		gopool.Go(func() {
-			err := cacheIncrTokenQuota(key, int64(quota))
-			if err != nil {
-				common.SysLog("failed to increase token quota: " + err.Error())
-			}
-		})
-	}
 	if common.BatchUpdateEnabled {
 		addNewRecord(BatchUpdateTypeTokenQuota, id, quota)
 		return nil
@@ -287,27 +305,17 @@ func IncreaseTokenQuota(id int, key string, quota int) (err error) {
 }
 
 func increaseTokenQuota(id int, quota int) (err error) {
-	err = DB.Model(&Token{}).Where("id = ?", id).Updates(
-		map[string]interface{}{
-			"remain_quota":  gorm.Expr("remain_quota + ?", quota),
-			"used_quota":    gorm.Expr("used_quota - ?", quota),
-			"accessed_time": common.GetTimestamp(),
-		},
-	).Error
+	// Token quota limits are removed; keep UsedQuota for stats only.
+	err = DB.Model(&Token{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"used_quota":    gorm.Expr("used_quota - ?", quota),
+		"accessed_time": common.GetTimestamp(),
+	}).Error
 	return err
 }
 
 func DecreaseTokenQuota(id int, key string, quota int) (err error) {
 	if quota < 0 {
 		return errors.New("Quota can't be negative")
-	}
-	if common.RedisEnabled {
-		gopool.Go(func() {
-			err := cacheDecrTokenQuota(key, int64(quota))
-			if err != nil {
-				common.SysLog("failed to decrease token quota: " + err.Error())
-			}
-		})
 	}
 	if common.BatchUpdateEnabled {
 		addNewRecord(BatchUpdateTypeTokenQuota, id, -quota)
@@ -317,13 +325,11 @@ func DecreaseTokenQuota(id int, key string, quota int) (err error) {
 }
 
 func decreaseTokenQuota(id int, quota int) (err error) {
-	err = DB.Model(&Token{}).Where("id = ?", id).Updates(
-		map[string]interface{}{
-			"remain_quota":  gorm.Expr("remain_quota - ?", quota),
-			"used_quota":    gorm.Expr("used_quota + ?", quota),
-			"accessed_time": common.GetTimestamp(),
-		},
-	).Error
+	// Token quota limits are removed; keep UsedQuota for stats only.
+	err = DB.Model(&Token{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"used_quota":    gorm.Expr("used_quota + ?", quota),
+		"accessed_time": common.GetTimestamp(),
+	}).Error
 	return err
 }
 

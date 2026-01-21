@@ -139,13 +139,15 @@ export const getPricingTableColumns = ({
     dataIndex: 'model_name',
     render: (text, record, index) => {
       return renderModelTag(text, {
+        label: record.display_name || text,
         onClick: () => {
           copyText(text);
         },
       });
     },
     onFilter: (value, record) =>
-      record.model_name.toLowerCase().includes(value.toLowerCase()),
+      record.model_name.toLowerCase().includes(value.toLowerCase()) ||
+      (record.display_name || '').toLowerCase().includes(value.toLowerCase()),
   };
 
   const quotaColumn = {
