@@ -95,6 +95,8 @@ type NewAPIError struct {
 	errorCode      ErrorCode
 	StatusCode     int
 	Metadata       json.RawMessage
+	upstream       bool
+	upstreamStatus int
 }
 
 // Unwrap enables errors.Is / errors.As to work with NewAPIError by exposing the underlying error.
@@ -117,6 +119,23 @@ func (e *NewAPIError) GetErrorType() ErrorType {
 		return ""
 	}
 	return e.errorType
+}
+
+func (e *NewAPIError) IsUpstreamError() bool {
+	if e == nil {
+		return false
+	}
+	return e.upstream
+}
+
+func (e *NewAPIError) UpstreamStatusCode() int {
+	if e == nil {
+		return 0
+	}
+	if e.upstreamStatus != 0 {
+		return e.upstreamStatus
+	}
+	return e.StatusCode
 }
 
 func (e *NewAPIError) Error() string {
@@ -380,6 +399,15 @@ func IsSkipRetryError(err *NewAPIError) bool {
 func ErrOptionWithSkipRetry() NewAPIErrorOptions {
 	return func(e *NewAPIError) {
 		e.skipRetry = true
+	}
+}
+
+func ErrOptionWithUpstreamError() NewAPIErrorOptions {
+	return func(e *NewAPIError) {
+		e.upstream = true
+		if e.upstreamStatus == 0 {
+			e.upstreamStatus = e.StatusCode
+		}
 	}
 }
 

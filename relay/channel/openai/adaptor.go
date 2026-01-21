@@ -171,6 +171,13 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 		url = strings.Replace(url, "{model}", info.UpstreamModelName, -1)
 		return url, nil
 	default:
+		if info.ChannelType == constant.ChannelTypeOpenAI &&
+			info.RelayMode == relayconstant.RelayModeCompletions &&
+			info.ChannelSetting.CompletionsViaChatCompletions &&
+			!model_setting.GetGlobalSettings().PassThroughRequestEnabled &&
+			!info.ChannelSetting.PassThroughBodyEnabled {
+			return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, "/v1/chat/completions", info.ChannelType), nil
+		}
 		if info.RelayFormat == types.RelayFormatClaude || info.RelayFormat == types.RelayFormatGemini {
 			return fmt.Sprintf("%s/v1/chat/completions", info.ChannelBaseUrl), nil
 		}
@@ -216,6 +223,21 @@ func (a *Adaptor) SetupRequestHeader(c *gin.Context, header *http.Header, info *
 func (a *Adaptor) ConvertOpenAIRequest(c *gin.Context, info *relaycommon.RelayInfo, request *dto.GeneralOpenAIRequest) (any, error) {
 	if request == nil {
 		return nil, errors.New("request is nil")
+	}
+	if info.ChannelType == constant.ChannelTypeOpenAI &&
+		info.RelayMode == relayconstant.RelayModeCompletions &&
+		info.ChannelSetting.CompletionsViaChatCompletions {
+		promptText := completionsPromptToString(request.Prompt)
+		request.Messages = []dto.Message{
+			{
+				Role:    "assistant",
+				Content: promptText,
+			},
+		}
+		// Remove legacy fields to keep the upstream payload chat-completions compatible.
+		request.Prompt = nil
+		request.Prefix = nil
+		request.Suffix = nil
 	}
 	if info.ChannelType != constant.ChannelTypeOpenAI && info.ChannelType != constant.ChannelTypeAzure {
 		request.StreamOptions = nil
@@ -606,10 +628,18 @@ func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycom
 			usage, err = OaiResponsesHandler(c, info, resp)
 		}
 	default:
-		if info.IsStream {
-			usage, err = OaiStreamHandler(c, info, resp)
+		if shouldUseChatCompletionsForCompletions(info) {
+			if info.IsStream {
+				usage, err = OaiCompletionsViaChatStreamHandler(c, info, resp)
+			} else {
+				usage, err = OpenaiCompletionsViaChatHandler(c, info, resp)
+			}
 		} else {
-			usage, err = OpenaiHandler(c, info, resp)
+			if info.IsStream {
+				usage, err = OaiStreamHandler(c, info, resp)
+			} else {
+				usage, err = OpenaiHandler(c, info, resp)
+			}
 		}
 	}
 	return

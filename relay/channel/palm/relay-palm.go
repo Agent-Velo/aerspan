@@ -118,7 +118,7 @@ func palmHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respons
 			Type:    palmResponse.Error.Status,
 			Param:   "",
 			Code:    palmResponse.Error.Code,
-		}, resp.StatusCode)
+		}, resp.StatusCode, types.ErrOptionWithUpstreamError())
 	}
 	fullTextResponse := responsePaLM2OpenAI(&palmResponse)
 	usage := service.ResponseText2Usage(c, palmResponse.Candidates[0].Content, info.UpstreamModelName, info.GetEstimatePromptTokens())

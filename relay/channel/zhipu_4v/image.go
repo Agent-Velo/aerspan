@@ -71,7 +71,7 @@ func zhipu4vImageHandler(c *gin.Context, resp *http.Response, info *relaycommon.
 			Message: zhipuResp.Error.Message,
 			Type:    "zhipu_image_error",
 			Code:    zhipuResp.Error.Code,
-		}, resp.StatusCode)
+		}, resp.StatusCode, types.ErrOptionWithUpstreamError())
 	}
 
 	payload := openAIImagePayload{}

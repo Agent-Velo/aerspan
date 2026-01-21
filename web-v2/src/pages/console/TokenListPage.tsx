@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Ban, Check, Copy, Eye, Pencil, RefreshCcw, Trash2 } from 'lucide-react';
 import { fetchJson } from '@/api/client';
@@ -7,9 +7,8 @@ import { useStatus } from '@/stores/status/StatusStore';
 import { toast } from '@/ui/toast';
 import { confirmModal } from '@/ui/confirmModal';
 import { copyText } from '@/lib/clipboard';
-import { formatUnixSeconds } from '@/lib/time';
 import { formatTokenApiKey, getTokenApiKeyPrefix } from '@/lib/tokenApiKey';
-import { Button, Card, Checkbox, Chip, Input, Label, ListBox, Modal, Select, TextField } from '@/components/ui/heroui';
+import { Button, Card, Chip, Input, Label, ListBox, Modal, Select, TextField } from '@/components/ui/heroui';
 import { TableActionButton } from '@/components/ui/TableActionButton';
 
 type TokenStatus = 1 | 2 | 3 | 4;
@@ -78,25 +77,6 @@ function tokenStatusChipColor(status: TokenStatus): 'default' | 'success' | 'war
 
 function getServerAddress(status: any): string {
   return (status?.server_address as string | undefined) || window.location.origin;
-}
-
-function loadCompactModes(): Record<string, boolean> {
-  try {
-    return JSON.parse(localStorage.getItem('table_compact_modes') || '{}');
-  } catch {
-    return {};
-  }
-}
-
-function setCompactMode(tableKey: string, value: boolean) {
-  const modes = loadCompactModes();
-  modes[tableKey] = value;
-  localStorage.setItem('table_compact_modes', JSON.stringify(modes));
-}
-
-function getCompactMode(tableKey: string): boolean {
-  const modes = loadCompactModes();
-  return Boolean(modes[tableKey]);
 }
 
 function FluentPrefillModal({
@@ -252,13 +232,10 @@ export function TokenListPage() {
   const [total, setTotal] = useState(0);
 
   const [keyword, setKeyword] = useState('');
-  const [tokenQuery, setTokenQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [searchMode, setSearchMode] = useState(false);
 
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [keyModalToken, setKeyModalToken] = useState<Token | null>(null);
-  const [compact, setCompact] = useState(() => getCompactMode('tokens'));
 
   const refresh = async (nextPage = page, nextSize = pageSize) => {
     setLoading(true);
@@ -270,7 +247,6 @@ export function TokenListPage() {
       setTotal(res.data.total || 0);
       setPage(res.data.page || nextPage);
       setPageSize(res.data.page_size || nextSize);
-      setSelectedIds([]);
       setSearchMode(false);
     } finally {
       setLoading(false);
@@ -283,7 +259,7 @@ export function TokenListPage() {
   }, []);
 
   const search = async () => {
-    if (!keyword.trim() && !tokenQuery.trim()) {
+    if (!keyword.trim()) {
       await refresh(1, pageSize);
       return;
     }
@@ -292,78 +268,14 @@ export function TokenListPage() {
       const res = await fetchJson<ApiResponse<Token[]>>('/api/token/search', {
         params: {
           keyword: keyword.trim(),
-          token: tokenQuery.trim(),
         },
       });
       setTokens(res.data || []);
       setTotal((res.data || []).length);
       setPage(1);
       setSearchMode(true);
-      setSelectedIds([]);
     } finally {
       setSearching(false);
-    }
-  };
-
-  const toggleAll = (checked: boolean) => {
-    if (!checked) {
-      setSelectedIds([]);
-      return;
-    }
-    setSelectedIds(tokens.map((t) => t.id));
-  };
-
-  const toggleOne = (id: number, checked: boolean) => {
-    setSelectedIds((prev) => {
-      if (!checked) return prev.filter((x) => x !== id);
-      return prev.includes(id) ? prev : [...prev, id];
-    });
-  };
-
-  const selectedTokens = useMemo(() => {
-    const map = new Map(tokens.map((t) => [t.id, t] as const));
-    return selectedIds.map((id) => map.get(id)).filter(Boolean) as Token[];
-  }, [selectedIds, tokens]);
-
-  const batchCopy = async (mode: 'keys' | 'name+key') => {
-    if (selectedTokens.length === 0) {
-      toast.warning('Select at least one token.');
-      return;
-    }
-    const content =
-      mode === 'keys'
-        ? selectedTokens.map((t) => formatTokenApiKey(t.key)).join('\n')
-        : selectedTokens
-            .map((t) => `${t.name}    ${formatTokenApiKey(t.key)}`)
-            .join('\n');
-    const ok = await copyText(content);
-    if (ok) toast.success('Copied');
-    else toast.error('Copy failed');
-  };
-
-  const batchDelete = async () => {
-    if (selectedTokens.length === 0) {
-      toast.warning('Select at least one token.');
-      return;
-    }
-    const ok = await confirmModal(`Delete ${selectedTokens.length} tokens?`, {
-      title: 'Delete tokens',
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
-      confirmVariant: 'danger',
-    });
-    if (!ok) return;
-    setLoading(true);
-    try {
-      const ids = selectedTokens.map((t) => t.id);
-      const res = await fetchJson<ApiResponse<number>>('/api/token/batch', {
-        method: 'POST',
-        body: { ids },
-      });
-      toast.success(`Deleted ${res.data || 0} tokens`);
-      await refresh(Math.max(1, page - 1), pageSize);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -459,9 +371,7 @@ export function TokenListPage() {
       return;
     }
     const serverAddress = getServerAddress(status);
-    const tokenToUse =
-      fluentOverrideKey ||
-      (selectedTokens.length === 1 ? selectedTokens[0]?.key : tokens.length > 0 ? tokens[0]?.key : '');
+    const tokenToUse = fluentOverrideKey || (tokens.length > 0 ? tokens[0]?.key : '');
     if (!tokenToUse) {
       toast.warning('No token available.');
       return;
@@ -509,7 +419,7 @@ export function TokenListPage() {
     observer.observe(root, { childList: true, subtree: true });
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tokens, selectedTokens.length]);
+  }, [tokens]);
 
   return (
     <div className='space-y-4'>
@@ -533,15 +443,6 @@ export function TokenListPage() {
         </div>
         <div className='flex flex-wrap gap-2'>
           <Button onPress={() => navigate('/api-keys/new')}>Create API Key</Button>
-          <Button variant='secondary' onPress={() => batchCopy('keys')}>
-            Copy keys
-          </Button>
-          <Button variant='secondary' onPress={() => batchCopy('name+key')}>
-            Copy name + key
-          </Button>
-          <Button variant='danger-soft' onPress={batchDelete}>
-            Delete selected
-          </Button>
         </div>
       </div>
 
@@ -552,10 +453,6 @@ export function TokenListPage() {
               <Label>Keyword</Label>
               <Input value={keyword} />
             </TextField>
-            <TextField fullWidth name='tokenQuery' onChange={setTokenQuery}>
-              <Label>API Key substring</Label>
-              <Input value={tokenQuery} />
-            </TextField>
             <div className='flex gap-2'>
               <Button onPress={search} isDisabled={searching}>
                 Search
@@ -564,7 +461,6 @@ export function TokenListPage() {
                 variant='secondary'
                 onPress={() => {
                   setKeyword('');
-                  setTokenQuery('');
                   refresh(1, pageSize).catch(() => {});
                 }}
               >
@@ -572,22 +468,6 @@ export function TokenListPage() {
               </Button>
             </div>
           </div>
-
-          <Checkbox
-            id='token-compact-mode'
-            isSelected={compact}
-            onChange={(selected) => {
-              setCompact(selected);
-              setCompactMode('tokens', selected);
-            }}
-          >
-            <Checkbox.Control>
-              <Checkbox.Indicator />
-            </Checkbox.Control>
-            <Checkbox.Content>
-              <Label htmlFor='token-compact-mode'>Compact mode</Label>
-            </Checkbox.Content>
-          </Checkbox>
         </Card.Content>
       </Card>
 
@@ -595,21 +475,8 @@ export function TokenListPage() {
         <table className='app-table'>
           <thead>
             <tr>
-              <th>
-                <input
-                  type='checkbox'
-                  checked={selectedIds.length > 0 && selectedIds.length === tokens.length}
-                  onChange={(e) => toggleAll(e.target.checked)}
-                />
-              </th>
               <th>Name</th>
               <th>Status</th>
-              {!compact ? (
-                <>
-                  <th>Used</th>
-                  <th>Created</th>
-                </>
-              ) : null}
               <th>Key</th>
               <th>Actions</th>
             </tr>
@@ -619,25 +486,12 @@ export function TokenListPage() {
               const muted = token.status === 2;
               return (
                 <tr key={token.id} className={muted ? 'app-table-row-muted' : undefined}>
-                  <td>
-                    <input
-                      type='checkbox'
-                      checked={selectedIds.includes(token.id)}
-                      onChange={(e) => toggleOne(token.id, e.target.checked)}
-                    />
-                  </td>
                   <td>{token.name || '(unnamed)'}</td>
                   <td>
                     <Chip size='sm' variant='secondary' color={tokenStatusChipColor(token.status)}>
                       {tokenStatusLabel(token.status)}
                     </Chip>
                   </td>
-                  {!compact ? (
-                    <>
-                      <td>{token.used_quota}</td>
-                      <td>{formatUnixSeconds(token.created_time)}</td>
-                    </>
-                  ) : null}
                   <td>
                     <div className='flex items-center gap-2'>
                       <Chip size='sm' variant='soft'>

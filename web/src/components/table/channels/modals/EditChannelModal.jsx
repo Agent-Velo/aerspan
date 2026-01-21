@@ -151,6 +151,7 @@ const EditChannelModal = (props) => {
     multi_key_mode: 'random',
     // 渠道额外设置的默认值
     force_format: false,
+    completions_via_chat_completions: false,
     thinking_to_content: false,
     proxy: '',
     pass_through_body_enabled: false,
@@ -370,10 +371,12 @@ const EditChannelModal = (props) => {
   // 渠道额外设置状态
   const [channelSettings, setChannelSettings] = useState({
     force_format: false,
+    completions_via_chat_completions: false,
     thinking_to_content: false,
     proxy: '',
     pass_through_body_enabled: false,
     system_prompt: '',
+    system_prompt_override: false,
   });
   const showApiConfigCard = true; // 控制是否显示 API 配置卡片
   const getInitValues = () => ({ ...originInputs });
@@ -576,6 +579,8 @@ const EditChannelModal = (props) => {
         try {
           const parsedSettings = JSON.parse(data.setting);
           data.force_format = parsedSettings.force_format || false;
+          data.completions_via_chat_completions =
+            parsedSettings.completions_via_chat_completions || false;
           data.thinking_to_content =
             parsedSettings.thinking_to_content || false;
           data.proxy = parsedSettings.proxy || '';
@@ -587,6 +592,7 @@ const EditChannelModal = (props) => {
         } catch (error) {
           console.error('Failed to parse channel settings JSON:', error);
           data.force_format = false;
+          data.completions_via_chat_completions = false;
           data.thinking_to_content = false;
           data.proxy = '';
           data.pass_through_body_enabled = false;
@@ -595,6 +601,7 @@ const EditChannelModal = (props) => {
         }
       } else {
         data.force_format = false;
+        data.completions_via_chat_completions = false;
         data.thinking_to_content = false;
         data.proxy = '';
         data.pass_through_body_enabled = false;
@@ -663,6 +670,7 @@ const EditChannelModal = (props) => {
       // 同步更新channelSettings状态显示
       setChannelSettings({
         force_format: data.force_format,
+        completions_via_chat_completions: data.completions_via_chat_completions,
         thinking_to_content: data.thinking_to_content,
         proxy: data.proxy,
         pass_through_body_enabled: data.pass_through_body_enabled,
@@ -1296,6 +1304,8 @@ const EditChannelModal = (props) => {
     // 生成渠道额外设置JSON
     const channelExtraSettings = {
       force_format: localInputs.force_format || false,
+      completions_via_chat_completions:
+        localInputs.completions_via_chat_completions || false,
       thinking_to_content: localInputs.thinking_to_content || false,
       proxy: localInputs.proxy || '',
       pass_through_body_enabled: localInputs.pass_through_body_enabled || false,
@@ -1347,6 +1357,7 @@ const EditChannelModal = (props) => {
 
     // 清理不需要发送到后端的字段
     delete localInputs.force_format;
+    delete localInputs.completions_via_chat_completions;
     delete localInputs.thinking_to_content;
     delete localInputs.proxy;
     delete localInputs.pass_through_body_enabled;
@@ -3199,6 +3210,24 @@ const EditChannelModal = (props) => {
                         }
                         extraText={t(
                           '强制将响应格式化为 OpenAI 标准格式（只适用于OpenAI渠道类型）',
+                        )}
+                      />
+                    )}
+
+                    {inputs.type === 1 && (
+                      <Form.Switch
+                        field='completions_via_chat_completions'
+                        label={t('Completions 使用 Chat Completions')}
+                        checkedText={t('开')}
+                        uncheckedText={t('关')}
+                        onChange={(value) =>
+                          handleChannelSettingsChange(
+                            'completions_via_chat_completions',
+                            value,
+                          )
+                        }
+                        extraText={t(
+                          '开启后：/v1/completions 将通过 /v1/chat/completions 转发（最后一条消息使用 assistant role），并返回 completions 兼容格式',
                         )}
                       />
                     )}
