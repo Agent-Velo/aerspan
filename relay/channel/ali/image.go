@@ -315,7 +315,7 @@ func aliImageHandler(a *Adaptor, c *gin.Context, resp *http.Response, info *rela
 				Type:    "ali_error",
 				Param:   "",
 				Code:    aliResponse.Output.Code,
-			}, resp.StatusCode), nil
+			}, resp.StatusCode, types.ErrOptionWithUpstreamError()), nil
 		}
 	}
 

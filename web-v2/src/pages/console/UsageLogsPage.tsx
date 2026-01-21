@@ -27,34 +27,6 @@ type LogRow = {
 
 type PageInfo<T> = { page: number; page_size: number; total: number; items: T };
 
-const DEFAULT_COLUMNS = [
-  'created_at',
-  'model_name',
-  'token_name',
-  'quota',
-  'prompt_tokens',
-  'completion_tokens',
-  'use_time',
-] as const;
-
-type ColumnKey = (typeof DEFAULT_COLUMNS)[number] | 'is_stream' | 'ip';
-
-function loadColumns(): ColumnKey[] {
-  try {
-    const raw = localStorage.getItem('logs-table-columns-user');
-    if (!raw) return [...DEFAULT_COLUMNS];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [...DEFAULT_COLUMNS];
-    return parsed as ColumnKey[];
-  } catch {
-    return [...DEFAULT_COLUMNS];
-  }
-}
-
-function saveColumns(keys: ColumnKey[]) {
-  localStorage.setItem('logs-table-columns-user', JSON.stringify(keys));
-}
-
 function loadPageSize() {
   const raw = localStorage.getItem('page-size');
   const num = raw ? Number(raw) : 20;
@@ -87,7 +59,6 @@ export function UsageLogsPage() {
   const [end, setEnd] = useState(() => toDateTimeLocalValueFromSeconds(Math.floor(Date.now() / 1000) + 3600));
 
   const [stat, setStat] = useState<{ quota: number; rpm: number; tpm: number } | null>(null);
-  const [columns, setColumns] = useState<ColumnKey[]>(() => loadColumns());
 
   const [detail, setDetail] = useState<LogRow | null>(null);
 
@@ -136,14 +107,6 @@ export function UsageLogsPage() {
     load(page, pageSize).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, pageSize]);
-
-  const toggleColumn = (key: ColumnKey, checked: boolean) => {
-    setColumns((prev) => {
-      const next = checked ? (prev.includes(key) ? prev : [...prev, key]) : prev.filter((c) => c !== key);
-      saveColumns(next);
-      return next;
-    });
-  };
 
   return (
     <div className='space-y-4'>
@@ -241,30 +204,6 @@ export function UsageLogsPage() {
               <Input value={end} />
             </TextField>
           </div>
-
-          <div className='flex flex-wrap items-center gap-2'>
-            <div className='text-xs font-semibold uppercase text-muted'>Columns</div>
-            {([
-              'created_at',
-              'model_name',
-              'token_name',
-              'quota',
-              'prompt_tokens',
-              'completion_tokens',
-              'use_time',
-              'is_stream',
-              'ip',
-            ] as ColumnKey[]).map((c) => (
-              <label key={c} className='flex items-center gap-1 text-sm'>
-                <input
-                  type='checkbox'
-                  checked={columns.includes(c)}
-                  onChange={(e) => toggleColumn(c, e.target.checked)}
-                />
-                {c}
-              </label>
-            ))}
-          </div>
         </Card.Content>
       </Card>
 
@@ -272,30 +211,30 @@ export function UsageLogsPage() {
         <table className='app-table'>
           <thead>
             <tr>
-              {columns.includes('created_at') ? <th className='px-3 py-2'>Time</th> : null}
-              {columns.includes('model_name') ? <th className='px-3 py-2'>Model</th> : null}
-              {columns.includes('token_name') ? <th className='px-3 py-2'>Token</th> : null}
-              {columns.includes('quota') ? <th className='px-3 py-2'>Cost</th> : null}
-              {columns.includes('prompt_tokens') ? <th className='px-3 py-2'>Prompt</th> : null}
-              {columns.includes('completion_tokens') ? <th className='px-3 py-2'>Completion</th> : null}
-              {columns.includes('use_time') ? <th className='px-3 py-2'>Time(s)</th> : null}
-              {columns.includes('is_stream') ? <th className='px-3 py-2'>Stream</th> : null}
-              {columns.includes('ip') ? <th className='px-3 py-2'>IP</th> : null}
+              <th className='px-3 py-2'>Time</th>
+              <th className='px-3 py-2'>Model</th>
+              <th className='px-3 py-2'>Token</th>
+              <th className='px-3 py-2'>Cost</th>
+              <th className='px-3 py-2'>Prompt</th>
+              <th className='px-3 py-2'>Completion</th>
+              <th className='px-3 py-2'>Time(s)</th>
+              <th className='px-3 py-2'>Stream</th>
+              <th className='px-3 py-2'>IP</th>
               <th className='px-3 py-2'>Actions</th>
             </tr>
           </thead>
           <tbody>
             {items.map((row) => (
               <tr key={`${row.id}-${row.created_at}`}>
-                {columns.includes('created_at') ? <td className='px-3 py-2'>{formatUnixSeconds(row.created_at)}</td> : null}
-                {columns.includes('model_name') ? <td className='px-3 py-2'>{row.model_name}</td> : null}
-                {columns.includes('token_name') ? <td className='px-3 py-2'>{row.token_name}</td> : null}
-                {columns.includes('quota') ? <td className='px-3 py-2'>${(row.quota / quotaPerUnit).toFixed(6)}</td> : null}
-                {columns.includes('prompt_tokens') ? <td className='px-3 py-2'>{row.prompt_tokens}</td> : null}
-                {columns.includes('completion_tokens') ? <td className='px-3 py-2'>{row.completion_tokens}</td> : null}
-                {columns.includes('use_time') ? <td className='px-3 py-2'>{row.use_time}</td> : null}
-                {columns.includes('is_stream') ? <td className='px-3 py-2'>{row.is_stream ? 'Yes' : 'No'}</td> : null}
-                {columns.includes('ip') ? <td className='px-3 py-2'>{row.ip}</td> : null}
+                <td className='px-3 py-2'>{formatUnixSeconds(row.created_at)}</td>
+                <td className='px-3 py-2'>{row.model_name}</td>
+                <td className='px-3 py-2'>{row.token_name}</td>
+                <td className='px-3 py-2'>${(row.quota / quotaPerUnit).toFixed(6)}</td>
+                <td className='px-3 py-2'>{row.prompt_tokens}</td>
+                <td className='px-3 py-2'>{row.completion_tokens}</td>
+                <td className='px-3 py-2'>{row.use_time}</td>
+                <td className='px-3 py-2'>{row.is_stream ? 'Yes' : 'No'}</td>
+                <td className='px-3 py-2'>{row.ip}</td>
                 <td className='px-3 py-2'>
                   <div className='flex flex-wrap gap-2'>
                     <TableActionButton label='View' onPress={() => setDetail(row)}>

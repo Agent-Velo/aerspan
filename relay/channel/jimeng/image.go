@@ -69,7 +69,7 @@ func jimengImageHandler(c *gin.Context, resp *http.Response, info *relaycommon.R
 			Type:    "jimeng_error",
 			Param:   "",
 			Code:    fmt.Sprintf("%d", jimengResponse.Code),
-		}, resp.StatusCode)
+		}, resp.StatusCode, types.ErrOptionWithUpstreamError())
 	}
 
 	// Convert Jimeng response to OpenAI format

@@ -148,7 +148,7 @@ func tencentHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Resp
 		return nil, types.WithOpenAIError(types.OpenAIError{
 			Message: tencentSb.Response.Error.Message,
 			Code:    tencentSb.Response.Error.Code,
-		}, resp.StatusCode)
+		}, resp.StatusCode, types.ErrOptionWithUpstreamError())
 	}
 	fullTextResponse := responseTencent2OpenAI(&tencentSb.Response)
 	jsonResponse, err := common.Marshal(fullTextResponse)

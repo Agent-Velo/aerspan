@@ -232,7 +232,7 @@ func OpenaiHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 	simpleResponse.Model = relaycommon.MaskMappedModelName(c, info, simpleResponse.Model)
 
 	if oaiError := simpleResponse.GetOpenAIError(); oaiError != nil && oaiError.Type != "" {
-		return nil, types.WithOpenAIError(*oaiError, resp.StatusCode)
+		return nil, types.WithOpenAIError(*oaiError, resp.StatusCode, types.ErrOptionWithUpstreamError())
 	}
 
 	forceFormat := false

@@ -36,7 +36,7 @@ func OaiResponsesToChatHandler(c *gin.Context, info *relaycommon.RelayInfo, resp
 	}
 
 	if oaiError := responsesResp.GetOpenAIError(); oaiError != nil && oaiError.Type != "" {
-		return nil, types.WithOpenAIError(*oaiError, resp.StatusCode)
+		return nil, types.WithOpenAIError(*oaiError, resp.StatusCode, types.ErrOptionWithUpstreamError())
 	}
 
 	responsesResp.Model = relaycommon.MaskMappedModelName(c, info, responsesResp.Model)
@@ -327,7 +327,7 @@ func OaiResponsesToChatStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 		case "response.error", "response.failed":
 			if streamResp.Response != nil {
 				if oaiErr := streamResp.Response.GetOpenAIError(); oaiErr != nil && oaiErr.Type != "" {
-					streamErr = types.WithOpenAIError(*oaiErr, http.StatusInternalServerError)
+					streamErr = types.WithOpenAIError(*oaiErr, http.StatusInternalServerError, types.ErrOptionWithUpstreamError())
 					return false
 				}
 			}

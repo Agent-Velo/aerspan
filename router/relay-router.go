@@ -43,6 +43,7 @@ func SetRelayRouter(router *gin.Engine) {
 	}
 
 	geminiRouter := router.Group("/v1beta/models")
+	geminiRouter.Use(middleware.LLMEndpointGuard())
 	geminiRouter.Use(middleware.TokenAuth())
 	{
 		geminiRouter.GET("", func(c *gin.Context) {
@@ -51,6 +52,7 @@ func SetRelayRouter(router *gin.Engine) {
 	}
 
 	geminiCompatibleRouter := router.Group("/v1beta/openai/models")
+	geminiCompatibleRouter.Use(middleware.LLMEndpointGuard())
 	geminiCompatibleRouter.Use(middleware.TokenAuth())
 	{
 		geminiCompatibleRouter.GET("", func(c *gin.Context) {
@@ -59,11 +61,13 @@ func SetRelayRouter(router *gin.Engine) {
 	}
 
 	playgroundRouter := router.Group("/pg")
+	playgroundRouter.Use(middleware.LLMEndpointGuard())
 	playgroundRouter.Use(middleware.UserAuth(), middleware.Distribute())
 	{
 		playgroundRouter.POST("/chat/completions", controller.Playground)
 	}
 	relayV1Router := router.Group("/v1")
+	relayV1Router.Use(middleware.LLMEndpointGuard())
 	relayV1Router.Use(middleware.TokenAuth())
 	relayV1Router.Use(middleware.ModelRequestRateLimit())
 	{
@@ -173,6 +177,7 @@ func SetRelayRouter(router *gin.Engine) {
 	}
 
 	relayGeminiRouter := router.Group("/v1beta")
+	relayGeminiRouter.Use(middleware.LLMEndpointGuard())
 	relayGeminiRouter.Use(middleware.TokenAuth())
 	relayGeminiRouter.Use(middleware.ModelRequestRateLimit())
 	relayGeminiRouter.Use(middleware.Distribute())
