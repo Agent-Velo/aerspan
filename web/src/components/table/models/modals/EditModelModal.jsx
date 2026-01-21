@@ -43,12 +43,12 @@ const { Text, Title } = Typography;
 
 // Example endpoint template for quick fill
 const ENDPOINT_TEMPLATE = {
-  openai: { path: '/v1/chat/completions', method: 'POST' },
-  'openai-response': { path: '/v1/responses', method: 'POST' },
-  anthropic: { path: '/v1/messages', method: 'POST' },
-  gemini: { path: '/v1beta/models/{model}:generateContent', method: 'POST' },
-  'jina-rerank': { path: '/rerank', method: 'POST' },
-  'image-generation': { path: '/v1/images/generations', method: 'POST' },
+  openai: { name: 'Chat Completions', uri: '/v1/chat/completions' },
+  'openai-response': { name: 'Responses', uri: '/v1/responses' },
+  anthropic: { name: 'Messages', uri: '/v1/messages' },
+  gemini: { name: 'Generate Content', uri: '/v1beta/models/{model}:generateContent' },
+  'jina-rerank': { name: 'Rerank', uri: '/rerank' },
+  'image-generation': { name: 'Image Generation', uri: '/v1/images/generations' },
 };
 
 const nameRuleOptions = [
@@ -121,6 +121,8 @@ const EditModelModal = (props) => {
     vendor: '',
     vendor_icon: '',
     endpoints: '',
+    input_types: [],
+    output_types: [],
     total_context: undefined,
     max_output: undefined,
     openrouter_slug: '',
@@ -181,6 +183,9 @@ const EditModelModal = (props) => {
         data.openrouter_supported_features = splitCsv(
           data.openrouter_supported_features,
         );
+
+        data.input_types = splitCsv(data.input_types);
+        data.output_types = splitCsv(data.output_types);
 
         // endpoints 保持原始 JSON 字符串，若为空设为空串
         if (!data.endpoints) {
@@ -244,6 +249,8 @@ const EditModelModal = (props) => {
         ...values,
         tags: Array.isArray(values.tags) ? values.tags.join(',') : values.tags,
         endpoints: values.endpoints || '',
+        input_types: joinCsv(values.input_types).toLowerCase(),
+        output_types: joinCsv(values.output_types).toLowerCase(),
         openrouter_input_modalities: joinCsv(values.openrouter_input_modalities),
         openrouter_output_modalities: joinCsv(values.openrouter_output_modalities),
         openrouter_supported_sampling_parameters: joinCsv(
@@ -532,6 +539,28 @@ const EditModelModal = (props) => {
                     />
                   </Col>
                   <Col span={24}>
+                    <Form.TagInput
+                      field='input_types'
+                      label={t('支持输入类型')}
+                      placeholder='Text / Image / Video / Audio'
+                      addOnBlur
+                      showClear
+                      extraText={t('可选：text, image, video, audio')}
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+                  <Col span={24}>
+                    <Form.TagInput
+                      field='output_types'
+                      label={t('支持输出类型')}
+                      placeholder='Text / Image / Video / Audio'
+                      addOnBlur
+                      showClear
+                      extraText={t('可选：text, image, video, audio')}
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+                  <Col span={24}>
                     <JSONEditor
                       field='endpoints'
                       label={
@@ -551,7 +580,7 @@ const EditModelModal = (props) => {
                         </span>
                       }
                       placeholder={
-                        '{\n  "openai": {"path": "/v1/chat/completions", "method": "POST"}\n}'
+                        '{\n  "openai": {"name": "Chat Completions", "uri": "/v1/chat/completions"}\n}'
                       }
                       value={values.endpoints}
                       onChange={(val) =>
@@ -561,7 +590,7 @@ const EditModelModal = (props) => {
                       editorType='object'
                       template={ENDPOINT_TEMPLATE}
                       templateLabel={t('填入模板')}
-                      extraText={t('留空则使用默认端点；支持 {path, method}')}
+                      extraText={t('用于模型详情页展示；支持 string(URI) 或 {name, uri}（历史 {path, method} 仍兼容）')}
                       extraFooter={
                         endpointGroups.length > 0 && (
                           <Space wrap>

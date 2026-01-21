@@ -146,6 +146,34 @@ docker run --name new-api -d --restart always \
 
 🎉 部署完成后，访问 `http://localhost:3000` 即可使用！
 
+### 使用 Traefik 多域名部署（可选）
+
+本仓库额外提供 `docker-compose.traefik.yml`，用于把以下组件分别绑定到不同域名（Host），并通过 Let's Encrypt 自动签发 HTTPS 证书（HTTP-01 验证）：
+
+- `web/`（管理端 UI）
+- `web-v2/`（用户端 UI）
+- 管理 API（`/api`）
+- LLM API（`/v1`, `/v1beta` 等）
+
+```bash
+# 复制并编辑域名/端口等配置
+cp .env.example .env
+
+# 启动（会构建前端与后端镜像）
+docker compose -f docker-compose.traefik.yml up -d --build
+```
+
+> ⚠️ 使用 Let's Encrypt 前需要：
+> 1) 把域名解析到这台机器（A/AAAA 记录）；
+> 2) 确保 80/443 端口对公网开放（HTTP-01 依赖 80 端口）。
+>
+> 严格四域名分离时，前端不再同源反代后端路径，需要在 `.env` 里配置：
+> - `VITE_REACT_APP_SERVER_URL=https://api.example.com`（web/）
+> - `VITE_API_BASE_URL=https://api.example.com`（web-v2/）
+> - 以及后端跨域允许列表：`CORS_ALLOW_ORIGINS=https://admin.example.com,https://app.example.com`。
+>
+> 如果前端需要通过 Cookie Session 登录，请同时设置：`SESSION_COOKIE_SECURE=true`，并按需调整 `SESSION_COOKIE_SAMESITE`。
+
 📖 更多部署方式请参考 [部署指南](https://docs.newapi.pro/zh/docs/installation)
 
 ---

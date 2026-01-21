@@ -17,6 +17,8 @@ type PricingItem = {
   quota_type: number;
   input_price: number;
   output_price: number;
+  input_token_price_multiplier_tiers?: TokenPriceTier[];
+  output_token_price_multiplier_tiers?: TokenPriceTier[];
   cache_read_price?: number;
   image_input_price?: number;
   audio_input_price?: number;
@@ -24,6 +26,12 @@ type PricingItem = {
   model_price: number;
   owner_by?: string;
   supported_endpoint_types?: string[];
+};
+
+type TokenPriceTier = {
+  min: number;
+  max?: number;
+  multiplier: number;
 };
 
 type Vendor = {
@@ -300,6 +308,9 @@ export function ModelsPage() {
             const vendorName = item.vendor_id ? vendorMap.get(item.vendor_id)?.name : undefined;
             const tags = splitTags(item.tags);
             const endpoints = (item.supported_endpoint_types || []).slice(0, 4);
+            const hasTierPricing =
+              (item.input_token_price_multiplier_tiers?.length || 0) > 0 ||
+              (item.output_token_price_multiplier_tiers?.length || 0) > 0;
 
             return (
               <button
@@ -331,6 +342,7 @@ export function ModelsPage() {
                     ) : (
                       <div>
                         {formatUsd(item.input_price)} / 1M input · {formatUsd(item.output_price)} / 1M output
+                        {hasTierPricing ? <div className='mt-1'>Tiered multipliers apply</div> : null}
                       </div>
                     )}
                   </div>

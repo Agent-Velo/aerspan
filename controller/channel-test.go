@@ -393,7 +393,9 @@ func testChannel(channel *model.Channel, testModel string, endpointType string) 
 
 	quota := 0
 	if !priceData.UsePrice {
-		usd := (float64(usage.PromptTokens)*priceData.InputPrice + float64(usage.CompletionTokens)*priceData.OutputPrice) / pricing_setting.TokensPerMillion
+		inputMultiplier, _ := pricing_setting.GetModelInputTokenPriceMultiplier(info.OriginModelName, usage.PromptTokens)
+		outputMultiplier, _ := pricing_setting.GetModelOutputTokenPriceMultiplier(info.OriginModelName, usage.CompletionTokens)
+		usd := (float64(usage.PromptTokens)*priceData.InputPrice*inputMultiplier + float64(usage.CompletionTokens)*priceData.OutputPrice*outputMultiplier) / pricing_setting.TokensPerMillion
 		usd *= priceData.GroupRatioInfo.GroupRatio
 		quota = int(math.Round(usd * common.QuotaPerUnit))
 		if usd > 0 && quota <= 0 {

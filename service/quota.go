@@ -73,8 +73,11 @@ func calculateAudioQuota(info QuotaInfo) int {
 	inputAudioTokens := decimal.NewFromInt(int64(info.InputDetails.AudioTokens))
 	outputAudioTokens := decimal.NewFromInt(int64(info.OutputDetails.AudioTokens))
 
-	inputPrice := decimal.NewFromFloat(info.InputPrice)
-	outputPrice := decimal.NewFromFloat(info.OutputPrice)
+	inputTierMultiplier, _ := pricing_setting.GetModelInputTokenPriceMultiplier(info.ModelName, info.InputDetails.TextTokens)
+	outputTierMultiplier, _ := pricing_setting.GetModelOutputTokenPriceMultiplier(info.ModelName, info.OutputDetails.TextTokens)
+
+	inputPrice := decimal.NewFromFloat(info.InputPrice).Mul(decimal.NewFromFloat(inputTierMultiplier))
+	outputPrice := decimal.NewFromFloat(info.OutputPrice).Mul(decimal.NewFromFloat(outputTierMultiplier))
 	audioInPrice := decimal.NewFromFloat(info.AudioInPrice)
 	audioOutPrice := decimal.NewFromFloat(info.AudioOutPrice)
 
@@ -291,15 +294,19 @@ func PostClaudeConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, 
 		// USD prices per 1M tokens
 		dIn := decimal.NewFromFloat(inputPrice)
 		dOut := decimal.NewFromFloat(outputPrice)
+		inputTierMultiplier, _ := pricing_setting.GetModelInputTokenPriceMultiplier(modelName, promptTokens)
+		outputTierMultiplier, _ := pricing_setting.GetModelOutputTokenPriceMultiplier(modelName, completionTokens)
+		dInMultiplier := decimal.NewFromFloat(inputTierMultiplier)
+		dOutMultiplier := decimal.NewFromFloat(outputTierMultiplier)
 		dCacheRead := decimal.NewFromFloat(cacheReadPrice)
 		dCacheCreatePrice := decimal.NewFromFloat(cacheCreationPrice)
 		dCacheCreate5mPrice := decimal.NewFromFloat(cacheCreationPrice5m)
 		dCacheCreate1hPrice := decimal.NewFromFloat(cacheCreationPrice1h)
 
 		usd := decimal.Zero
-		usd = usd.Add(dPrompt.Mul(dIn).Div(unitTokens))
+		usd = usd.Add(dPrompt.Mul(dIn).Mul(dInMultiplier).Div(unitTokens))
 		usd = usd.Add(dCache.Mul(dCacheRead).Div(unitTokens))
-		usd = usd.Add(dCompletion.Mul(dOut).Div(unitTokens))
+		usd = usd.Add(dCompletion.Mul(dOut).Mul(dOutMultiplier).Div(unitTokens))
 
 		usd = usd.Add(dCacheCreate5m.Mul(dCacheCreate5mPrice).Div(unitTokens))
 		usd = usd.Add(dCacheCreate1h.Mul(dCacheCreate1hPrice).Div(unitTokens))

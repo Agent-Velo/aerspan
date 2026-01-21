@@ -43,6 +43,8 @@ export default function ModelRatioSettings(props) {
     ModelPrice: '',
     ModelInputPrice: '',
     ModelOutputPrice: '',
+    ModelInputTokenPriceMultiplier: '',
+    ModelOutputTokenPriceMultiplier: '',
     ModelCacheReadPrice: '',
     ModelImageInputPrice: '',
     ModelAudioInputPrice: '',
@@ -200,6 +202,54 @@ export default function ModelRatioSettings(props) {
               ]}
               onChange={(value) =>
                 setInputs({ ...inputs, ModelOutputPrice: value })
+              }
+            />
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col xs={24} sm={16}>
+            <Form.TextArea
+              label={t('模型输入 tokens 阶梯倍率')}
+              extraText={t(
+                '为一个 JSON 文本，键为模型名称，值为区间数组：[{"min":0,"max":4096,"multiplier":1},{"min":4096,"multiplier":1.2}]。min 为包含下界，max 为不包含上界，max 可省略表示无上界。',
+              )}
+              placeholder={t('为一个 JSON 文本，键为模型名称，值为区间倍率数组')}
+              field={'ModelInputTokenPriceMultiplier'}
+              autosize={{ minRows: 6, maxRows: 12 }}
+              trigger='blur'
+              stopValidateWithError
+              rules={[
+                {
+                  validator: (rule, value) => verifyJSON(value),
+                  message: '不是合法的 JSON 字符串',
+                },
+              ]}
+              onChange={(value) =>
+                setInputs({ ...inputs, ModelInputTokenPriceMultiplier: value })
+              }
+            />
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col xs={24} sm={16}>
+            <Form.TextArea
+              label={t('模型输出 tokens 阶梯倍率')}
+              extraText={t(
+                '为一个 JSON 文本，键为模型名称，值为区间数组：[{"min":0,"max":4096,"multiplier":1},{"min":4096,"multiplier":1.2}]。min 为包含下界，max 为不包含上界，max 可省略表示无上界。',
+              )}
+              placeholder={t('为一个 JSON 文本，键为模型名称，值为区间倍率数组')}
+              field={'ModelOutputTokenPriceMultiplier'}
+              autosize={{ minRows: 6, maxRows: 12 }}
+              trigger='blur'
+              stopValidateWithError
+              rules={[
+                {
+                  validator: (rule, value) => verifyJSON(value),
+                  message: '不是合法的 JSON 字符串',
+                },
+              ]}
+              onChange={(value) =>
+                setInputs({ ...inputs, ModelOutputTokenPriceMultiplier: value })
               }
             />
           </Col>

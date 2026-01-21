@@ -63,6 +63,14 @@ func InitPricingSettings() {
 	modelAudioOutputPriceMapMutex.Lock()
 	modelAudioOutputPriceMap = map[string]float64{}
 	modelAudioOutputPriceMapMutex.Unlock()
+
+	modelInputTokenTierMapMutex.Lock()
+	modelInputTokenTierMap = map[string][]TokenPriceTier{}
+	modelInputTokenTierMapMutex.Unlock()
+
+	modelOutputTokenTierMapMutex.Lock()
+	modelOutputTokenTierMap = map[string][]TokenPriceTier{}
+	modelOutputTokenTierMapMutex.Unlock()
 }
 
 func baseFallbackInputPricePerMillion() float64 {

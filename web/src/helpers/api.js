@@ -26,10 +26,26 @@ import {
 import axios from 'axios';
 import { MESSAGE_ROLES } from '../constants/playground.constants';
 
+const SERVER_BASE_URL = (import.meta.env.VITE_REACT_APP_SERVER_URL || '').trim();
+
+export function getServerBaseUrl() {
+  return SERVER_BASE_URL;
+}
+
+export function buildServerUrl(path) {
+  const base = getServerBaseUrl();
+  if (!base) return path;
+  if (/^https?:\/\//i.test(path)) return path;
+  return new URL(path, base).toString();
+}
+
+export function getServerFetchCredentials() {
+  return getServerBaseUrl() ? 'include' : 'same-origin';
+}
+
 export let API = axios.create({
-  baseURL: import.meta.env.VITE_REACT_APP_SERVER_URL
-    ? import.meta.env.VITE_REACT_APP_SERVER_URL
-    : '',
+  baseURL: SERVER_BASE_URL ? SERVER_BASE_URL : '',
+  withCredentials: Boolean(SERVER_BASE_URL),
   headers: {
     'New-API-User': getUserIdFromLocalStorage(),
     'Cache-Control': 'no-store',
@@ -68,9 +84,8 @@ patchAPIInstance(API);
 
 export function updateAPI() {
   API = axios.create({
-    baseURL: import.meta.env.VITE_REACT_APP_SERVER_URL
-      ? import.meta.env.VITE_REACT_APP_SERVER_URL
-      : '',
+    baseURL: SERVER_BASE_URL ? SERVER_BASE_URL : '',
+    withCredentials: Boolean(SERVER_BASE_URL),
     headers: {
       'New-API-User': getUserIdFromLocalStorage(),
       'Cache-Control': 'no-store',

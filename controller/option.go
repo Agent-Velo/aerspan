@@ -188,6 +188,24 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "ModelInputTokenPriceMultiplier":
+		err = pricing_setting.UpdateModelInputTokenPriceMultiplierByJSONString(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "Failed to update model input token tier multipliers: " + err.Error(),
+			})
+			return
+		}
+	case "ModelOutputTokenPriceMultiplier":
+		err = pricing_setting.UpdateModelOutputTokenPriceMultiplierByJSONString(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "Failed to update model output token tier multipliers: " + err.Error(),
+			})
+			return
+		}
 	case "ModelCacheReadPrice":
 		err = pricing_setting.UpdateModelCacheReadPriceByJSONString(option.Value.(string))
 		if err != nil {

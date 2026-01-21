@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BarList, LineChart } from '@tremor/react';
+import { BarChart, BarList } from '@tremor/react';
 import { Copy } from 'lucide-react';
 import { fetchJson } from '@/api/client';
 import type { ApiResponse } from '@/api/types';
@@ -61,6 +61,28 @@ function getDefaultRangeSeconds(): { start: number; end: number } {
 
 function formatCompactNumber(value: number): string {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
+}
+
+function quotaToDollars(quota: number, quotaPerUnit: number): number {
+  const normalizedQuota = Number(quota);
+  const normalizedQuotaPerUnit = Number(quotaPerUnit);
+
+  const safeQuota = Number.isFinite(normalizedQuota) ? normalizedQuota : 0;
+  const safeQuotaPerUnit =
+    Number.isFinite(normalizedQuotaPerUnit) && normalizedQuotaPerUnit > 0 ? normalizedQuotaPerUnit : 500000;
+
+  return safeQuota / safeQuotaPerUnit;
+}
+
+function formatDollars(amount: number): string {
+  const safeAmount = Number.isFinite(amount) ? amount : 0;
+  const absAmount = Math.abs(safeAmount);
+  const maximumFractionDigits = absAmount > 0 && absAmount < 1 ? 6 : 2;
+  const formatted = new Intl.NumberFormat(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits,
+  }).format(safeAmount);
+  return `$${formatted}`;
 }
 
 function joinUrl(baseUrl: string, route: string): string {
@@ -132,6 +154,8 @@ function announcementTypeChip(
 export function DashboardPage() {
   const { status } = useStatus();
   const { user, refreshSelf } = useAuth();
+
+  const quotaPerUnit = status?.quota_per_unit || 500000;
 
   const defaultRange = useMemo(() => getDefaultRangeSeconds(), []);
 
@@ -229,9 +253,9 @@ export function DashboardPage() {
 
     return lineSeries.map((row) => ({
       time: formatter.format(new Date(row.time * 1000)),
-      Quota: row.quota,
+      Quota: quotaToDollars(row.quota, quotaPerUnit),
     }));
-  }, [end, lineSeries, start]);
+  }, [end, lineSeries, quotaPerUnit, start]);
 
   const displayName = (user?.display_name || user?.username || '').trim();
 
@@ -265,19 +289,19 @@ export function DashboardPage() {
         <Card>
           <Card.Content>
             <div className='text-xs font-semibold uppercase text-muted'>Quota used</div>
-            <div className='mt-2 text-2xl font-semibold'>{stats.quota}</div>
+            <div className='mt-2 text-2xl font-semibold'>{formatDollars(quotaToDollars(stats.quota, quotaPerUnit))}</div>
           </Card.Content>
         </Card>
         <Card>
           <Card.Content>
             <div className='text-xs font-semibold uppercase text-muted'>Requests</div>
-            <div className='mt-2 text-2xl font-semibold'>{stats.count}</div>
+            <div className='mt-2 text-2xl font-semibold'>{formatCompactNumber(stats.count)}</div>
           </Card.Content>
         </Card>
         <Card>
           <Card.Content>
             <div className='text-xs font-semibold uppercase text-muted'>Tokens</div>
-            <div className='mt-2 text-2xl font-semibold'>{stats.tokenUsed}</div>
+            <div className='mt-2 text-2xl font-semibold'>{formatCompactNumber(stats.tokenUsed)}</div>
           </Card.Content>
         </Card>
       </div>
@@ -299,15 +323,17 @@ export function DashboardPage() {
                   No usage data for this time range.
                 </div>
               ) : (
-                <LineChart
-                  className='h-full'
+                <BarChart
+                  className='h-full [&_.recharts-bar-rectangle_path]:!fill-blue-500 [&_.recharts-rectangle_path]:!fill-blue-500 [&_.recharts-text]:!fill-[var(--foreground)] [&_.recharts-cartesian-grid_line]:!stroke-[color-mix(in_oklab,var(--foreground)_10%,transparent)] [&_.recharts-tooltip-wrapper]:!outline-none [&_.recharts-default-tooltip]:!bg-[var(--background)] [&_.recharts-default-tooltip]:!border [&_.recharts-default-tooltip]:!border-[color-mix(in_oklab,var(--foreground)_20%,transparent)] [&_.recharts-default-tooltip]:!shadow-lg [&_.recharts-tooltip-item]:!text-[var(--foreground)]'
                   data={trendChartData}
                   index='time'
                   categories={['Quota']}
                   colors={['blue']}
-                  valueFormatter={formatCompactNumber}
+                  valueFormatter={formatDollars}
                   showLegend={false}
-                  startEndOnly
+                  showXAxis
+                  showYAxis
+                  yAxisWidth={65}
                 />
               )}
             </div>
@@ -331,8 +357,11 @@ export function DashboardPage() {
               ) : (
                 <div className='h-full overflow-auto pr-2'>
                   <BarList
-                    data={topModels.map((item) => ({ name: item.model, value: item.quota }))}
-                    valueFormatter={formatCompactNumber}
+                    data={topModels.map((item) => ({
+                      name: item.model,
+                      value: quotaToDollars(item.quota, quotaPerUnit),
+                    }))}
+                    valueFormatter={formatDollars}
                     color='blue'
                     sortOrder='none'
                   />

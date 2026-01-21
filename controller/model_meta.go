@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -12,6 +13,38 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+var allowedModelDetailTypes = map[string]struct{}{
+	"text":  {},
+	"image": {},
+	"video": {},
+	"audio": {},
+}
+
+func normalizeModelDetailTypesCSV(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", nil
+	}
+	parts := strings.Split(raw, ",")
+	seen := make(map[string]struct{}, len(parts))
+	normalized := make([]string, 0, len(parts))
+	for _, p := range parts {
+		value := strings.ToLower(strings.TrimSpace(p))
+		if value == "" {
+			continue
+		}
+		if _, ok := allowedModelDetailTypes[value]; !ok {
+			return "", fmt.Errorf("unsupported type: %s", value)
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		normalized = append(normalized, value)
+	}
+	return strings.Join(normalized, ","), nil
+}
 
 // GetAllModelsMeta 获取模型列表（分页）
 func GetAllModelsMeta(c *gin.Context) {
@@ -84,6 +117,18 @@ func CreateModelMeta(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	if normalized, err := normalizeModelDetailTypesCSV(m.InputTypes); err != nil {
+		common.ApiErrorMsg(c, "Invalid input types: "+err.Error())
+		return
+	} else {
+		m.InputTypes = normalized
+	}
+	if normalized, err := normalizeModelDetailTypesCSV(m.OutputTypes); err != nil {
+		common.ApiErrorMsg(c, "Invalid output types: "+err.Error())
+		return
+	} else {
+		m.OutputTypes = normalized
+	}
 	if m.ModelName == "" {
 		common.ApiErrorMsg(c, "Model name is required")
 		return
@@ -126,6 +171,18 @@ func UpdateModelMeta(c *gin.Context) {
 			return
 		}
 	} else {
+		if normalized, err := normalizeModelDetailTypesCSV(m.InputTypes); err != nil {
+			common.ApiErrorMsg(c, "Invalid input types: "+err.Error())
+			return
+		} else {
+			m.InputTypes = normalized
+		}
+		if normalized, err := normalizeModelDetailTypesCSV(m.OutputTypes); err != nil {
+			common.ApiErrorMsg(c, "Invalid output types: "+err.Error())
+			return
+		} else {
+			m.OutputTypes = normalized
+		}
 		// 名称冲突检查
 		if dup, err := model.IsModelNameDuplicated(m.Id, m.ModelName); err != nil {
 			common.ApiError(c, err)

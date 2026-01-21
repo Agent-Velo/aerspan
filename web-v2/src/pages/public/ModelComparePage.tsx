@@ -14,6 +14,8 @@ type PricingItem = {
   quota_type: number;
   input_price: number;
   output_price: number;
+  input_token_price_multiplier_tiers?: TokenPriceTier[];
+  output_token_price_multiplier_tiers?: TokenPriceTier[];
   cache_read_price?: number;
   cache_write_price?: number;
   image_input_price?: number;
@@ -21,6 +23,12 @@ type PricingItem = {
   audio_output_price?: number;
   model_price: number;
   supported_endpoint_types?: string[];
+};
+
+type TokenPriceTier = {
+  min: number;
+  max?: number;
+  multiplier: number;
 };
 
 type SupportedEndpointInfo = {
@@ -45,6 +53,26 @@ function formatUsd(value: number) {
   if (!Number.isFinite(value)) return '-';
   const rounded = Math.round(value * 1000000) / 1000000;
   return `$${rounded}`;
+}
+
+function formatTierRange(tier: TokenPriceTier) {
+  const min = Number.isFinite(tier.min) ? tier.min : 0;
+  const max = typeof tier.max === 'number' && Number.isFinite(tier.max) ? tier.max : undefined;
+  const lower = min.toLocaleString();
+  const upper = max === undefined ? '∞' : max.toLocaleString();
+  return `[${lower}, ${upper})`;
+}
+
+function formatTierList(tiers: TokenPriceTier[] | undefined, basePrice: number) {
+  if (!tiers || tiers.length === 0) return '—';
+  const sorted = [...tiers].sort((a, b) => a.min - b.min);
+  return sorted
+    .map((tier) => {
+      const multiplier = Number.isFinite(tier.multiplier) ? tier.multiplier : 1;
+      const effective = Number.isFinite(basePrice) ? basePrice * multiplier : NaN;
+      return `${formatTierRange(tier)} ×${multiplier} (${formatUsd(effective)} / 1M)`;
+    })
+    .join('\n');
 }
 
 function normalizeEndpointOrder(all: string[]) {
@@ -342,6 +370,23 @@ export function ModelComparePage() {
                   </td>
                 </tr>
                 <tr>
+                  <td>Input Tiers</td>
+                  <td className='text-right align-top'>
+                    <div className='whitespace-pre-wrap text-xs text-muted'>
+                      {leftItem.quota_type === 1
+                        ? '—'
+                        : formatTierList(leftItem.input_token_price_multiplier_tiers, leftItem.input_price)}
+                    </div>
+                  </td>
+                  <td className='text-right align-top'>
+                    <div className='whitespace-pre-wrap text-xs text-muted'>
+                      {rightItem.quota_type === 1
+                        ? '—'
+                        : formatTierList(rightItem.input_token_price_multiplier_tiers, rightItem.input_price)}
+                    </div>
+                  </td>
+                </tr>
+                <tr>
                   <td>Output Price</td>
                   <td className='align-top'>
                     {leftItem.quota_type === 1 ? (
@@ -356,6 +401,23 @@ export function ModelComparePage() {
                     ) : (
                       <PriceValue value={formatUsd(rightItem.output_price)} hint='per 1M tokens' align='right' />
                     )}
+                  </td>
+                </tr>
+                <tr>
+                  <td>Output Tiers</td>
+                  <td className='text-right align-top'>
+                    <div className='whitespace-pre-wrap text-xs text-muted'>
+                      {leftItem.quota_type === 1
+                        ? '—'
+                        : formatTierList(leftItem.output_token_price_multiplier_tiers, leftItem.output_price)}
+                    </div>
+                  </td>
+                  <td className='text-right align-top'>
+                    <div className='whitespace-pre-wrap text-xs text-muted'>
+                      {rightItem.quota_type === 1
+                        ? '—'
+                        : formatTierList(rightItem.output_token_price_multiplier_tiers, rightItem.output_price)}
+                    </div>
                   </td>
                 </tr>
                 <tr>

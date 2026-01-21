@@ -29,6 +29,8 @@ type Model struct {
 	Tags         string `json:"tags,omitempty" gorm:"type:varchar(255)"`
 	VendorID     int    `json:"vendor_id,omitempty" gorm:"index"`
 	Endpoints    string `json:"endpoints,omitempty" gorm:"type:text"`
+	InputTypes   string `json:"input_types,omitempty" gorm:"type:varchar(255)"`
+	OutputTypes  string `json:"output_types,omitempty" gorm:"type:varchar(255)"`
 	TotalContext *int   `json:"total_context,omitempty"`
 	MaxOutput    *int   `json:"max_output,omitempty"`
 

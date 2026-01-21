@@ -381,8 +381,22 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 				extraContent = append(extraContent, fmt.Sprintf("Audio input cost %s", audioInputQuota.String()))
 			}
 		}
-		promptTextUSD := baseTokens.Mul(dInputPrice).Div(unitTokens)
-		completionUSD := dCompletionTokens.Mul(dOutputPrice).Div(unitTokens)
+		inputTokensForTier := int(baseTokens.IntPart())
+		if inputTokensForTier < 0 {
+			inputTokensForTier = 0
+		}
+		inputMultiplier, inputTierMatched := pricing_setting.GetModelInputTokenPriceMultiplier(modelName, inputTokensForTier)
+		outputMultiplier, outputTierMatched := pricing_setting.GetModelOutputTokenPriceMultiplier(modelName, completionTokens)
+		dInputMultiplier := decimal.NewFromFloat(inputMultiplier)
+		dOutputMultiplier := decimal.NewFromFloat(outputMultiplier)
+		if inputTierMatched && inputMultiplier != 1 {
+			extraContent = append(extraContent, fmt.Sprintf("Input tier multiplier %g", inputMultiplier))
+		}
+		if outputTierMatched && outputMultiplier != 1 {
+			extraContent = append(extraContent, fmt.Sprintf("Output tier multiplier %g", outputMultiplier))
+		}
+		promptTextUSD := baseTokens.Mul(dInputPrice).Mul(dInputMultiplier).Div(unitTokens)
+		completionUSD := dCompletionTokens.Mul(dOutputPrice).Mul(dOutputMultiplier).Div(unitTokens)
 		totalUSD := promptTextUSD.Add(cachedTokensUSD).Add(imageTokensUSD).Add(cachedCreationUSD).Add(completionUSD)
 
 		quotaCalculateDecimal = totalUSD.Mul(dGroupRatio).Mul(dQuotaPerUnit)

@@ -117,3 +117,46 @@ body {
 .app-divider-y > * + * {
   border-top: 1px solid color-mix(in oklab, var(--foreground) 10%, transparent);
 }
+
+/* Tremor chart dark mode fixes */
+:where([data-theme="graphite-dark"]) {
+  /* Bar chart bars - all possible selectors */
+  .recharts-bar-rectangle path,
+  .recharts-rectangle path,
+  .recharts-bar path {
+    fill: oklch(0.65 0.2 250) !important;
+  }
+
+  /* Chart text (axes labels) */
+  .recharts-cartesian-axis-tick text,
+  .recharts-text,
+  .recharts-label text {
+    fill: var(--foreground) !important;
+  }
+
+  /* Grid lines */
+  .recharts-cartesian-grid-horizontal line,
+  .recharts-cartesian-grid-vertical line,
+  .recharts-cartesian-grid line {
+    stroke: color-mix(in oklab, var(--foreground) 10%, transparent) !important;
+  }
+
+  /* Bar list (top models) text */
+  .tremor-BarList-bar {
+    background-color: oklch(0.65 0.2 250) !important;
+  }
+}
+
+/* Global recharts fixes for dark mode */
+[data-theme="graphite-dark"] .recharts-surface {
+  /* All bar fills */
+  .recharts-bar-rectangle,
+  .recharts-rectangle,
+  .recharts-bar {
+    fill: oklch(0.65 0.2 250) !important;
+
+    path {
+      fill: oklch(0.65 0.2 250) !important;
+    }
+  }
+}

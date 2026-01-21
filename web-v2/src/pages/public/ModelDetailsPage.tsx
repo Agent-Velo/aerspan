@@ -6,7 +6,6 @@ import { copyText } from '@/lib/clipboard';
 import { Button, Card, Chip, Separator, Spinner } from '@/components/ui/heroui';
 import { TableActionButton } from '@/components/ui/TableActionButton';
 import {
-  Binary,
   Copy,
   FileText,
   Image as ImageIcon,
@@ -23,9 +22,14 @@ type PricingItem = {
   vendor_id?: number;
   total_context?: number;
   max_output?: number;
+  input_types?: string[];
+  output_types?: string[];
+  endpoint_support?: { name: string; uri: string }[];
   quota_type: number;
   input_price: number;
   output_price: number;
+  input_token_price_multiplier_tiers?: TokenPriceTier[];
+  output_token_price_multiplier_tiers?: TokenPriceTier[];
   cache_read_price?: number;
   cache_write_price?: number;
   image_input_price?: number;
@@ -35,6 +39,12 @@ type PricingItem = {
   supported_endpoint_types?: string[];
 };
 
+type TokenPriceTier = {
+  min: number;
+  max?: number;
+  multiplier: number;
+};
+
 type Vendor = {
   id: number;
   name: string;
@@ -42,16 +52,11 @@ type Vendor = {
   icon?: string;
 };
 
-type SupportedEndpointInfo = {
-  path: string;
-  method: string;
-};
-
 type PricingResponse = {
   success: boolean;
   data: PricingItem[];
   vendors: Vendor[];
-  supported_endpoint: Record<string, SupportedEndpointInfo>;
+  supported_endpoint: Record<string, { path: string; method: string }>;
 };
 
 function splitTags(value?: string) {
@@ -67,35 +72,68 @@ function formatUsd(value: number) {
   return `$${rounded}`;
 }
 
+function formatTierRange(tier: TokenPriceTier) {
+  const min = Number.isFinite(tier.min) ? tier.min : 0;
+  const max = typeof tier.max === 'number' && Number.isFinite(tier.max) ? tier.max : undefined;
+  const lower = min.toLocaleString();
+  const upper = max === undefined ? '∞' : max.toLocaleString();
+  return `[${lower}, ${upper})`;
+}
+
+function TierPricingTable({
+  title,
+  basePrice,
+  tiers,
+}: {
+  title: string;
+  basePrice: number;
+  tiers?: TokenPriceTier[];
+}) {
+  const sorted = useMemo(() => {
+    if (!tiers) return [];
+    return [...tiers]
+      .filter((t) => Number.isFinite(t.min) && Number.isFinite(t.multiplier))
+      .sort((a, b) => a.min - b.min);
+  }, [tiers]);
+
+  const hasTiers = sorted.length > 0;
+
+  return (
+    <Card variant='secondary' className='overflow-hidden p-0'>
+      <div className='px-4 py-3 text-sm font-semibold'>{title}</div>
+      {hasTiers ? (
+        <table className='app-table'>
+          <thead>
+            <tr>
+              <th>Range</th>
+              <th className='text-right'>Multiplier</th>
+              <th className='text-right'>Effective Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((tier, index) => (
+              <tr key={`${tier.min}:${tier.max ?? 'inf'}:${index}`}>
+                <td className='font-mono text-xs'>{formatTierRange(tier)}</td>
+                <td className='text-right text-sm'>×{tier.multiplier}</td>
+                <td className='text-right text-sm'>{formatUsd(basePrice * tier.multiplier)} / 1M</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <div className='px-4 pb-4 text-sm text-muted'>Not configured</div>
+      )}
+      <div className='px-4 pb-3 text-xs text-muted'>Token range uses [min, max) (max is exclusive).</div>
+    </Card>
+  );
+}
+
 function buildModelChatUrl(modelName: string) {
   return `/playground?model=${encodeURIComponent(modelName)}`;
 }
 
 function buildModelCompareUrl(modelName: string) {
   return `/models/compare?left=${encodeURIComponent(modelName)}`;
-}
-
-function normalizeEndpointOrder(all: string[]) {
-  const known = [
-    'openai',
-    'openai-response',
-    'anthropic',
-    'gemini',
-    'embeddings',
-    'jina-rerank',
-    'image-generation',
-    'openai-video',
-  ];
-  const knownSet = new Set(known);
-  const inKnown: string[] = [];
-  const others: string[] = [];
-  for (const name of all) {
-    if (knownSet.has(name)) inKnown.push(name);
-    else others.push(name);
-  }
-  inKnown.sort((a, b) => known.indexOf(a) - known.indexOf(b));
-  others.sort((a, b) => a.localeCompare(b));
-  return [...inKnown, ...others];
 }
 
 type Capability = {
@@ -105,59 +143,22 @@ type Capability = {
   supported: boolean;
 };
 
+function normalizeDetailType(value: string) {
+  return value.trim().toLowerCase();
+}
+
 function buildCapabilities(item: PricingItem) {
-  const endpoints = new Set(item.supported_endpoint_types || []);
+  const inputTypes = new Set((item.input_types || []).map(normalizeDetailType));
+  const outputTypes = new Set((item.output_types || []).map(normalizeDetailType));
 
-  const input: Capability[] = [
-    { key: 'text', label: 'Text', icon: <FileText size={16} />, supported: true },
-    {
-      key: 'image',
-      label: 'Image',
-      icon: <ImageIcon size={16} />,
-      supported: typeof item.image_input_price === 'number',
-    },
-    {
-      key: 'audio',
-      label: 'Audio',
-      icon: <Mic size={16} />,
-      supported: typeof item.audio_input_price === 'number',
-    },
+  const build = (supported: Set<string>): Capability[] => [
+    { key: 'text', label: 'Text', icon: <FileText size={16} />, supported: supported.has('text') },
+    { key: 'image', label: 'Image', icon: <ImageIcon size={16} />, supported: supported.has('image') },
+    { key: 'video', label: 'Video', icon: <Video size={16} />, supported: supported.has('video') },
+    { key: 'audio', label: 'Audio', icon: <Mic size={16} />, supported: supported.has('audio') },
   ];
 
-  const output: Capability[] = [
-    {
-      key: 'text',
-      label: 'Text',
-      icon: <FileText size={16} />,
-      supported: endpoints.has('openai') || endpoints.has('openai-response') || endpoints.has('anthropic') || endpoints.has('gemini'),
-    },
-    {
-      key: 'image',
-      label: 'Image',
-      icon: <ImageIcon size={16} />,
-      supported: endpoints.has('image-generation'),
-    },
-    {
-      key: 'audio',
-      label: 'Audio',
-      icon: <Mic size={16} />,
-      supported: typeof item.audio_output_price === 'number',
-    },
-    {
-      key: 'video',
-      label: 'Video',
-      icon: <Video size={16} />,
-      supported: endpoints.has('openai-video'),
-    },
-    {
-      key: 'embedding',
-      label: 'Embedding',
-      icon: <Binary size={16} />,
-      supported: endpoints.has('embeddings'),
-    },
-  ];
-
-  return { input, output };
+  return { input: build(inputTypes), output: build(outputTypes) };
 }
 
 function MetricTableCard({
@@ -202,6 +203,7 @@ function MetricTableCard({
 }
 
 function CapabilityCard({ title, items }: { title: string; items: Capability[] }) {
+  const isConfigured = items.some((cap) => cap.supported);
   return (
     <Card variant='secondary'>
       <Card.Header>
@@ -223,6 +225,9 @@ function CapabilityCard({ title, items }: { title: string; items: Capability[] }
             </div>
           ))}
         </div>
+        {!isConfigured ? (
+          <div className='mt-2 text-xs text-muted'>Not configured</div>
+        ) : null}
       </Card.Content>
     </Card>
   );
@@ -234,7 +239,6 @@ export function ModelDetailsPage() {
 
   const [loading, setLoading] = useState(true);
   const [item, setItem] = useState<PricingItem | null>(null);
-  const [supportedEndpoints, setSupportedEndpoints] = useState<Record<string, SupportedEndpointInfo>>({});
 
   useEffect(() => {
     const name = modelName || '';
@@ -252,7 +256,6 @@ export function ModelDetailsPage() {
         const first = (res.data || [])[0] || null;
         if (!cancelled) {
           setItem(first);
-          setSupportedEndpoints(res.supported_endpoint || {});
         }
       } catch (err) {
         if (!cancelled) {
@@ -270,7 +273,6 @@ export function ModelDetailsPage() {
   }, [modelName]);
 
   const tags = useMemo(() => splitTags(item?.tags), [item?.tags]);
-  const endpointKeys = useMemo(() => normalizeEndpointOrder(Object.keys(supportedEndpoints || {})), [supportedEndpoints]);
   const caps = useMemo(() => (item ? buildCapabilities(item) : { input: [], output: [] }), [item]);
 
   if (loading) {
@@ -301,6 +303,9 @@ export function ModelDetailsPage() {
   const title = item.display_name?.trim() || item.model_name;
   const cacheRead = typeof item.cache_read_price === 'number' ? item.cache_read_price : item.input_price;
   const cacheWrite = typeof item.cache_write_price === 'number' ? item.cache_write_price : item.input_price * 1.25;
+  const hasTierPricing =
+    (item.input_token_price_multiplier_tiers?.length || 0) > 0 ||
+    (item.output_token_price_multiplier_tiers?.length || 0) > 0;
 
   return (
     <div className='space-y-4 px-6 md:px-12 lg:px-20 xl:px-32'>
@@ -373,9 +378,24 @@ export function ModelDetailsPage() {
           rightLabel='Output Price'
           leftValue={item.quota_type === 1 ? '—' : formatUsd(item.input_price)}
           rightValue={item.quota_type === 1 ? '—' : formatUsd(item.output_price)}
-          leftHint={item.quota_type === 1 ? undefined : 'per 1M tokens'}
-          rightHint={item.quota_type === 1 ? undefined : 'per 1M tokens'}
+          leftHint={item.quota_type === 1 ? undefined : hasTierPricing ? 'per 1M tokens (base)' : 'per 1M tokens'}
+          rightHint={item.quota_type === 1 ? undefined : hasTierPricing ? 'per 1M tokens (base)' : 'per 1M tokens'}
         />
+
+        {item.quota_type !== 1 && hasTierPricing ? (
+          <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+            <TierPricingTable
+              title='Input Tier Multipliers'
+              basePrice={item.input_price}
+              tiers={item.input_token_price_multiplier_tiers}
+            />
+            <TierPricingTable
+              title='Output Tier Multipliers'
+              basePrice={item.output_price}
+              tiers={item.output_token_price_multiplier_tiers}
+            />
+          </div>
+        ) : null}
 
         <MetricTableCard
           leftLabel='Cache Read'
@@ -391,26 +411,20 @@ export function ModelDetailsPage() {
 
       <div className='space-y-3'>
         <div className='text-sm font-semibold'>Endpoints</div>
-        <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
-          {endpointKeys.map((key) => {
-            const info = supportedEndpoints[key];
-            const isSupported = (item.supported_endpoint_types || []).includes(key);
-            return (
-              <Card
-                key={key}
-                variant='secondary'
-                className={isSupported ? '' : 'opacity-45'}
-              >
+        {item.endpoint_support && item.endpoint_support.length > 0 ? (
+          <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+            {item.endpoint_support.map((ep) => (
+              <Card key={`${ep.name}:${ep.uri}`} variant='secondary'>
                 <Card.Content className='space-y-1'>
-                  <div className='text-sm font-semibold'>{key}</div>
-                  <div className='text-xs text-muted'>
-                    {info ? `${info.method} ${info.path}` : '—'}
-                  </div>
+                  <div className='text-sm font-semibold'>{ep.name}</div>
+                  <div className='text-xs text-muted'>{ep.uri || '—'}</div>
                 </Card.Content>
               </Card>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className='text-sm text-muted'>Not configured</div>
+        )}
       </div>
 
       <Separator />

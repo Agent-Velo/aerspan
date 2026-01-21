@@ -139,6 +139,8 @@ func InitOptionMap() {
 	common.OptionMap["ExposePricingEnabled"] = strconv.FormatBool(pricing_setting.IsExposePricingEnabled())
 	common.OptionMap["ModelInputPrice"] = pricing_setting.ModelInputPrice2JSONString()
 	common.OptionMap["ModelOutputPrice"] = pricing_setting.ModelOutputPrice2JSONString()
+	common.OptionMap["ModelInputTokenPriceMultiplier"] = pricing_setting.ModelInputTokenPriceMultiplier2JSONString()
+	common.OptionMap["ModelOutputTokenPriceMultiplier"] = pricing_setting.ModelOutputTokenPriceMultiplier2JSONString()
 	common.OptionMap["ModelCacheReadPrice"] = pricing_setting.ModelCacheReadPrice2JSONString()
 	common.OptionMap["ModelImageInputPrice"] = pricing_setting.ModelImageInputPrice2JSONString()
 	common.OptionMap["ModelAudioInputPrice"] = pricing_setting.ModelAudioInputPrice2JSONString()
@@ -417,6 +419,10 @@ func updateOptionMap(key string, value string) (err error) {
 		err = pricing_setting.UpdateModelInputPriceByJSONString(value)
 	case "ModelOutputPrice":
 		err = pricing_setting.UpdateModelOutputPriceByJSONString(value)
+	case "ModelInputTokenPriceMultiplier":
+		err = pricing_setting.UpdateModelInputTokenPriceMultiplierByJSONString(value)
+	case "ModelOutputTokenPriceMultiplier":
+		err = pricing_setting.UpdateModelOutputTokenPriceMultiplierByJSONString(value)
 	case "ModelCacheReadPrice":
 		err = pricing_setting.UpdateModelCacheReadPriceByJSONString(value)
 	case "ModelImageInputPrice":
