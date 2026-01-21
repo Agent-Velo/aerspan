@@ -8,6 +8,38 @@ import { Button, Card, Checkbox, Label } from '@/components/ui/heroui';
 import { PageHeader } from './components/PageHeader';
 import { parseJson } from './helpers';
 
+const SECTION_LABELS: Record<string, string> = {
+  chat: 'Chat',
+  console: 'Console',
+  personal: 'Account',
+};
+
+const MODULE_LABELS: Record<string, Record<string, string>> = {
+  chat: {
+    playground: 'Playground',
+    chat: 'Chat',
+  },
+  console: {
+    detail: 'Dashboard',
+    token: 'API Keys',
+    log: 'Logs',
+    midjourney: 'Midjourney',
+    task: 'Tasks',
+  },
+  personal: {
+    topup: 'Billing',
+    personal: 'Personal',
+  },
+};
+
+function formatLabelFallback(key: string): string {
+  return String(key)
+    .split(/[-_]/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 export function SidebarModulesPage() {
   const { user, refreshSelf } = useAuth();
   const { status } = useStatus();
@@ -81,7 +113,9 @@ export function SidebarModulesPage() {
             <Card key={sectionKey} variant='secondary'>
               <Card.Header>
                 <div className='flex w-full items-center justify-between gap-2'>
-                  <Card.Title className='text-sm capitalize'>{sectionKey}</Card.Title>
+                  <Card.Title className='text-sm'>
+                    {SECTION_LABELS[sectionKey] || formatLabelFallback(sectionKey)}
+                  </Card.Title>
                   <div className='flex items-center gap-3'>
                     <Checkbox
                       id={showId}
@@ -119,7 +153,9 @@ export function SidebarModulesPage() {
                       return (
                         <Card key={moduleKey} variant='tertiary'>
                           <Card.Content className='flex items-center justify-between gap-2 py-2'>
-                            <span className='text-sm capitalize'>{moduleKey}</span>
+                            <span className='text-sm'>
+                              {MODULE_LABELS[sectionKey]?.[moduleKey] || formatLabelFallback(moduleKey)}
+                            </span>
                             <Checkbox
                               id={moduleId}
                               isSelected={userAllowed}

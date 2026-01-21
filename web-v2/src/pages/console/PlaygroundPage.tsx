@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { fetchJson } from '@/api/client';
 import type { ApiResponse } from '@/api/types';
 import { toast } from '@/ui/toast';
@@ -171,7 +172,13 @@ function savePlaygroundMessages(messages: PlaygroundMessage[]) {
 }
 
 export function PlaygroundPage() {
+  const location = useLocation();
   const initialConfig = useMemo(() => loadPlaygroundConfig(), []);
+  const preferredModelFromUrl = useMemo(() => {
+    const value = new URLSearchParams(location.search).get('model');
+    return value ? value.trim() : '';
+  }, [location.search]);
+
   const [messages, setMessages] = useState<PlaygroundMessage[]>(() => loadPlaygroundMessages());
   const [inputs, setInputs] = useState<PlaygroundInputs>(initialConfig.inputs);
   const [parameterEnabled, setParameterEnabled] = useState<PlaygroundParameterEnabled>(
@@ -211,6 +218,12 @@ export function PlaygroundPage() {
         setModelLabels({});
       });
   }, []);
+
+  useEffect(() => {
+    if (!preferredModelFromUrl || models.length === 0) return;
+    if (!models.includes(preferredModelFromUrl)) return;
+    setInputs((prev) => (prev.model === preferredModelFromUrl ? prev : { ...prev, model: preferredModelFromUrl }));
+  }, [models, preferredModelFromUrl]);
 
   useEffect(() => {
     if (models.length === 0) return;

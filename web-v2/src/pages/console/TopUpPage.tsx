@@ -7,6 +7,7 @@ import { fetchJson } from '@/api/client';
 import type { ApiResponse, PaymentResponse } from '@/api/types';
 import { toast } from '@/ui/toast';
 import { copyText } from '@/lib/clipboard';
+import { formatUnixSeconds } from '@/lib/time';
 import { confirmModal } from '@/ui/confirmModal';
 import { useAuth } from '@/stores/auth/AuthStore';
 import { useStatus } from '@/stores/status/StatusStore';
@@ -52,6 +53,29 @@ type StripeAutoTopupData = {
   amount: number;
   payment_method_id: string;
 };
+
+type CreditGrantRow = {
+  id: number;
+  user_id: number;
+  grant_type: string;
+  quota: number;
+  used_quota: number;
+  created_time: number;
+  expired_time: number;
+  reference: string;
+  remark: string;
+  created_by: number;
+};
+
+type PageInfo<T> = { page: number; page_size: number; total: number; items: T };
+
+function normalizeCreditGrantsError(message: string): string {
+  if (!message) return '';
+  if (message.includes('parsing "credit_grants"')) {
+    return 'Server does not support credit grants yet. Please update the backend.';
+  }
+  return message;
+}
 
 function BindCardForm({
   saving,
@@ -198,6 +222,13 @@ export function TopUpPage() {
   const [redeemCode, setRedeemCode] = useState('');
   const [redeeming, setRedeeming] = useState(false);
 
+  const [creditGrants, setCreditGrants] = useState<CreditGrantRow[]>([]);
+  const [creditGrantsPage, setCreditGrantsPage] = useState(1);
+  const [creditGrantsTotal, setCreditGrantsTotal] = useState(0);
+  const [creditGrantsPageSize] = useState(20);
+  const [creditGrantsLoading, setCreditGrantsLoading] = useState(false);
+  const [creditGrantsError, setCreditGrantsError] = useState('');
+
   const [info, setInfo] = useState<TopUpInfo | null>(null);
   const [amount, setAmount] = useState<number>(0);
   const [stripePreview, setStripePreview] = useState<string>('');
@@ -237,11 +268,54 @@ export function TopUpPage() {
   const [affCode, setAffCode] = useState<string>('');
   const affLink = useMemo(() => {
     if (!affCode) return '';
-    return `${window.location.origin}/register?aff=${affCode}`;
+    return `${window.location.origin}/auth/signup?via=${encodeURIComponent(affCode)}`;
   }, [affCode]);
 
 
   const [transferQuota, setTransferQuota] = useState<number>(0);
+
+  const loadCreditGrants = async (page = creditGrantsPage) => {
+    setCreditGrantsError('');
+    setCreditGrantsLoading(true);
+    try {
+      try {
+        const res = await fetchJson<ApiResponse<PageInfo<CreditGrantRow[]>>>('/api/user/credit_grants', {
+          params: { p: page, page_size: creditGrantsPageSize },
+          skipErrorHandler: true,
+        });
+        setCreditGrants((res.data.items || []) as any);
+        setCreditGrantsTotal(res.data.total || 0);
+        setCreditGrantsPage(res.data.page || page);
+      } catch (error) {
+        const message = normalizeCreditGrantsError(error instanceof Error ? error.message : String(error));
+        // Backward compatibility: older servers don't have /api/user/credit_grants (they only have the admin route).
+        if (user?.role && user.role >= 10 && user.id) {
+          try {
+            const res = await fetchJson<ApiResponse<PageInfo<CreditGrantRow[]>>>(
+              `/api/user/${user.id}/credit_grants`,
+              {
+                params: { p: page, page_size: creditGrantsPageSize },
+                skipErrorHandler: true,
+              },
+            );
+            setCreditGrants((res.data.items || []) as any);
+            setCreditGrantsTotal(res.data.total || 0);
+            setCreditGrantsPage(res.data.page || page);
+          } catch (fallbackError) {
+            const fallbackMessage =
+              fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+            setCreditGrantsError(
+              normalizeCreditGrantsError(fallbackMessage || message || 'Failed to load credit grants.'),
+            );
+          }
+        } else {
+          setCreditGrantsError(message || 'Failed to load credit grants.');
+        }
+      }
+    } finally {
+      setCreditGrantsLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchJson<ApiResponse<TopUpInfo>>('/api/user/topup/info')
@@ -255,7 +329,14 @@ export function TopUpPage() {
     fetchJson<ApiResponse<string>>('/api/user/aff')
       .then((res) => setAffCode(res.data || ''))
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    loadCreditGrants(1).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const loadStripePaymentMethods = async () => {
     if (!stripeEnabled) return;
@@ -304,6 +385,7 @@ export function TopUpPage() {
       toast.success(`Added quota: $${addedAmount}`);
       setRedeemCode('');
       await refreshSelf();
+      loadCreditGrants(1).catch(() => {});
     } finally {
       setRedeeming(false);
     }
@@ -349,6 +431,7 @@ export function TopUpPage() {
       if (res.data.status === 'succeeded') {
         toast.success('Paid');
         await refreshSelf();
+        loadCreditGrants(1).catch(() => {});
         return;
       }
 
@@ -365,7 +448,10 @@ export function TopUpPage() {
         }
         toast.success('Payment confirmed');
         // Balance will be updated by webhook; refresh after a short delay.
-        setTimeout(() => refreshSelf().catch(() => {}), 1200);
+        setTimeout(() => {
+          refreshSelf().catch(() => {});
+          loadCreditGrants(1).catch(() => {});
+        }, 1200);
         return;
       }
 
@@ -460,14 +546,17 @@ export function TopUpPage() {
     toast.success('Transferred');
     setTransferQuota(0);
     await refreshSelf();
+    loadCreditGrants(1).catch(() => {});
   };
+
+  const formatDollarsFromQuota = (quota: number) => ((quota || 0) / quotaPerUnit).toFixed(2);
 
   return (
     <div className='space-y-4'>
       <div className='flex items-center justify-between gap-2'>
-        <div className='text-lg font-semibold'>Top-up</div>
-        <Button variant='secondary' onPress={() => navigate('/console/topup/history')}>
-          View history
+        <div className='text-lg font-semibold'>Billing</div>
+        <Button variant='secondary' onPress={() => navigate('/billing/invoices')}>
+          Invoices
         </Button>
       </div>
 
@@ -492,21 +581,6 @@ export function TopUpPage() {
 
       <div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
         <div className='space-y-4'>
-          <Card>
-            <Card.Header>
-              <Card.Title>Redeem code</Card.Title>
-            </Card.Header>
-            <Card.Content className='flex gap-2'>
-              <TextField fullWidth name='redeemCode' onChange={setRedeemCode}>
-                <Label>Redeem code</Label>
-                <Input value={redeemCode} placeholder='Redeem code' />
-              </TextField>
-              <Button onPress={redeem} isDisabled={redeeming}>
-                Redeem
-              </Button>
-            </Card.Content>
-          </Card>
-
           <Card>
             <Card.Header>
               <Card.Title>Online top-up</Card.Title>
@@ -739,6 +813,21 @@ export function TopUpPage() {
         <div className='space-y-4'>
           <Card>
             <Card.Header>
+              <Card.Title>Redeem code</Card.Title>
+            </Card.Header>
+            <Card.Content className='flex gap-2'>
+              <TextField fullWidth name='redeemCode' onChange={setRedeemCode}>
+                <Label>Redeem code</Label>
+                <Input value={redeemCode} placeholder='Redeem code' />
+              </TextField>
+              <Button onPress={redeem} isDisabled={redeeming}>
+                Redeem
+              </Button>
+            </Card.Content>
+          </Card>
+
+          <Card>
+            <Card.Header>
               <Card.Title>Invitation</Card.Title>
             </Card.Header>
             <Card.Content className='space-y-3'>
@@ -782,6 +871,107 @@ export function TopUpPage() {
           </Card>
         </div>
       </div>
+
+      <Card>
+        <Card.Header>
+          <div className='flex items-center justify-between gap-2'>
+            <Card.Title>Credit grants</Card.Title>
+            <Button
+              size='sm'
+              variant='secondary'
+              onPress={() => loadCreditGrants(creditGrantsPage).catch(() => {})}
+            >
+              Refresh
+            </Button>
+          </div>
+        </Card.Header>
+        <Card.Content className='space-y-3'>
+          {creditGrantsLoading && creditGrants.length === 0 ? (
+            <div className='flex items-center gap-2 text-sm text-muted'>
+              <Spinner size='sm' />
+              Loading credit grants…
+            </div>
+          ) : null}
+
+          {creditGrantsError ? (
+            <div className='text-sm text-muted'>Failed to load credit grants: {creditGrantsError}</div>
+          ) : null}
+
+          {!creditGrantsLoading && creditGrants.length === 0 ? (
+            <div className='text-sm text-muted'>No credit grants yet.</div>
+          ) : null}
+
+          {creditGrants.length > 0 ? (
+            <div className='space-y-2'>
+              {creditGrants.map((grant) => {
+                const totalQuota = grant.quota || 0;
+                const usedQuota = grant.used_quota || 0;
+                const remainingQuota = Math.max(0, totalQuota - usedQuota);
+
+                const createdAt = formatUnixSeconds(grant.created_time);
+                const expiresAt = grant.expired_time ? formatUnixSeconds(grant.expired_time) : 'Never';
+
+                return (
+                  <div key={grant.id} className='rounded-lg border border-border p-3 text-sm'>
+                    <div className='flex items-start justify-between gap-3'>
+                      <div className='min-w-0'>
+                        <div className='flex flex-wrap items-center gap-2'>
+                          <div className='font-medium'>#{grant.id}</div>
+                          <div className='text-muted'>·</div>
+                          <div className='font-medium'>{grant.grant_type || '—'}</div>
+                        </div>
+                        <div className='mt-1 text-xs text-muted'>
+                          Created: {createdAt} · Expires: {expiresAt}
+                        </div>
+                        {grant.remark ? (
+                          <div className='mt-1 text-xs text-muted'>Remark: {grant.remark}</div>
+                        ) : null}
+                        {grant.reference ? (
+                          <div className='mt-1 text-xs text-muted'>
+                            Ref: <span className='break-all font-mono'>{grant.reference}</span>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className='shrink-0 text-right'>
+                        <div className='text-base font-semibold'>${formatDollarsFromQuota(remainingQuota)}</div>
+                        <div className='mt-1 text-xs text-muted'>
+                          Used ${formatDollarsFromQuota(usedQuota)} / Total ${formatDollarsFromQuota(totalQuota)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+
+          <div className='flex items-center justify-between text-sm text-muted'>
+            <div>{creditGrantsLoading ? 'Loading…' : `Total ${creditGrantsTotal}`}</div>
+            <div className='flex items-center gap-2'>
+              <Button
+                size='sm'
+                variant='secondary'
+                isDisabled={creditGrantsPage <= 1 || creditGrantsLoading}
+                onPress={() => loadCreditGrants(creditGrantsPage - 1).catch(() => {})}
+              >
+                Prev
+              </Button>
+              <span>Page {creditGrantsPage}</span>
+              <Button
+                size='sm'
+                variant='secondary'
+                isDisabled={
+                  creditGrantsPage * creditGrantsPageSize >= creditGrantsTotal || creditGrantsLoading
+                }
+                onPress={() => loadCreditGrants(creditGrantsPage + 1).catch(() => {})}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </Card.Content>
+      </Card>
 
       <BindCardModal
         isOpen={bindCardOpen}

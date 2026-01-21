@@ -15,8 +15,8 @@ type LoginResponse =
       require_2fa: true;
     }>;
 
-function getAff(): string | null {
-  const raw = localStorage.getItem('aff');
+function getInviteCode(): string | null {
+  const raw = localStorage.getItem('via') || localStorage.getItem('aff');
   return raw && raw.trim() ? raw.trim() : null;
 }
 
@@ -52,7 +52,7 @@ export function LoginPage() {
 
   const redirectTo = useMemo(() => {
     const from = (location.state as any)?.from?.pathname as string | undefined;
-    return from || '/console';
+    return from || '/dashboard';
   }, [location.state]);
 
   const ensureTerms = () => {
@@ -120,9 +120,9 @@ export function LoginPage() {
   };
 
   const getOAuthState = async () => {
-    const aff = getAff();
+    const aff = getInviteCode();
     const res = await fetchJson<ApiResponse<string>>('/api/oauth/state', {
-      params: aff ? { aff } : undefined,
+      params: aff ? { via: aff } : undefined,
     });
     return res.data;
   };
@@ -145,7 +145,7 @@ export function LoginPage() {
     if (provider === 'discord') {
       const clientId = status?.discord_client_id as string | undefined;
       if (!clientId) return toast.error('Discord OAuth is not configured.');
-      const redirectUri = `${origin}/oauth/discord`;
+      const redirectUri = `${origin}/auth/callback/discord`;
       const scope = 'identify+openid';
       window.open(
         `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`,
@@ -169,7 +169,7 @@ export function LoginPage() {
 
     const url = new URL(authUrl);
     url.searchParams.set('client_id', clientId);
-    url.searchParams.set('redirect_uri', `${origin}/oauth/oidc`);
+    url.searchParams.set('redirect_uri', `${origin}/auth/callback/oidc`);
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('scope', 'openid profile email');
     url.searchParams.set('state', state);
@@ -327,7 +327,7 @@ export function LoginPage() {
                 Back
               </Button>
             ) : null}
-            <Button variant='secondary' onPress={() => navigate('/reset')}>
+            <Button variant='secondary' onPress={() => navigate('/auth/recover')}>
               Forgot password
             </Button>
           </div>
@@ -385,7 +385,7 @@ export function LoginPage() {
         {!status?.self_use_mode_enabled ? (
           <Card.Footer>
             <div className='text-sm text-muted'>
-              Don't have an account? <RouterLink to='/register'>Register</RouterLink>
+              Don't have an account? <RouterLink to='/auth/signup'>Register</RouterLink>
             </div>
           </Card.Footer>
         ) : null}

@@ -39,7 +39,7 @@ export function TokenCreatePage() {
       }
 
       toast.success('Created');
-      navigate('/console/token', { replace: true });
+      navigate('/api-keys', { replace: true });
     } finally {
       setSubmitting(false);
     }
@@ -53,7 +53,7 @@ export function TokenCreatePage() {
           <div className='mt-1 text-sm text-muted'>Create one or more API keys.</div>
         </div>
         <div className='flex gap-2'>
-          <Button variant='secondary' onPress={() => navigate('/console/token')}>
+          <Button variant='secondary' onPress={() => navigate('/api-keys')}>
             Cancel
           </Button>
           <Button onPress={create} isDisabled={submitting}>

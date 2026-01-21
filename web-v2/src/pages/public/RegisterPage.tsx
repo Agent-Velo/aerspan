@@ -7,8 +7,8 @@ import { toast } from '@/ui/toast';
 import { useStatus } from '@/stores/status/StatusStore';
 import { Button, Card, Checkbox, Input, Label, TextField } from '@/components/ui/heroui';
 
-function getAff(): string | null {
-  const raw = localStorage.getItem('aff');
+function getInviteCode(): string | null {
+  const raw = localStorage.getItem('via') || localStorage.getItem('aff');
   return raw && raw.trim() ? raw.trim() : null;
 }
 
@@ -100,7 +100,7 @@ export function RegisterPage() {
 
     setSubmitting(true);
     try {
-      const aff = getAff();
+      const aff = getInviteCode();
       await fetchJson<ApiResponse<any>>('/api/user/register', {
         method: 'POST',
         params: turnstileEnabled ? { turnstile: turnstileToken } : undefined,
@@ -114,7 +114,7 @@ export function RegisterPage() {
       });
 
       toast.success('Registered. Please sign in.');
-      navigate('/login', { replace: true });
+      navigate('/auth/signin', { replace: true });
     } finally {
       setSubmitting(false);
     }
@@ -126,10 +126,10 @@ export function RegisterPage() {
         <Card>
           <Card.Header>
             <Card.Title>Registration is disabled</Card.Title>
-            <Card.Description>This service is running in self-use mode.</Card.Description>
+          <Card.Description>This service is running in self-use mode.</Card.Description>
           </Card.Header>
           <Card.Footer>
-            <Button onPress={() => navigate('/login')}>Go to login</Button>
+            <Button onPress={() => navigate('/auth/signin')}>Go to login</Button>
           </Card.Footer>
         </Card>
       </div>
@@ -207,7 +207,7 @@ export function RegisterPage() {
             <Button onPress={register} isDisabled={!canSubmit || submitting}>
               Register
             </Button>
-            <Button variant='secondary' onPress={() => navigate('/login')}>
+            <Button variant='secondary' onPress={() => navigate('/auth/signin')}>
               Back to login
             </Button>
           </div>

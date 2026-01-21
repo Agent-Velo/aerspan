@@ -40,6 +40,8 @@ import Chat from './pages/Chat';
 import Chat2Link from './pages/Chat2Link';
 import Midjourney from './pages/Midjourney';
 import Pricing from './pages/Pricing';
+import PricingModelDetailsPage from './pages/Pricing/ModelDetails';
+import PricingModelComparePage from './pages/Pricing/ModelCompare';
 import Task from './pages/Task';
 import ModelPage from './pages/Model';
 import ModelDeploymentPage from './pages/ModelDeployment';
@@ -308,6 +310,38 @@ function App() {
             ) : (
               <Suspense fallback={<Loading></Loading>} key={location.pathname}>
                 <Pricing />
+              </Suspense>
+            )
+          }
+        />
+        <Route
+          path='/pricing/compare'
+          element={
+            pricingRequireAuth ? (
+              <PrivateRoute>
+                <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                  <PricingModelComparePage />
+                </Suspense>
+              </PrivateRoute>
+            ) : (
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <PricingModelComparePage />
+              </Suspense>
+            )
+          }
+        />
+        <Route
+          path='/pricing/:modelName'
+          element={
+            pricingRequireAuth ? (
+              <PrivateRoute>
+                <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                  <PricingModelDetailsPage />
+                </Suspense>
+              </PrivateRoute>
+            ) : (
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <PricingModelDetailsPage />
               </Suspense>
             )
           }

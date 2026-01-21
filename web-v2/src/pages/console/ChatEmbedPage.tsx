@@ -80,7 +80,7 @@ export function ChatEmbedPage() {
         const enabled = (res.data.items || []).find((t) => t.status === 1);
         if (!enabled) {
           toast.warning('No enabled token found.');
-          navigate('/console/token', { replace: true });
+          navigate('/api-keys', { replace: true });
           return;
         }
         const chatUrl = buildChatLink(template.url, enabled.key, status);
@@ -116,7 +116,7 @@ export function ChatEmbedPage() {
               fullWidth
               variant='secondary'
               className='justify-start'
-              onPress={() => navigate(`/console/chat/${idx}`)}
+              onPress={() => navigate(`/chat/${idx}`)}
             >
               {c.name}
             </Button>

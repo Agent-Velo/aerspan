@@ -106,20 +106,20 @@ export function PersonalHubPage() {
       title: 'Passkey',
       description: 'Secure passwordless authentication with WebAuthn',
       status: passkeyStatus?.enabled ? 'Enabled' : 'Not enabled',
-      path: '/console/personal/passkey',
+      path: '/personal/passkey',
     },
     {
       id: '2fa',
       title: 'Two-Factor Authentication',
       description: 'Add an extra layer of security with TOTP',
       status: twoFaStatus?.enabled ? 'Enabled' : 'Not enabled',
-      path: '/console/personal/2fa',
+      path: '/personal/2fa',
     },
     {
       id: 'password',
       title: 'Password',
       description: 'Change your account password',
-      path: '/console/personal/password',
+      path: '/personal/password',
     },
 
     // Account group
@@ -128,20 +128,20 @@ export function PersonalHubPage() {
       title: 'Account Bindings',
       description: 'Link external accounts to your profile',
       status: `${getBindingsCount()} connected`,
-      path: '/console/personal/bindings',
+      path: '/personal/bindings',
     },
     {
       id: 'access-token',
       title: 'Access Token',
       description: 'API authentication token for system management',
-      path: '/console/personal/access-token',
+      path: '/personal/access-token',
     },
     {
       id: 'checkin',
       title: 'Daily Check-in',
       description: 'Earn quota rewards by checking in daily',
       status: checkinData?.stats?.checked_in_today ? 'Checked in today' : 'Not checked in',
-      path: '/console/personal/checkin',
+      path: '/personal/checkin',
       condition: Boolean(status?.checkin_enabled),
     },
 
@@ -150,13 +150,13 @@ export function PersonalHubPage() {
       id: 'notifications',
       title: 'Notifications',
       description: 'Configure how you receive notifications',
-      path: '/console/personal/notifications',
+      path: '/personal/notifications',
     },
     {
       id: 'sidebar',
       title: 'Sidebar Modules',
       description: 'Customize which sidebar items are visible',
-      path: '/console/personal/sidebar',
+      path: '/personal/sidebar',
     },
   ];
 

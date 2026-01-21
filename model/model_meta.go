@@ -21,16 +21,35 @@ type BoundChannel struct {
 }
 
 type Model struct {
-	Id           int            `json:"id"`
-	ModelName    string         `json:"model_name" gorm:"size:128;not null;uniqueIndex:uk_model_name_delete_at,priority:1"`
-	DisplayName  string         `json:"display_name,omitempty" gorm:"size:128"`
-	Description  string         `json:"description,omitempty" gorm:"type:text"`
-	Icon         string         `json:"icon,omitempty" gorm:"type:varchar(128)"`
-	Tags         string         `json:"tags,omitempty" gorm:"type:varchar(255)"`
-	VendorID     int            `json:"vendor_id,omitempty" gorm:"index"`
-	Endpoints    string         `json:"endpoints,omitempty" gorm:"type:text"`
-	TotalContext *int           `json:"total_context,omitempty"`
-	MaxOutput    *int           `json:"max_output,omitempty"`
+	Id           int    `json:"id"`
+	ModelName    string `json:"model_name" gorm:"size:128;not null;uniqueIndex:uk_model_name_delete_at,priority:1"`
+	DisplayName  string `json:"display_name,omitempty" gorm:"size:128"`
+	Description  string `json:"description,omitempty" gorm:"type:text"`
+	Icon         string `json:"icon,omitempty" gorm:"type:varchar(128)"`
+	Tags         string `json:"tags,omitempty" gorm:"type:varchar(255)"`
+	VendorID     int    `json:"vendor_id,omitempty" gorm:"index"`
+	Endpoints    string `json:"endpoints,omitempty" gorm:"type:text"`
+	TotalContext *int   `json:"total_context,omitempty"`
+	MaxOutput    *int   `json:"max_output,omitempty"`
+
+	// OpenRouter model metadata for /v1/models/openrouter.
+	//
+	// Note: list fields are stored as comma-separated strings.
+	OpenRouterHuggingFaceID               string `json:"openrouter_hugging_face_id,omitempty" gorm:"type:varchar(255)"`
+	OpenRouterCreated                     *int64 `json:"openrouter_created,omitempty" gorm:"type:bigint"`
+	OpenRouterInputModalities             string `json:"openrouter_input_modalities,omitempty" gorm:"type:text"`
+	OpenRouterOutputModalities            string `json:"openrouter_output_modalities,omitempty" gorm:"type:text"`
+	OpenRouterQuantization                string `json:"openrouter_quantization,omitempty" gorm:"type:varchar(64)"`
+	OpenRouterPricingPrompt               string `json:"openrouter_pricing_prompt,omitempty" gorm:"type:varchar(32)"`
+	OpenRouterPricingCompletion           string `json:"openrouter_pricing_completion,omitempty" gorm:"type:varchar(32)"`
+	OpenRouterPricingImage                string `json:"openrouter_pricing_image,omitempty" gorm:"type:varchar(32)"`
+	OpenRouterPricingRequest              string `json:"openrouter_pricing_request,omitempty" gorm:"type:varchar(32)"`
+	OpenRouterPricingInputCacheRead       string `json:"openrouter_pricing_input_cache_read,omitempty" gorm:"type:varchar(32)"`
+	OpenRouterPricingInputCacheWrite      string `json:"openrouter_pricing_input_cache_write,omitempty" gorm:"type:varchar(32)"`
+	OpenRouterSupportedSamplingParameters string `json:"openrouter_supported_sampling_parameters,omitempty" gorm:"type:text"`
+	OpenRouterSupportedFeatures           string `json:"openrouter_supported_features,omitempty" gorm:"type:text"`
+	OpenRouterSlug                        string `json:"openrouter_slug,omitempty" gorm:"type:varchar(255)"`
+
 	Status       int            `json:"status" gorm:"default:1"`
 	SyncOfficial int            `json:"sync_official" gorm:"default:1"`
 	CreatedTime  int64          `json:"created_time" gorm:"bigint"`

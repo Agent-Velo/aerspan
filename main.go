@@ -253,6 +253,8 @@ func InitResources() error {
 
 	// Initialize options, should after model.InitDB()
 	model.InitOptionMap()
+	// Auto-migrate legacy user quota into credit grants.
+	model.MigrateCreditGrantsIfNeeded()
 	// Auto-migrate legacy ratio-based pricing into direct USD/1M token prices.
 	model.MigratePricingSettingsIfNeeded()
 

@@ -27,7 +27,7 @@ export function RequireAuth({ children }: PropsWithChildren) {
   const location = useLocation();
 
   if (!user) {
-    return <Navigate to='/login' state={{ from: location }} replace />;
+    return <Navigate to='/auth/signin' state={{ from: location }} replace />;
   }
   return children;
 }
@@ -35,7 +35,7 @@ export function RequireAuth({ children }: PropsWithChildren) {
 export function AuthRedirect({ children }: PropsWithChildren) {
   const { user } = useAuth();
   if (user) {
-    return <Navigate to='/console' replace />;
+    return <Navigate to='/dashboard' replace />;
   }
   return children;
 }
@@ -47,7 +47,7 @@ export function RequirePricingAuth({ children }: PropsWithChildren) {
 
   const requireAuth = getPricingRequireAuth(status?.HeaderNavModules);
   if (requireAuth && !user) {
-    return <Navigate to='/login' state={{ from: location }} replace />;
+    return <Navigate to='/auth/signin' state={{ from: location }} replace />;
   }
 
   return children;

@@ -79,7 +79,7 @@ export function ResetRequestPage() {
             <Button onPress={send} isDisabled={submitting}>
               Send
             </Button>
-            <Button variant='secondary' onPress={() => navigate('/login')}>
+            <Button variant='secondary' onPress={() => navigate('/auth/signin')}>
               Back to login
             </Button>
           </div>

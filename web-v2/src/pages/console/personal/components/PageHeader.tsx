@@ -9,7 +9,7 @@ type PageHeaderProps = {
   actions?: ReactNode;
 };
 
-export function PageHeader({ title, description, backPath = '/console/personal', actions }: PageHeaderProps) {
+export function PageHeader({ title, description, backPath = '/personal', actions }: PageHeaderProps) {
   const navigate = useNavigate();
 
   return (

@@ -23,16 +23,16 @@ import { API, copy, showError, showSuccess } from '../../helpers';
 import { Modal } from '@douyinfe/semi-ui';
 import { UserContext } from '../../context/User';
 import { StatusContext } from '../../context/Status';
+import { useNavigate } from 'react-router-dom';
 
 export const useModelPricingData = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchValue, setSearchValue] = useState('');
   const compositionRef = useRef({ isComposition: false });
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [modalImageUrl, setModalImageUrl] = useState('');
   const [isModalOpenurl, setIsModalOpenurl] = useState(false);
-  const [showModelDetail, setShowModelDetail] = useState(false);
-  const [selectedModel, setSelectedModel] = useState(null);
   const [filterQuotaType, setFilterQuotaType] = useState('all'); // 计费类型筛选: 'all' | 0 | 1
   const [filterEndpointType, setFilterEndpointType] = useState('all'); // 端点类型筛选: 'all' | string
   const [filterVendor, setFilterVendor] = useState('all'); // 供应商筛选: 'all' | 'unknown' | string
@@ -257,15 +257,9 @@ export const useModelPricingData = () => {
   };
 
   const openModelDetail = (model) => {
-    setSelectedModel(model);
-    setShowModelDetail(true);
-  };
-
-  const closeModelDetail = () => {
-    setShowModelDetail(false);
-    setTimeout(() => {
-      setSelectedModel(null);
-    }, 300);
+    const modelId = model?.model_name;
+    if (!modelId) return;
+    navigate(`/pricing/${encodeURIComponent(modelId)}`);
   };
 
   useEffect(() => {
@@ -293,10 +287,6 @@ export const useModelPricingData = () => {
     setModalImageUrl,
     isModalOpenurl,
     setIsModalOpenurl,
-    showModelDetail,
-    setShowModelDetail,
-    selectedModel,
-    setSelectedModel,
     filterQuotaType,
     setFilterQuotaType,
     filterEndpointType,
@@ -340,7 +330,6 @@ export const useModelPricingData = () => {
     handleCompositionStart,
     handleCompositionEnd,
     openModelDetail,
-    closeModelDetail,
 
     // 引用
     compositionRef,

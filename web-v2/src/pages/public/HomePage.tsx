@@ -221,10 +221,10 @@ export function HomePage() {
 
             <div className='flex flex-col justify-between gap-3'>
               <div className='text-sm text-muted'>
-                {user ? 'You are signed in.' : 'Sign in to access the console.'}
+                {user ? 'You are signed in.' : 'Sign in to access your dashboard.'}
               </div>
               <div className='flex flex-wrap gap-2'>
-                <Button onPress={() => navigate('/console')}>Go to Console</Button>
+                <Button onPress={() => navigate('/dashboard')}>Go to Dashboard</Button>
                 {docsLink ? (
                   <Button
                     variant='secondary'

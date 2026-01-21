@@ -71,8 +71,8 @@ export function Header() {
             <HeaderNavButton to='/' end>
               Home
             </HeaderNavButton>
-            <HeaderNavButton to='/console'>
-              Console
+            <HeaderNavButton to='/dashboard'>
+              Dashboard
             </HeaderNavButton>
             {showModels ? (
               <HeaderNavButton to='/models' end>
@@ -118,7 +118,7 @@ export function Header() {
               </Button>
             </div>
           ) : (
-            <Button onPress={() => navigate('/login')}>Sign in</Button>
+            <Button onPress={() => navigate('/auth/signin')}>Sign in</Button>
           )}
         </div>
       </div>

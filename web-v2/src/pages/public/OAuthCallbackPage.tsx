@@ -50,14 +50,14 @@ export function OAuthCallbackPage() {
           if ((res as any).message === 'bind') {
             setStatus('done');
             setMessage('Bind succeeded. Redirecting…');
-            navigate('/console/personal', { replace: true });
+            navigate('/personal', { replace: true });
             return;
           }
 
           login(res.data);
           setStatus('done');
           setMessage('Signed in. Redirecting…');
-          navigate('/console/token', { replace: true });
+          navigate('/api-keys', { replace: true });
           return;
         } catch (err: any) {
           lastError = err instanceof Error ? err.message : String(err);

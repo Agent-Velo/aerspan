@@ -58,11 +58,11 @@ export function ConsoleLayout() {
             <div className='mb-4'>
               <div className='px-3 py-1 text-xs font-semibold uppercase text-muted'>Chat</div>
               {isModuleVisible('chat', 'playground') && (
-                <SidebarNavButton to='/console/playground'>Playground</SidebarNavButton>
+                <SidebarNavButton to='/playground'>Playground</SidebarNavButton>
               )}
               {isModuleVisible('chat', 'chat') &&
                 chatLinks.map((c) => (
-                  <SidebarNavButton key={c.idx} to={`/console/chat/${c.idx}`}>
+                  <SidebarNavButton key={c.idx} to={`/chat/${c.idx}`}>
                     {c.name}
                   </SidebarNavButton>
                 ))}
@@ -73,21 +73,24 @@ export function ConsoleLayout() {
             <div className='mb-4'>
               <div className='px-3 py-1 text-xs font-semibold uppercase text-muted'>Console</div>
               {isModuleVisible('console', 'detail') && (
-                <SidebarNavButton to='/console' end>
+                <SidebarNavButton to='/dashboard' end>
                   Dashboard
                 </SidebarNavButton>
               )}
               {isModuleVisible('console', 'token') && (
-                <SidebarNavButton to='/console/token'>Keys</SidebarNavButton>
+                <SidebarNavButton to='/api-keys'>API Keys</SidebarNavButton>
               )}
               {isModuleVisible('console', 'log') && (
-                <SidebarNavButton to='/console/log'>Logs</SidebarNavButton>
+                <>
+                  <SidebarNavButton to='/usage-log'>Usage Logs</SidebarNavButton>
+                  <SidebarNavButton to='/audit-log'>Audit Logs</SidebarNavButton>
+                </>
               )}
               {isModuleVisible('console', 'midjourney') && (
-                <SidebarNavButton to='/console/midjourney'>Midjourney</SidebarNavButton>
+                <SidebarNavButton to='/midjourney'>Midjourney</SidebarNavButton>
               )}
               {isModuleVisible('console', 'task') && (
-                <SidebarNavButton to='/console/task'>Tasks</SidebarNavButton>
+                <SidebarNavButton to='/task'>Tasks</SidebarNavButton>
               )}
             </div>
           )}
@@ -96,10 +99,10 @@ export function ConsoleLayout() {
             <div>
               <div className='px-3 py-1 text-xs font-semibold uppercase text-muted'>Account</div>
               {isModuleVisible('personal', 'topup') && (
-                <SidebarNavButton to='/console/topup'>Top-up</SidebarNavButton>
+                <SidebarNavButton to='/billing'>Billing</SidebarNavButton>
               )}
               {isModuleVisible('personal', 'personal') && (
-                <SidebarNavButton to='/console/personal'>Personal</SidebarNavButton>
+                <SidebarNavButton to='/personal'>Personal</SidebarNavButton>
               )}
             </div>
           )}

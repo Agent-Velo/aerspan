@@ -60,7 +60,7 @@ export function TokenEditPage() {
         },
       });
       toast.success('Saved');
-      navigate('/console/token', { replace: true });
+      navigate('/api-keys', { replace: true });
     } finally {
       setSaving(false);
     }
@@ -93,7 +93,7 @@ export function TokenEditPage() {
           <div className='mt-1 text-sm text-muted'>Update API key settings.</div>
         </div>
         <div className='flex gap-2'>
-          <Button variant='secondary' onPress={() => navigate('/console/token')}>
+          <Button variant='secondary' onPress={() => navigate('/api-keys')}>
             Cancel
           </Button>
           <Button onPress={save} isDisabled={saving}>

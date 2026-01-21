@@ -225,7 +225,7 @@ func updateVideoSingleTask(ctx context.Context, adaptor channel.TaskAdaptor, cha
 									logger.LogQuota(preConsumedQuota),
 									taskResult.TotalTokens,
 								))
-								if err := model.IncreaseUserQuota(task.UserId, refundQuota, false); err != nil {
+								if err := model.RefundUserQuota(task.UserId, refundQuota); err != nil {
 									logger.LogError(ctx, fmt.Sprintf("Failed to refund pre-charge: %s", err.Error()))
 								} else {
 									task.Quota = actualQuota // 更新任务记录的实际扣费额度
@@ -276,7 +276,7 @@ func updateVideoSingleTask(ctx context.Context, adaptor channel.TaskAdaptor, cha
 
 	if shouldRefund {
 		// 任务失败且之前状态不是失败才退还额度，防止重复退还
-		if err := model.IncreaseUserQuota(task.UserId, quota, false); err != nil {
+		if err := model.RefundUserQuota(task.UserId, quota); err != nil {
 			logger.LogWarn(ctx, "Failed to increase user quota: "+err.Error())
 		}
 		logContent := fmt.Sprintf("Video async task failed %s, refund %s", task.TaskID, logger.LogQuota(quota))

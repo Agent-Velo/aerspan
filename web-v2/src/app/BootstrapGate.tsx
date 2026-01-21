@@ -25,16 +25,19 @@ export function BootstrapGate({ children }: PropsWithChildren) {
   const { loaded: authLoaded, refreshSelf } = useAuth();
   const [booting, setBooting] = useState(true);
 
-  const aff = useMemo(() => {
-    const value = new URLSearchParams(window.location.search).get('aff');
+  const via = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    const value = params.get('via') || params.get('aff');
     return value && value.trim() ? value.trim() : null;
   }, []);
 
   useEffect(() => {
-    if (aff) {
-      localStorage.setItem('aff', aff);
+    if (via) {
+      localStorage.setItem('via', via);
+      // Backward compatible with older builds that still read `aff`.
+      localStorage.setItem('aff', via);
     }
-  }, [aff]);
+  }, [via]);
 
   useEffect(() => {
     let cancelled = false;

@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, Navigate } from 'react-router-dom';
+import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { fetchJson } from '@/api/client';
-import { toast } from '@/ui/toast';
-import { copyText } from '@/lib/clipboard';
 import { useAuth } from '@/stores/auth/AuthStore';
 import { useStatus } from '@/stores/status/StatusStore';
-import { Button, Card, Chip, Input, Label, ListBox, Modal, Select, Spinner, TextField } from '@/components/ui/heroui';
+import { Button, Card, Chip, Input, Label, ListBox, Select, Spinner, TextField } from '@/components/ui/heroui';
 
 type PricingItem = {
   model_name: string;
+  display_name?: string;
   description?: string;
   icon?: string;
   tags?: string;
@@ -34,16 +33,11 @@ type Vendor = {
   icon?: string;
 };
 
-type SupportedEndpointInfo = {
-  path: string;
-  method: string;
-};
-
 type PricingResponse = {
   success: boolean;
   data: PricingItem[];
   vendors: Vendor[];
-  supported_endpoint: Record<string, SupportedEndpointInfo>;
+  supported_endpoint: Record<string, { path: string; method: string }>;
 };
 
 function parseHeaderNavModules(raw?: string): { enabled: boolean; requireAuth: boolean } {
@@ -83,20 +77,18 @@ export function ModelsPage() {
   const { user } = useAuth();
   const { status } = useStatus();
   const location = useLocation();
+  const navigate = useNavigate();
   const pricingGate = useMemo(() => parseHeaderNavModules(status?.HeaderNavModules), [status?.HeaderNavModules]);
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<PricingItem[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [supportedEndpoints, setSupportedEndpoints] = useState<Record<string, SupportedEndpointInfo>>({});
 
   const [query, setQuery] = useState('');
   const [quotaType, setQuotaType] = useState<string>('');
   const [endpointType, setEndpointType] = useState<string>('');
   const [vendorId, setVendorId] = useState<string>('');
   const [tag, setTag] = useState<string>('');
-
-  const [selected, setSelected] = useState<PricingItem | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,7 +99,6 @@ export function ModelsPage() {
         if (!cancelled) {
           setItems(res.data || []);
           setVendors(res.vendors || []);
-          setSupportedEndpoints(res.supported_endpoint || {});
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -176,7 +167,7 @@ export function ModelsPage() {
   }
 
   if (pricingGate.requireAuth && !user) {
-    return <Navigate to='/login' state={{ from: location }} replace />;
+    return <Navigate to='/auth/signin' state={{ from: location }} replace />;
   }
 
   return (
@@ -314,12 +305,14 @@ export function ModelsPage() {
               <button
                 key={item.model_name}
                 className='w-full px-4 py-3 text-left'
-                onClick={() => setSelected(item)}
+                onClick={() => navigate(`/models/${encodeURIComponent(item.model_name)}`)}
               >
                 <div className='flex flex-col gap-1 md:flex-row md:items-center md:justify-between'>
                   <div className='min-w-0'>
                     <div className='flex items-center gap-2'>
-                      <div className='truncate text-sm font-semibold'>{item.model_name}</div>
+                      <div className='truncate text-sm font-semibold'>
+                        {item.display_name?.trim() || item.model_name}
+                      </div>
                       {vendorName ? (
                         <Chip size='sm' variant='secondary'>
                           {vendorName}
@@ -360,99 +353,6 @@ export function ModelsPage() {
           })}
         </div>
       </Card>
-
-      <Modal
-        isOpen={Boolean(selected)}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) setSelected(null);
-        }}
-      >
-        <Button className='sr-only' variant='ghost'>
-          Open
-        </Button>
-        <Modal.Backdrop>
-          <Modal.Container size='lg'>
-            <Modal.Dialog>
-              <Modal.CloseTrigger />
-              <Modal.Header>
-                <div className='min-w-0'>
-                  <Modal.Heading>{selected?.model_name || 'Model'}</Modal.Heading>
-                  <div className='mt-1 text-xs text-muted'>{selected?.description || '—'}</div>
-                </div>
-              </Modal.Header>
-
-              <Modal.Body>
-                <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
-                  <Card variant='secondary'>
-                    <Card.Header>
-                      <Card.Title>Pricing</Card.Title>
-                    </Card.Header>
-                    <Card.Content className='text-sm'>
-                      {selected?.quota_type === 1 ? (
-                        <div>{formatUsd(selected.model_price)} / request</div>
-                      ) : (
-                        <div className='space-y-1'>
-                          <div>Input: {formatUsd(selected?.input_price || 0)} / 1M tokens</div>
-                          <div>Output: {formatUsd(selected?.output_price || 0)} / 1M tokens</div>
-                          {selected?.cache_read_price ? (
-                            <div>Cache: {formatUsd(selected.cache_read_price)} / 1M tokens</div>
-                          ) : null}
-                          {selected?.image_input_price ? (
-                            <div>Image input: {formatUsd(selected.image_input_price)} / 1M tokens</div>
-                          ) : null}
-                          {selected?.audio_input_price ? (
-                            <div>Audio input: {formatUsd(selected.audio_input_price)} / 1M tokens</div>
-                          ) : null}
-                          {selected?.audio_output_price ? (
-                            <div>Audio output: {formatUsd(selected.audio_output_price)} / 1M tokens</div>
-                          ) : null}
-                        </div>
-                      )}
-                    </Card.Content>
-                  </Card>
-
-                  <Card variant='secondary'>
-                    <Card.Header>
-                      <Card.Title>Capabilities</Card.Title>
-                    </Card.Header>
-                    <Card.Content className='space-y-2 text-xs'>
-                      <div>
-                        <span className='text-muted'>Tags: </span>
-                        {splitTags(selected?.tags).join(', ') || '—'}
-                      </div>
-                      <div>
-                        <span className='text-muted'>Endpoint types: </span>
-                        {(selected?.supported_endpoint_types || []).join(', ') || '—'}
-                      </div>
-                      <div>
-                        <span className='text-muted'>Supported endpoints: </span>
-                        {Object.entries(supportedEndpoints)
-                          .map(([k, v]) => `${k}: ${v.method} ${v.path}`)
-                          .join(' · ') || '—'}
-                      </div>
-                    </Card.Content>
-                  </Card>
-                </div>
-              </Modal.Body>
-
-              <Modal.Footer>
-                <Button
-                  variant='secondary'
-                  onPress={() => {
-                    if (!selected?.model_name) return;
-                    copyText(selected.model_name).then((ok) =>
-                      ok ? toast.success('Copied') : toast.error('Copy failed'),
-                    );
-                  }}
-                >
-                  Copy name
-                </Button>
-                <Button slot='close'>Close</Button>
-              </Modal.Footer>
-            </Modal.Dialog>
-          </Modal.Container>
-        </Modal.Backdrop>
-      </Modal>
     </div>
   );
 }

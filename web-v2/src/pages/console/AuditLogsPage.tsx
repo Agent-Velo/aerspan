@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Copy, Eye } from 'lucide-react';
 import { fetchJson } from '@/api/client';
 import type { ApiResponse } from '@/api/types';
 import { toast } from '@/ui/toast';
 import { copyText } from '@/lib/clipboard';
-import { formatUnixSeconds, fromDateTimeLocalToSeconds, toDateTimeLocalValueFromSeconds } from '@/lib/time';
-import { useStatus } from '@/stores/status/StatusStore';
+import {
+  formatUnixSeconds,
+  fromDateTimeLocalToSeconds,
+  toDateTimeLocalValueFromSeconds,
+} from '@/lib/time';
 import { Button, Card, Input, Label, ListBox, Modal, Select, TextField } from '@/components/ui/heroui';
 import { TableActionButton } from '@/components/ui/TableActionButton';
 
@@ -27,34 +30,6 @@ type LogRow = {
 
 type PageInfo<T> = { page: number; page_size: number; total: number; items: T };
 
-const DEFAULT_COLUMNS = [
-  'created_at',
-  'model_name',
-  'token_name',
-  'quota',
-  'prompt_tokens',
-  'completion_tokens',
-  'use_time',
-] as const;
-
-type ColumnKey = (typeof DEFAULT_COLUMNS)[number] | 'is_stream' | 'ip';
-
-function loadColumns(): ColumnKey[] {
-  try {
-    const raw = localStorage.getItem('logs-table-columns-user');
-    if (!raw) return [...DEFAULT_COLUMNS];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [...DEFAULT_COLUMNS];
-    return parsed as ColumnKey[];
-  } catch {
-    return [...DEFAULT_COLUMNS];
-  }
-}
-
-function saveColumns(keys: ColumnKey[]) {
-  localStorage.setItem('logs-table-columns-user', JSON.stringify(keys));
-}
-
 function loadPageSize() {
   const raw = localStorage.getItem('page-size');
   const num = raw ? Number(raw) : 20;
@@ -65,11 +40,7 @@ function savePageSize(size: number) {
   localStorage.setItem('page-size', String(size));
 }
 
-export function UsageLogsPage() {
-  const { status } = useStatus();
-
-  const quotaPerUnit = status?.quota_per_unit || 500000;
-
+export function AuditLogsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => loadPageSize());
   const [total, setTotal] = useState(0);
@@ -77,8 +48,6 @@ export function UsageLogsPage() {
   const [loading, setLoading] = useState(true);
 
   const [type, setType] = useState<number>(0);
-  const [tokenName, setTokenName] = useState('');
-  const [modelName, setModelName] = useState('');
   const [start, setStart] = useState(() => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -86,10 +55,17 @@ export function UsageLogsPage() {
   });
   const [end, setEnd] = useState(() => toDateTimeLocalValueFromSeconds(Math.floor(Date.now() / 1000) + 3600));
 
-  const [stat, setStat] = useState<{ quota: number; rpm: number; tpm: number } | null>(null);
-  const [columns, setColumns] = useState<ColumnKey[]>(() => loadColumns());
-
   const [detail, setDetail] = useState<LogRow | null>(null);
+
+  const typeLabel = useMemo(() => {
+    const map: Record<number, string> = {
+      1: 'Topup',
+      3: 'Manage',
+      4: 'System',
+      6: 'Refund',
+    };
+    return (logType: number) => map[logType] || String(logType);
+  }, []);
 
   const load = async (nextPage = page, nextPageSize = pageSize) => {
     const startSec = fromDateTimeLocalToSeconds(start);
@@ -100,13 +76,11 @@ export function UsageLogsPage() {
     }
     setLoading(true);
     try {
-      const res = await fetchJson<ApiResponse<PageInfo<LogRow[]>>>('/api/usage_log/self', {
+      const res = await fetchJson<ApiResponse<PageInfo<LogRow[]>>>('/api/audit_log/self', {
         params: {
           p: nextPage,
           page_size: nextPageSize,
           type,
-          token_name: tokenName.trim(),
-          model_name: modelName.trim(),
           start_timestamp: startSec,
           end_timestamp: endSec,
         },
@@ -120,30 +94,10 @@ export function UsageLogsPage() {
     }
   };
 
-  const loadStat = async () => {
-    const res = await fetchJson<ApiResponse<{ quota: number; rpm: number; tpm: number }>>('/api/usage_log/self/stat', {
-      params: {
-        token_name: tokenName.trim(),
-        model_name: modelName.trim(),
-        start_timestamp: fromDateTimeLocalToSeconds(start),
-        end_timestamp: fromDateTimeLocalToSeconds(end),
-      },
-    });
-    setStat(res.data);
-  };
-
   useEffect(() => {
     load(page, pageSize).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, pageSize]);
-
-  const toggleColumn = (key: ColumnKey, checked: boolean) => {
-    setColumns((prev) => {
-      const next = checked ? (prev.includes(key) ? prev : [...prev, key]) : prev.filter((c) => c !== key);
-      saveColumns(next);
-      return next;
-    });
-  };
 
   return (
     <div className='space-y-4'>
@@ -180,24 +134,15 @@ export function UsageLogsPage() {
 
       <div className='flex flex-col justify-between gap-3 md:flex-row md:items-end'>
         <div>
-          <div className='text-lg font-semibold'>Usage logs</div>
-          <div className='mt-1 text-sm text-muted'>Filter and inspect your requests.</div>
+          <div className='text-lg font-semibold'>Audit logs</div>
+          <div className='mt-1 text-sm text-muted'>Account and system events.</div>
         </div>
         <div className='flex flex-wrap gap-2'>
           <Button onPress={() => load(1, pageSize).catch(() => {})} isDisabled={loading}>
             Refresh
           </Button>
-          <Button variant='secondary' onPress={() => loadStat().catch(() => {})}>
-            Stats
-          </Button>
         </div>
       </div>
-
-      {stat ? (
-        <Card variant='secondary'>
-          <Card.Content className='text-sm'>Cost: ${(stat.quota / quotaPerUnit).toFixed(2)} · RPM: {stat.rpm} · TPM: {stat.tpm}</Card.Content>
-        </Card>
-      ) : null}
 
       <Card>
         <Card.Content className='space-y-3'>
@@ -212,8 +157,10 @@ export function UsageLogsPage() {
                 <ListBox>
                   {[
                     { id: '0', label: 'All' },
-                    { id: '2', label: 'Consume' },
-                    { id: '5', label: 'Error' },
+                    { id: '1', label: 'Topup' },
+                    { id: '3', label: 'Manage' },
+                    { id: '4', label: 'System' },
+                    { id: '6', label: 'Refund' },
                   ].map((opt) => (
                     <ListBox.Item key={opt.id} id={opt.id} textValue={opt.label}>
                       {opt.label}
@@ -224,14 +171,8 @@ export function UsageLogsPage() {
               </Select.Popover>
             </Select>
 
-            <TextField name='tokenName' onChange={setTokenName}>
-              <Label>Token name</Label>
-              <Input value={tokenName} />
-            </TextField>
-            <TextField name='modelName' onChange={setModelName}>
-              <Label>Model</Label>
-              <Input value={modelName} />
-            </TextField>
+            <div className='hidden md:block' />
+
             <TextField name='start' type='datetime-local' onChange={setStart}>
               <Label>Start</Label>
               <Input value={start} />
@@ -241,30 +182,6 @@ export function UsageLogsPage() {
               <Input value={end} />
             </TextField>
           </div>
-
-          <div className='flex flex-wrap items-center gap-2'>
-            <div className='text-xs font-semibold uppercase text-muted'>Columns</div>
-            {([
-              'created_at',
-              'model_name',
-              'token_name',
-              'quota',
-              'prompt_tokens',
-              'completion_tokens',
-              'use_time',
-              'is_stream',
-              'ip',
-            ] as ColumnKey[]).map((c) => (
-              <label key={c} className='flex items-center gap-1 text-sm'>
-                <input
-                  type='checkbox'
-                  checked={columns.includes(c)}
-                  onChange={(e) => toggleColumn(c, e.target.checked)}
-                />
-                {c}
-              </label>
-            ))}
-          </div>
         </Card.Content>
       </Card>
 
@@ -272,30 +189,22 @@ export function UsageLogsPage() {
         <table className='app-table'>
           <thead>
             <tr>
-              {columns.includes('created_at') ? <th className='px-3 py-2'>Time</th> : null}
-              {columns.includes('model_name') ? <th className='px-3 py-2'>Model</th> : null}
-              {columns.includes('token_name') ? <th className='px-3 py-2'>Token</th> : null}
-              {columns.includes('quota') ? <th className='px-3 py-2'>Cost</th> : null}
-              {columns.includes('prompt_tokens') ? <th className='px-3 py-2'>Prompt</th> : null}
-              {columns.includes('completion_tokens') ? <th className='px-3 py-2'>Completion</th> : null}
-              {columns.includes('use_time') ? <th className='px-3 py-2'>Time(s)</th> : null}
-              {columns.includes('is_stream') ? <th className='px-3 py-2'>Stream</th> : null}
-              {columns.includes('ip') ? <th className='px-3 py-2'>IP</th> : null}
+              <th className='px-3 py-2'>Time</th>
+              <th className='px-3 py-2'>Type</th>
+              <th className='px-3 py-2'>Content</th>
               <th className='px-3 py-2'>Actions</th>
             </tr>
           </thead>
           <tbody>
             {items.map((row) => (
               <tr key={`${row.id}-${row.created_at}`}>
-                {columns.includes('created_at') ? <td className='px-3 py-2'>{formatUnixSeconds(row.created_at)}</td> : null}
-                {columns.includes('model_name') ? <td className='px-3 py-2'>{row.model_name}</td> : null}
-                {columns.includes('token_name') ? <td className='px-3 py-2'>{row.token_name}</td> : null}
-                {columns.includes('quota') ? <td className='px-3 py-2'>${(row.quota / quotaPerUnit).toFixed(6)}</td> : null}
-                {columns.includes('prompt_tokens') ? <td className='px-3 py-2'>{row.prompt_tokens}</td> : null}
-                {columns.includes('completion_tokens') ? <td className='px-3 py-2'>{row.completion_tokens}</td> : null}
-                {columns.includes('use_time') ? <td className='px-3 py-2'>{row.use_time}</td> : null}
-                {columns.includes('is_stream') ? <td className='px-3 py-2'>{row.is_stream ? 'Yes' : 'No'}</td> : null}
-                {columns.includes('ip') ? <td className='px-3 py-2'>{row.ip}</td> : null}
+                <td className='px-3 py-2'>{formatUnixSeconds(row.created_at)}</td>
+                <td className='px-3 py-2'>{typeLabel(row.type)}</td>
+                <td className='px-3 py-2'>
+                  <div className='max-w-[520px] truncate' title={row.content}>
+                    {row.content}
+                  </div>
+                </td>
                 <td className='px-3 py-2'>
                   <div className='flex flex-wrap gap-2'>
                     <TableActionButton label='View' onPress={() => setDetail(row)}>

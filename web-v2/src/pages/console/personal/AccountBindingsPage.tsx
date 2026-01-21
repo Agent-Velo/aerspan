@@ -65,7 +65,7 @@ export function AccountBindingsPage() {
     if (provider === 'discord') {
       const clientId = status?.discord_client_id as string | undefined;
       if (!clientId) return toast.error('Discord OAuth is not configured.');
-      const redirectUri = `${origin}/oauth/discord`;
+      const redirectUri = `${origin}/auth/callback/discord`;
       const scope = 'identify+openid';
       window.open(
         `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`,
@@ -89,7 +89,7 @@ export function AccountBindingsPage() {
 
     const url = new URL(authUrl);
     url.searchParams.set('client_id', clientId);
-    url.searchParams.set('redirect_uri', `${origin}/oauth/oidc`);
+    url.searchParams.set('redirect_uri', `${origin}/auth/callback/oidc`);
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('scope', 'openid profile email');
     url.searchParams.set('state', state);

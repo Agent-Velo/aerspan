@@ -248,15 +248,17 @@ func InitLogDB() (err error) {
 }
 
 func migrateDB() error {
-	err := DB.AutoMigrate(
+	logDBSeparated := os.Getenv("LOG_SQL_DSN") != ""
+	models := []interface{}{
 		&Channel{},
 		&Token{},
 		&User{},
+		&CreditGrant{},
+		&AffCodeAlias{},
 		&PasskeyCredential{},
 		&Option{},
 		&Redemption{},
 		&Ability{},
-		&Log{},
 		&Midjourney{},
 		&TopUp{},
 		&QuotaData{},
@@ -268,9 +270,18 @@ func migrateDB() error {
 		&TwoFA{},
 		&TwoFABackupCode{},
 		&Checkin{},
-	)
+	}
+	if !logDBSeparated {
+		models = append(models, &UsageLog{}, &AuditLog{})
+	}
+	err := DB.AutoMigrate(models...)
 	if err != nil {
 		return err
+	}
+	if !logDBSeparated {
+		if err := migrateLegacyLogsToSplitTables(DB); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -286,11 +297,12 @@ func migrateDBFast() error {
 		{&Channel{}, "Channel"},
 		{&Token{}, "Token"},
 		{&User{}, "User"},
+		{&CreditGrant{}, "CreditGrant"},
+		{&AffCodeAlias{}, "AffCodeAlias"},
 		{&PasskeyCredential{}, "PasskeyCredential"},
 		{&Option{}, "Option"},
 		{&Redemption{}, "Redemption"},
 		{&Ability{}, "Ability"},
-		{&Log{}, "Log"},
 		{&Midjourney{}, "Midjourney"},
 		{&TopUp{}, "TopUp"},
 		{&QuotaData{}, "QuotaData"},
@@ -302,6 +314,18 @@ func migrateDBFast() error {
 		{&TwoFA{}, "TwoFA"},
 		{&TwoFABackupCode{}, "TwoFABackupCode"},
 		{&Checkin{}, "Checkin"},
+	}
+	if os.Getenv("LOG_SQL_DSN") == "" {
+		migrations = append(migrations,
+			struct {
+				model interface{}
+				name  string
+			}{model: &UsageLog{}, name: "UsageLog"},
+			struct {
+				model interface{}
+				name  string
+			}{model: &AuditLog{}, name: "AuditLog"},
+		)
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大
 	errChan := make(chan error, len(migrations))
@@ -326,16 +350,20 @@ func migrateDBFast() error {
 			return err
 		}
 	}
+	if os.Getenv("LOG_SQL_DSN") == "" {
+		if err := migrateLegacyLogsToSplitTables(DB); err != nil {
+			return err
+		}
+	}
 	common.SysLog("database migrated")
 	return nil
 }
 
 func migrateLOGDB() error {
-	var err error
-	if err = LOG_DB.AutoMigrate(&Log{}); err != nil {
+	if err := LOG_DB.AutoMigrate(&UsageLog{}, &AuditLog{}); err != nil {
 		return err
 	}
-	return nil
+	return migrateLegacyLogsToSplitTables(LOG_DB)
 }
 
 func closeDB(db *gorm.DB) error {

@@ -51,16 +51,12 @@ function getGreeting() {
   return 'Good evening';
 }
 
-function getDefaultRangeSeconds(defaultTime?: string): { start: number; end: number } {
-  const end = Math.floor(Date.now() / 1000);
-  const mapping: Record<string, number> = {
-    hour: 3600,
-    day: 86400,
-    week: 86400 * 7,
-    month: 86400 * 30,
-  };
-  const delta = mapping[String(defaultTime || 'hour')] ?? 3600;
-  return { start: end - delta, end };
+function getDefaultRangeSeconds(): { start: number; end: number } {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const start = Math.floor(todayStart.getTime() / 1000);
+  const end = Math.floor(Date.now() / 1000) + 3600;
+  return { start, end };
 }
 
 function formatCompactNumber(value: number): string {
@@ -137,10 +133,7 @@ export function DashboardPage() {
   const { status } = useStatus();
   const { user, refreshSelf } = useAuth();
 
-  const defaultRange = useMemo(
-    () => getDefaultRangeSeconds(status?.data_export_default_time as string | undefined),
-    [status?.data_export_default_time],
-  );
+  const defaultRange = useMemo(() => getDefaultRangeSeconds(), []);
 
   const [start, setStart] = useState(() => toDateTimeLocalValueFromSeconds(defaultRange.start));
   const [end, setEnd] = useState(() => toDateTimeLocalValueFromSeconds(defaultRange.end));

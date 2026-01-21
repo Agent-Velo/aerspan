@@ -28,6 +28,7 @@ type Pricing struct {
 	InputPrice             float64                 `json:"input_price"`
 	OutputPrice            float64                 `json:"output_price"`
 	CacheReadPrice         float64                 `json:"cache_read_price,omitempty"`
+	CacheWritePrice        float64                 `json:"cache_write_price,omitempty"`
 	ImageInputPrice        float64                 `json:"image_input_price,omitempty"`
 	AudioInputPrice        float64                 `json:"audio_input_price,omitempty"`
 	AudioOutputPrice       float64                 `json:"audio_output_price,omitempty"`
@@ -308,6 +309,11 @@ func updatePricing() {
 			}
 			if p, ok := pricing_setting.GetModelCacheReadPrice(model); ok {
 				pricing.CacheReadPrice = p
+			}
+			if createCacheRatio, ok := ratio_setting.GetCreateCacheRatio(model); ok {
+				pricing.CacheWritePrice = inputPrice * createCacheRatio
+			} else {
+				pricing.CacheWritePrice = inputPrice * 1.25
 			}
 			if p, ok := pricing_setting.GetModelImageInputPrice(model); ok {
 				pricing.ImageInputPrice = p

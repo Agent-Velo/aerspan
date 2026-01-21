@@ -5,6 +5,8 @@ import { RequireAuth, AuthRedirect, RequirePricingAuth } from '@/router/guards';
 
 import { HomePage } from '@/pages/public/HomePage';
 import { ModelsPage } from '@/pages/public/ModelsPage';
+import { ModelDetailsPage } from '@/pages/public/ModelDetailsPage';
+import { ModelComparePage } from '@/pages/public/ModelComparePage';
 import { AboutPage } from '@/pages/public/AboutPage';
 import { TermsPage } from '@/pages/public/TermsPage';
 import { PrivacyPolicyPage } from '@/pages/public/PrivacyPolicyPage';
@@ -22,6 +24,7 @@ import { TokenEditPage } from '@/pages/console/TokenEditPage';
 import { PlaygroundPage } from '@/pages/console/PlaygroundPage';
 import { ChatEmbedPage } from '@/pages/console/ChatEmbedPage';
 import { UsageLogsPage } from '@/pages/console/UsageLogsPage';
+import { AuditLogsPage } from '@/pages/console/AuditLogsPage';
 import { MidjourneyLogsPage } from '@/pages/console/MidjourneyLogsPage';
 import { TaskLogsPage } from '@/pages/console/TaskLogsPage';
 import { TopUpPage } from '@/pages/console/TopUpPage';
@@ -52,13 +55,29 @@ export function createAppRouter() {
             </RequirePricingAuth>
           ),
         },
+        {
+          path: 'models/compare',
+          element: (
+            <RequirePricingAuth>
+              <ModelComparePage />
+            </RequirePricingAuth>
+          ),
+        },
+        {
+          path: 'models/:modelName',
+          element: (
+            <RequirePricingAuth>
+              <ModelDetailsPage />
+            </RequirePricingAuth>
+          ),
+        },
         { path: 'pricing', element: <Navigate to='/models' replace /> },
         { path: 'about', element: <AboutPage /> },
         { path: 'terms', element: <TermsPage /> },
         { path: 'user-agreement', element: <Navigate to='/terms' replace /> },
         { path: 'privacy-policy', element: <PrivacyPolicyPage /> },
         {
-          path: 'login',
+          path: 'auth/signin',
           element: (
             <AuthRedirect>
               <LoginPage />
@@ -66,48 +85,48 @@ export function createAppRouter() {
           ),
         },
         {
-          path: 'register',
+          path: 'auth/signup',
           element: (
             <AuthRedirect>
               <RegisterPage />
             </AuthRedirect>
           ),
         },
-        { path: 'reset', element: <ResetRequestPage /> },
-        { path: 'user/reset', element: <ResetConfirmPage /> },
-        { path: 'oauth/:provider', element: <OAuthCallbackPage /> },
+        { path: 'auth/recover', element: <ResetRequestPage /> },
+        { path: 'auth/recover/confirm', element: <ResetConfirmPage /> },
+        { path: 'auth/callback/:provider', element: <OAuthCallbackPage /> },
         { path: 'setup', element: <SetupPage /> },
         { path: '*', element: <NotFoundPage /> },
       ],
     },
     {
-      path: '/console',
       element: (
         <RequireAuth>
           <ConsoleLayout />
         </RequireAuth>
       ),
       children: [
-        { index: true, element: <DashboardPage /> },
-        { path: 'token', element: <TokenListPage /> },
-        { path: 'token/new', element: <TokenCreatePage /> },
-        { path: 'token/:id/edit', element: <TokenEditPage /> },
-        { path: 'playground', element: <PlaygroundPage /> },
-        { path: 'chat/:id?', element: <ChatEmbedPage /> },
-        { path: 'log', element: <UsageLogsPage /> },
-        { path: 'midjourney', element: <MidjourneyLogsPage /> },
-        { path: 'task', element: <TaskLogsPage /> },
-        { path: 'topup', element: <TopUpPage /> },
-        { path: 'topup/history', element: <TopUpHistoryPage /> },
-        { path: 'personal', element: <PersonalHubPage /> },
-        { path: 'personal/bindings', element: <AccountBindingsPage /> },
-        { path: 'personal/password', element: <PasswordPage /> },
-        { path: 'personal/access-token', element: <AccessTokenPage /> },
-        { path: 'personal/passkey', element: <PasskeyPage /> },
-        { path: 'personal/2fa', element: <TwoFactorAuthPage /> },
-        { path: 'personal/checkin', element: <CheckinPage /> },
-        { path: 'personal/notifications', element: <NotificationSettingsPage /> },
-        { path: 'personal/sidebar', element: <SidebarModulesPage /> },
+        { path: '/dashboard', element: <DashboardPage /> },
+        { path: '/api-keys', element: <TokenListPage /> },
+        { path: '/api-keys/new', element: <TokenCreatePage /> },
+        { path: '/api-keys/:id/edit', element: <TokenEditPage /> },
+        { path: '/playground', element: <PlaygroundPage /> },
+        { path: '/chat/:id?', element: <ChatEmbedPage /> },
+        { path: '/usage-log', element: <UsageLogsPage /> },
+        { path: '/audit-log', element: <AuditLogsPage /> },
+        { path: '/midjourney', element: <MidjourneyLogsPage /> },
+        { path: '/task', element: <TaskLogsPage /> },
+        { path: '/billing', element: <TopUpPage /> },
+        { path: '/billing/invoices', element: <TopUpHistoryPage /> },
+        { path: '/personal', element: <PersonalHubPage /> },
+        { path: '/personal/bindings', element: <AccountBindingsPage /> },
+        { path: '/personal/password', element: <PasswordPage /> },
+        { path: '/personal/access-token', element: <AccessTokenPage /> },
+        { path: '/personal/passkey', element: <PasskeyPage /> },
+        { path: '/personal/2fa', element: <TwoFactorAuthPage /> },
+        { path: '/personal/checkin', element: <CheckinPage /> },
+        { path: '/personal/notifications', element: <NotificationSettingsPage /> },
+        { path: '/personal/sidebar', element: <SidebarModulesPage /> },
       ],
     },
   ]);

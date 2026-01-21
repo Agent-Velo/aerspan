@@ -75,6 +75,7 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/passkey/verify/finish", controller.PasskeyVerifyFinish)
 				selfRoute.DELETE("/passkey", controller.PasskeyDelete)
 				selfRoute.GET("/aff", controller.GetAffCode)
+				selfRoute.GET("/credit_grants", controller.GetSelfCreditGrants)
 				selfRoute.GET("/topup/info", controller.GetTopUpInfo)
 				selfRoute.GET("/topup/self", controller.GetUserTopUps)
 				selfRoute.POST("/topup", middleware.CriticalRateLimit(), controller.TopUp)
@@ -111,6 +112,8 @@ func SetApiRouter(router *gin.Engine) {
 				adminRoute.POST("/topup/complete", controller.AdminCompleteTopUp)
 				adminRoute.GET("/search", controller.SearchUsers)
 				adminRoute.GET("/:id", controller.GetUser)
+				adminRoute.GET("/:id/credit_grants", controller.GetUserCreditGrants)
+				adminRoute.POST("/:id/credit_grants", controller.CreateUserCreditGrant)
 				adminRoute.POST("/", controller.CreateUser)
 				adminRoute.POST("/manage", controller.ManageUser)
 				adminRoute.PUT("/", controller.UpdateUser)
@@ -209,23 +212,22 @@ func SetApiRouter(router *gin.Engine) {
 			redemptionRoute.DELETE("/invalid", controller.DeleteInvalidRedemption)
 			redemptionRoute.DELETE("/:id", controller.DeleteRedemption)
 		}
-		logRoute := apiRouter.Group("/log")
-		logRoute.GET("/", middleware.AdminAuth(), controller.GetAllLogs)
-		logRoute.DELETE("/", middleware.AdminAuth(), controller.DeleteHistoryLogs)
-		logRoute.GET("/stat", middleware.AdminAuth(), controller.GetLogsStat)
-		logRoute.GET("/self/stat", middleware.UserAuth(), controller.GetLogsSelfStat)
-		logRoute.GET("/search", middleware.AdminAuth(), controller.SearchAllLogs)
-		logRoute.GET("/self", middleware.UserAuth(), controller.GetUserLogs)
-		logRoute.GET("/self/search", middleware.UserAuth(), controller.SearchUserLogs)
+		usageLogRoute := apiRouter.Group("/usage_log")
+		usageLogRoute.GET("/", middleware.AdminAuth(), controller.GetAllUsageLogs)
+		usageLogRoute.DELETE("/", middleware.AdminAuth(), controller.DeleteUsageHistoryLogs)
+		usageLogRoute.GET("/stat", middleware.AdminAuth(), controller.GetUsageLogsStat)
+		usageLogRoute.GET("/self/stat", middleware.UserAuth(), controller.GetUsageLogsSelfStat)
+		usageLogRoute.GET("/self", middleware.UserAuth(), controller.GetUserUsageLogs)
+
+		auditLogRoute := apiRouter.Group("/audit_log")
+		auditLogRoute.GET("/", middleware.AdminAuth(), controller.GetAllAuditLogs)
+		auditLogRoute.DELETE("/", middleware.AdminAuth(), controller.DeleteAuditHistoryLogs)
+		auditLogRoute.GET("/self", middleware.UserAuth(), controller.GetUserAuditLogs)
 
 		dataRoute := apiRouter.Group("/data")
 		dataRoute.GET("/", middleware.AdminAuth(), controller.GetAllQuotaDates)
 		dataRoute.GET("/self", middleware.UserAuth(), controller.GetUserQuotaDates)
 
-		logRoute.Use(middleware.CORS())
-		{
-			logRoute.GET("/token", controller.GetLogByKey)
-		}
 		groupRoute := apiRouter.Group("/group")
 		groupRoute.Use(middleware.AdminAuth())
 		{

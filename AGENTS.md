@@ -73,3 +73,8 @@ You are an experienced software developer and coding assistant.
 - Do not make modifications that are not part of your ongoing task or are completely unrelated to your current task.
 
 - Remember to add file to Git if needed.
+
+- ALL "quotas" needs to be divided by status.quota_per_unit to get the actual money value. Do the same (* quota_per_unit) when send data to backend.
+
+- The frontend for users is at web-v2/, for admin, it is at web/. Although web/ also contains a usable interface for users. You DON'T need to care about it.
+

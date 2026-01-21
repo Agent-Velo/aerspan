@@ -46,7 +46,7 @@ function TopUpDetailModal({
           <Modal.Dialog className='sm:max-w-[680px]'>
             <Modal.CloseTrigger />
             <Modal.Header>
-              <Modal.Heading>Top-up detail</Modal.Heading>
+              <Modal.Heading>Invoice detail</Modal.Heading>
             </Modal.Header>
             <Modal.Body>
               {topUp ? (
@@ -144,12 +144,12 @@ export function TopUpHistoryPage() {
 
   return (
     <div className='space-y-4'>
-      <div className='text-lg font-semibold'>Top-up history</div>
+      <div className='text-lg font-semibold'>Invoices</div>
 
       <Card>
         <Card.Header>
           <div className='flex items-center justify-between gap-2'>
-            <Card.Title>Top-up records</Card.Title>
+            <Card.Title>Invoice records</Card.Title>
             <Button
               size='sm'
               variant='secondary'

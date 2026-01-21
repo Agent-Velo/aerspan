@@ -532,7 +532,7 @@ export function TokenListPage() {
           <div className='mt-1 text-sm text-muted'>Manage API keys.</div>
         </div>
         <div className='flex flex-wrap gap-2'>
-          <Button onPress={() => navigate('/console/token/new')}>Create API Key</Button>
+          <Button onPress={() => navigate('/api-keys/new')}>Create API Key</Button>
           <Button variant='secondary' onPress={() => batchCopy('keys')}>
             Copy keys
           </Button>
@@ -686,7 +686,7 @@ export function TokenListPage() {
                           <Ban size={16} />
                         </TableActionButton>
                       )}
-                      <TableActionButton label='Edit' onPress={() => navigate(`/console/token/${token.id}/edit`)}>
+                      <TableActionButton label='Edit' onPress={() => navigate(`/api-keys/${token.id}/edit`)}>
                         <Pencil size={16} />
                       </TableActionButton>
                       <TableActionButton label='Delete' variant='danger-soft' onPress={() => deleteToken(token)}>
