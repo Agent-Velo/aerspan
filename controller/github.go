@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -222,7 +223,10 @@ func GitHubBind(c *gin.Context) {
 func GenerateOAuthCode(c *gin.Context) {
 	session := sessions.Default(c)
 	state := common.GetRandomString(12)
-	affCode := c.Query("aff")
+	affCode := strings.TrimSpace(c.Query("via"))
+	if affCode == "" {
+		affCode = strings.TrimSpace(c.Query("aff"))
+	}
 	if affCode != "" {
 		session.Set("aff", affCode)
 	}

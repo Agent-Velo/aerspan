@@ -64,7 +64,7 @@ const SelectionNotification = ({
             {t('加入预填组')}
           </Button>
           <Button size='small' type='secondary' theme='solid' onClick={onCopy}>
-            {t('复制名称')}
+            {t('复制 ID')}
           </Button>
           <Button size='small' type='danger' theme='solid' onClick={onDelete}>
             {t('删除所选')}

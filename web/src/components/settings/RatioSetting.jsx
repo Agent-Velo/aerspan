@@ -36,6 +36,8 @@ const RatioSetting = () => {
     ModelPrice: '',
     ModelInputPrice: '',
     ModelOutputPrice: '',
+    ModelInputTokenPriceMultiplier: '',
+    ModelOutputTokenPriceMultiplier: '',
     ModelCacheReadPrice: '',
     ModelImageInputPrice: '',
     ModelAudioInputPrice: '',

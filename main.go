@@ -150,12 +150,19 @@ func main() {
 	middleware.SetUpLogger(server)
 	// Initialize session store
 	store := cookie.NewStore([]byte(common.SessionSecret))
+	sessionCookieSecure := common.GetEnvOrDefaultBool("SESSION_COOKIE_SECURE", false)
+	sessionCookieSameSite := parseSameSite(common.GetEnvOrDefaultString("SESSION_COOKIE_SAMESITE", "strict"))
+	sessionCookieDomain := strings.TrimSpace(os.Getenv("SESSION_COOKIE_DOMAIN"))
+	if sessionCookieSameSite == http.SameSiteNoneMode && !sessionCookieSecure {
+		common.SysLog("WARNING: SESSION_COOKIE_SAMESITE=none usually requires SESSION_COOKIE_SECURE=true (otherwise cookies may be rejected by browsers)")
+	}
 	store.Options(sessions.Options{
 		Path:     "/",
 		MaxAge:   2592000, // 30 days
 		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteStrictMode,
+		Secure:   sessionCookieSecure,
+		SameSite: sessionCookieSameSite,
+		Domain:   sessionCookieDomain,
 	})
 	server.Use(sessions.Sessions("session", store))
 
@@ -219,6 +226,22 @@ func InjectGoogleAnalytics() {
 	indexPage = bytes.ReplaceAll(indexPage, []byte("<!--Google Analytics-->\n"), []byte(analyticsInject))
 }
 
+func parseSameSite(value string) http.SameSite {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "lax":
+		return http.SameSiteLaxMode
+	case "none":
+		return http.SameSiteNoneMode
+	case "default":
+		return http.SameSiteDefaultMode
+	case "strict", "":
+		return http.SameSiteStrictMode
+	default:
+		common.SysError(fmt.Sprintf("invalid SESSION_COOKIE_SAMESITE=%q, using strict", value))
+		return http.SameSiteStrictMode
+	}
+}
+
 func InitResources() error {
 	// Initialize resources here if needed
 	// This is a placeholder function for future resource initialization
@@ -253,6 +276,8 @@ func InitResources() error {
 
 	// Initialize options, should after model.InitDB()
 	model.InitOptionMap()
+	// Auto-migrate legacy user quota into credit grants.
+	model.MigrateCreditGrantsIfNeeded()
 	// Auto-migrate legacy ratio-based pricing into direct USD/1M token prices.
 	model.MigratePricingSettingsIfNeeded()
 

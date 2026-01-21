@@ -46,7 +46,9 @@ import {
 import {
   API,
   authHeader,
+  buildServerUrl,
   getUserIdFromLocalStorage,
+  getServerFetchCredentials,
   showError,
   showSuccess,
 } from '../../../../helpers';
@@ -339,9 +341,10 @@ const OllamaModelModal = ({
         ...authHeaders,
       };
 
-      const response = await fetch('/api/channel/ollama/pull/stream', {
+      const response = await fetch(buildServerUrl('/api/channel/ollama/pull/stream'), {
         method: 'POST',
         headers: fetchHeaders,
+        credentials: getServerFetchCredentials(),
         body: JSON.stringify({
           channel_id: channelId,
           model_name: pullModelName.trim(),

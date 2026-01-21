@@ -28,11 +28,13 @@ const PaymentSetting = () => {
   const { t } = useTranslation();
   let [inputs, setInputs] = useState({
     StripeApiSecret: '',
+    StripePublishableKey: '',
     StripeWebhookSecret: '',
     StripePriceId: '',
     StripeUnitPrice: 8.0,
     StripeMinTopUp: 1,
     StripePromotionCodesEnabled: false,
+    StripeCurrency: '',
   });
 
   let [loading, setLoading] = useState(false);

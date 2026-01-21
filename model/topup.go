@@ -60,7 +60,7 @@ func Recharge(referenceId string, customerId string) (err error) {
 		return errors.New("Missing payment reference ID")
 	}
 
-	var quota float64
+	var quotaToAdd int
 	topUp := &TopUp{}
 
 	refCol := "`trade_no`"
@@ -74,6 +74,10 @@ func Recharge(referenceId string, customerId string) (err error) {
 			return errors.New("Top-up order not found")
 		}
 
+		// Idempotency: Stripe webhooks may be delivered more than once.
+		if topUp.Status == common.TopUpStatusSuccess {
+			return nil
+		}
 		if topUp.Status != common.TopUpStatusPending {
 			return errors.New("Invalid top-up order status")
 		}
@@ -85,9 +89,23 @@ func Recharge(referenceId string, customerId string) (err error) {
 			return err
 		}
 
-		quota = topUp.Money * common.QuotaPerUnit
-		err = tx.Model(&User{}).Where("id = ?", topUp.UserId).Updates(map[string]interface{}{"stripe_customer": customerId, "quota": gorm.Expr("quota + ?", quota)}).Error
-		if err != nil {
+		// Calculate granted quota precisely.
+		quotaToAdd = int(decimal.NewFromFloat(topUp.Money).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
+		if quotaToAdd <= 0 {
+			return errors.New("Invalid top-up amount")
+		}
+		if err := tx.Model(&User{}).Where("id = ?", topUp.UserId).Update("stripe_customer", customerId).Error; err != nil {
+			return err
+		}
+		if _, err := CreateCreditGrantTx(tx, CreateCreditGrantParams{
+			UserId:      topUp.UserId,
+			Quota:       quotaToAdd,
+			GrantType:   "topup",
+			Reference:   topUp.TradeNo,
+			Remark:      "online top-up",
+			CreatedTime: topUp.CompleteTime,
+			ExpiredTime: DefaultTopUpCreditExpiry(topUp.CompleteTime),
+		}); err != nil {
 			return err
 		}
 
@@ -98,7 +116,7 @@ func Recharge(referenceId string, customerId string) (err error) {
 		return errors.New("Top-up failed: " + err.Error())
 	}
 
-	RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("Online top-up completed: %v added, paid %d", logger.FormatQuota(int(quota)), topUp.Amount))
+	RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("Online top-up completed: %v added, paid %d", logger.FormatQuota(quotaToAdd), topUp.Amount))
 
 	return nil
 }
@@ -234,6 +252,20 @@ func SearchAllTopUps(keyword string, pageInfo *common.PageInfo) (topups []*TopUp
 	return topups, total, nil
 }
 
+func HasRecentPendingTopUp(userId int, paymentMethod string, sinceUnix int64) (bool, error) {
+	var count int64
+	err := DB.Model(&TopUp{}).
+		Where("user_id = ?", userId).
+		Where("payment_method = ?", paymentMethod).
+		Where("status = ?", common.TopUpStatusPending).
+		Where("create_time >= ?", sinceUnix).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 // ManualCompleteTopUp 管理员手动完成订单并给用户充值
 func ManualCompleteTopUp(tradeNo string) error {
 	if tradeNo == "" {
@@ -287,8 +319,15 @@ func ManualCompleteTopUp(tradeNo string) error {
 			return err
 		}
 
-		// 增加用户额度（立即写库，保持一致性）
-		if err := tx.Model(&User{}).Where("id = ?", topUp.UserId).Update("quota", gorm.Expr("quota + ?", quotaToAdd)).Error; err != nil {
+		if _, err := CreateCreditGrantTx(tx, CreateCreditGrantParams{
+			UserId:      topUp.UserId,
+			Quota:       quotaToAdd,
+			GrantType:   "topup",
+			Reference:   topUp.TradeNo,
+			Remark:      "admin completed top-up",
+			CreatedTime: topUp.CompleteTime,
+			ExpiredTime: DefaultTopUpCreditExpiry(topUp.CompleteTime),
+		}); err != nil {
 			return err
 		}
 

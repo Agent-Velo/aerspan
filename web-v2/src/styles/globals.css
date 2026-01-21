@@ -1,0 +1,162 @@
+@layer theme, base, components, utilities;
+
+@import "tailwindcss";
+@import "@heroui/styles";
+
+@import "./graphite.css" layer(theme);
+
+@custom-variant dark (&:where([data-theme="graphite-dark"], [data-theme="graphite-dark"] *));
+@source "../../node_modules/@tremor/react/dist/**/*.{js,jsx,ts,tsx}";
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--foreground);
+  background: var(--background);
+}
+
+.markdown h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1rem 0 0.5rem;
+}
+
+.markdown h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 1rem 0 0.5rem;
+}
+
+.markdown h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+}
+
+.markdown p {
+  margin: 0.5rem 0;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.markdown ul {
+  list-style: disc;
+}
+
+.markdown ol {
+  list-style: decimal;
+}
+
+.markdown blockquote {
+  border-left: 3px solid color-mix(in oklab, var(--foreground) 12%, transparent);
+  padding-left: 0.75rem;
+  margin: 0.75rem 0;
+  color: color-mix(in oklab, var(--foreground) 65%, transparent);
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(12px);
+  background: color-mix(in oklab, var(--background) 85%, transparent);
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--foreground) 10%, transparent);
+}
+
+.app-footer {
+  box-shadow: 0 -1px 0 color-mix(in oklab, var(--foreground) 10%, transparent);
+  color: color-mix(in oklab, var(--foreground) 65%, transparent);
+}
+
+.app-table {
+  width: 100%;
+  text-align: left;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+}
+
+.app-table th,
+.app-table td {
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+}
+
+.app-table thead th {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--foreground) 60%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--foreground) 10%, transparent);
+}
+
+.app-table tbody tr {
+  border-bottom: 1px solid color-mix(in oklab, var(--foreground) 10%, transparent);
+}
+
+.app-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.app-table-row-muted {
+  background: color-mix(in oklab, var(--foreground) 4%, transparent);
+}
+
+.app-table-footer {
+  box-shadow: 0 -1px 0 color-mix(in oklab, var(--foreground) 10%, transparent);
+  color: color-mix(in oklab, var(--foreground) 65%, transparent);
+}
+
+.app-divider-y > * + * {
+  border-top: 1px solid color-mix(in oklab, var(--foreground) 10%, transparent);
+}
+
+/* Tremor chart dark mode fixes */
+:where([data-theme="graphite-dark"]) {
+  /* Bar chart bars - all possible selectors */
+  .recharts-bar-rectangle path,
+  .recharts-rectangle path,
+  .recharts-bar path {
+    fill: oklch(0.65 0.2 250) !important;
+  }
+
+  /* Chart text (axes labels) */
+  .recharts-cartesian-axis-tick text,
+  .recharts-text,
+  .recharts-label text {
+    fill: var(--foreground) !important;
+  }
+
+  /* Grid lines */
+  .recharts-cartesian-grid-horizontal line,
+  .recharts-cartesian-grid-vertical line,
+  .recharts-cartesian-grid line {
+    stroke: color-mix(in oklab, var(--foreground) 10%, transparent) !important;
+  }
+
+  /* Bar list (top models) text */
+  .tremor-BarList-bar {
+    background-color: oklch(0.65 0.2 250) !important;
+  }
+}
+
+/* Global recharts fixes for dark mode */
+[data-theme="graphite-dark"] .recharts-surface {
+  /* All bar fills */
+  .recharts-bar-rectangle,
+  .recharts-rectangle,
+  .recharts-bar {
+    fill: oklch(0.65 0.2 250) !important;
+
+    path {
+      fill: oklch(0.65 0.2 250) !important;
+    }
+  }
+}

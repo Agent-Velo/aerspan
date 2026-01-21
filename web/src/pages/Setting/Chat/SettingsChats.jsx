@@ -350,7 +350,7 @@ export default function SettingsChats(props) {
           <Banner
             type='info'
             description={t(
-              '链接中的{key}将自动替换为sk-xxxx，{address}将自动替换为系统设置的服务器地址，末尾不带/和/v1',
+              '链接中的{key}将自动替换为sk-ae-v1-xxxx，{address}将自动替换为系统设置的服务器地址，末尾不带/和/v1',
             )}
           />
 

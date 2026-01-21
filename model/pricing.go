@@ -3,6 +3,7 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"sync"
@@ -15,26 +16,142 @@ import (
 	"github.com/QuantumNous/new-api/types"
 )
 
+func splitCSV(value string) []string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return []string{}
+	}
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.ToLower(strings.TrimSpace(p))
+		if p == "" {
+			continue
+		}
+		result = append(result, p)
+	}
+	return result
+}
+
+func parseEndpointSupport(raw string) []EndpointSupportItem {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+
+	var parsed any
+	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
+		return nil
+	}
+
+	switch val := parsed.(type) {
+	case map[string]any:
+		items := make([]EndpointSupportItem, 0, len(val))
+		for key, v := range val {
+			name := strings.TrimSpace(key)
+			uri := ""
+			switch endpoint := v.(type) {
+			case string:
+				uri = strings.TrimSpace(endpoint)
+			case map[string]any:
+				if n, ok := endpoint["name"].(string); ok {
+					n = strings.TrimSpace(n)
+					if n != "" {
+						name = n
+					}
+				}
+				if n, ok := endpoint["display_name"].(string); ok {
+					n = strings.TrimSpace(n)
+					if n != "" {
+						name = n
+					}
+				}
+				if u, ok := endpoint["uri"].(string); ok {
+					uri = strings.TrimSpace(u)
+				}
+				if uri == "" {
+					if p, ok := endpoint["path"].(string); ok {
+						uri = strings.TrimSpace(p)
+					}
+				}
+			default:
+				continue
+			}
+			items = append(items, EndpointSupportItem{Name: name, URI: uri})
+		}
+		sort.SliceStable(items, func(i, j int) bool {
+			return strings.ToLower(items[i].Name) < strings.ToLower(items[j].Name)
+		})
+		return items
+	case []any:
+		items := make([]EndpointSupportItem, 0, len(val))
+		for _, entry := range val {
+			switch endpoint := entry.(type) {
+			case string:
+				endpointType := constant.EndpointType(strings.TrimSpace(endpoint))
+				uri := ""
+				if info, ok := common.GetDefaultEndpointInfo(endpointType); ok {
+					uri = info.Path
+				}
+				items = append(items, EndpointSupportItem{Name: string(endpointType), URI: uri})
+			case map[string]any:
+				name := ""
+				if n, ok := endpoint["name"].(string); ok {
+					name = strings.TrimSpace(n)
+				}
+				uri := ""
+				if u, ok := endpoint["uri"].(string); ok {
+					uri = strings.TrimSpace(u)
+				}
+				if uri == "" {
+					if p, ok := endpoint["path"].(string); ok {
+						uri = strings.TrimSpace(p)
+					}
+				}
+				if name == "" {
+					name = uri
+				}
+				items = append(items, EndpointSupportItem{Name: name, URI: uri})
+			}
+		}
+		return items
+	default:
+		return nil
+	}
+}
+
 type Pricing struct {
-	ModelName              string                  `json:"model_name"`
-	Description            string                  `json:"description,omitempty"`
-	Icon                   string                  `json:"icon,omitempty"`
-	Tags                   string                  `json:"tags,omitempty"`
-	VendorID               int                     `json:"vendor_id,omitempty"`
-	TotalContext           *int                    `json:"total_context,omitempty"`
-	MaxOutput              *int                    `json:"max_output,omitempty"`
-	QuotaType              int                     `json:"quota_type"`
-	InputPrice             float64                 `json:"input_price"`
-	OutputPrice            float64                 `json:"output_price"`
-	CacheReadPrice         float64                 `json:"cache_read_price,omitempty"`
-	ImageInputPrice        float64                 `json:"image_input_price,omitempty"`
-	AudioInputPrice        float64                 `json:"audio_input_price,omitempty"`
-	AudioOutputPrice       float64                 `json:"audio_output_price,omitempty"`
-	ModelPrice             float64                 `json:"model_price"`
-	OwnerBy                string                  `json:"owner_by"`
-	UsedGroup              string                  `json:"used_group,omitempty"`
-	EnableGroup            []string                `json:"enable_groups,omitempty"`
-	SupportedEndpointTypes []constant.EndpointType `json:"supported_endpoint_types"`
+	ModelName                       string                           `json:"model_name"`
+	DisplayName                     string                           `json:"display_name,omitempty"`
+	Description                     string                           `json:"description,omitempty"`
+	Icon                            string                           `json:"icon,omitempty"`
+	Tags                            string                           `json:"tags,omitempty"`
+	VendorID                        int                              `json:"vendor_id,omitempty"`
+	TotalContext                    *int                             `json:"total_context,omitempty"`
+	MaxOutput                       *int                             `json:"max_output,omitempty"`
+	InputTypes                      []string                         `json:"input_types,omitempty"`
+	OutputTypes                     []string                         `json:"output_types,omitempty"`
+	EndpointSupport                 []EndpointSupportItem            `json:"endpoint_support,omitempty"`
+	QuotaType                       int                              `json:"quota_type"`
+	InputPrice                      float64                          `json:"input_price"`
+	OutputPrice                     float64                          `json:"output_price"`
+	InputTokenPriceMultiplierTiers  []pricing_setting.TokenPriceTier `json:"input_token_price_multiplier_tiers,omitempty"`
+	OutputTokenPriceMultiplierTiers []pricing_setting.TokenPriceTier `json:"output_token_price_multiplier_tiers,omitempty"`
+	CacheReadPrice                  float64                          `json:"cache_read_price,omitempty"`
+	CacheWritePrice                 float64                          `json:"cache_write_price,omitempty"`
+	ImageInputPrice                 float64                          `json:"image_input_price,omitempty"`
+	AudioInputPrice                 float64                          `json:"audio_input_price,omitempty"`
+	AudioOutputPrice                float64                          `json:"audio_output_price,omitempty"`
+	ModelPrice                      float64                          `json:"model_price"`
+	OwnerBy                         string                           `json:"owner_by"`
+	UsedGroup                       string                           `json:"used_group,omitempty"`
+	EnableGroup                     []string                         `json:"enable_groups,omitempty"`
+	SupportedEndpointTypes          []constant.EndpointType          `json:"supported_endpoint_types"`
+}
+
+type EndpointSupportItem struct {
+	Name string `json:"name"`
+	URI  string `json:"uri"`
 }
 
 type PricingVendor struct {
@@ -253,11 +370,16 @@ func updatePricing() {
 			for k, v := range raw {
 				switch val := v.(type) {
 				case string:
-					supportedEndpointMap[k] = common.EndpointInfo{Path: val, Method: "POST"}
+					supportedEndpointMap[k] = common.EndpointInfo{Path: strings.TrimSpace(val), Method: "POST"}
 				case map[string]interface{}:
 					ep := common.EndpointInfo{Method: "POST"}
-					if p, ok := val["path"].(string); ok {
-						ep.Path = p
+					if u, ok := val["uri"].(string); ok {
+						ep.Path = strings.TrimSpace(u)
+					}
+					if ep.Path == "" {
+						if p, ok := val["path"].(string); ok {
+							ep.Path = strings.TrimSpace(p)
+						}
 					}
 					if m, ok := val["method"].(string); ok {
 						ep.Method = strings.ToUpper(m)
@@ -284,10 +406,14 @@ func updatePricing() {
 			if meta.Status != 1 {
 				continue
 			}
+			pricing.DisplayName = meta.DisplayName
 			pricing.Description = meta.Description
 			pricing.Icon = meta.Icon
 			pricing.Tags = meta.Tags
 			pricing.VendorID = meta.VendorID
+			pricing.InputTypes = splitCSV(meta.InputTypes)
+			pricing.OutputTypes = splitCSV(meta.OutputTypes)
+			pricing.EndpointSupport = parseEndpointSupport(meta.Endpoints)
 			pricing.TotalContext = meta.TotalContext
 			pricing.MaxOutput = meta.MaxOutput
 		}
@@ -307,6 +433,11 @@ func updatePricing() {
 			if p, ok := pricing_setting.GetModelCacheReadPrice(model); ok {
 				pricing.CacheReadPrice = p
 			}
+			if createCacheRatio, ok := ratio_setting.GetCreateCacheRatio(model); ok {
+				pricing.CacheWritePrice = inputPrice * createCacheRatio
+			} else {
+				pricing.CacheWritePrice = inputPrice * 1.25
+			}
 			if p, ok := pricing_setting.GetModelImageInputPrice(model); ok {
 				pricing.ImageInputPrice = p
 			}
@@ -315,6 +446,12 @@ func updatePricing() {
 			}
 			if p, ok := pricing_setting.GetModelAudioOutputPrice(model); ok {
 				pricing.AudioOutputPrice = p
+			}
+			if tiers, ok := pricing_setting.GetModelInputTokenPriceMultiplierTiers(model); ok {
+				pricing.InputTokenPriceMultiplierTiers = tiers
+			}
+			if tiers, ok := pricing_setting.GetModelOutputTokenPriceMultiplierTiers(model); ok {
+				pricing.OutputTokenPriceMultiplierTiers = tiers
 			}
 			pricing.QuotaType = 0
 		}

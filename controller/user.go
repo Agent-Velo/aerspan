@@ -3,6 +3,7 @@ package controller
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
-	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
@@ -248,8 +248,8 @@ func Register(c *gin.Context) {
 			Key:                key,
 			CreatedTime:        common.GetTimestamp(),
 			AccessedTime:       common.GetTimestamp(),
-			ExpiredTime:        -1,     // 永不过期
-			RemainQuota:        500000, // 示例额度
+			ExpiredTime:        -1, // 永不过期
+			RemainQuota:        0,
 			UnlimitedQuota:     true,
 			ModelLimitsEnabled: false,
 		}
@@ -408,8 +408,26 @@ func GetAffCode(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	if user.AffCode == "" {
-		user.AffCode = common.GetRandomString(4)
+	if user.AffCode == "" || !model.IsAffCodeV2(user.AffCode) {
+		oldCode := user.AffCode
+		if oldCode != "" {
+			if err := model.AddAffCodeAlias(oldCode, user.Id); err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": err.Error(),
+				})
+				return
+			}
+		}
+		newCode, err := model.GenerateUniqueAffCodeV2()
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+		user.AffCode = newCode
 		if err := user.Update(false); err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
@@ -589,18 +607,59 @@ func GetUserModels(c *gin.Context) {
 			}
 		}
 	}
+
+	displayNameMap, err := model.GetModelDisplayNameMap(models)
+	if err != nil {
+		// Display name is purely for UI; never fail model list on best-effort errors.
+		displayNameMap = map[string]string{}
+	}
+
+	type userModelItem struct {
+		ID          string `json:"id"`
+		DisplayName string `json:"display_name,omitempty"`
+	}
+	items := make([]userModelItem, 0, len(models))
+	for _, name := range models {
+		items = append(items, userModelItem{
+			ID:          name,
+			DisplayName: displayNameMap[name],
+		})
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    models,
+		"data":    items,
 	})
 	return
 }
 
 func UpdateUser(c *gin.Context) {
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "Invalid parameters",
+		})
+		return
+	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "Invalid parameters",
+		})
+		return
+	}
+	if _, ok := raw["quota"]; ok {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": "Quota can't be edited directly. Please create a Credit Grant instead.",
+		})
+		return
+	}
+
 	var updatedUser model.User
-	err := json.NewDecoder(c.Request.Body).Decode(&updatedUser)
-	if err != nil || updatedUser.Id == 0 {
+	if err := json.Unmarshal(body, &updatedUser); err != nil || updatedUser.Id == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
 			"message": "Invalid parameters",
@@ -644,9 +703,6 @@ func UpdateUser(c *gin.Context) {
 	if err := updatedUser.Edit(updatePassword); err != nil {
 		common.ApiError(c, err)
 		return
-	}
-	if originUser.Quota != updatedUser.Quota {
-		model.RecordLog(originUser.Id, model.LogTypeManage, fmt.Sprintf("Admin changed user quota from %s to %s", logger.LogQuota(originUser.Quota), logger.LogQuota(updatedUser.Quota)))
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -1241,37 +1297,38 @@ func UpdateUserSetting(c *gin.Context) {
 		return
 	}
 
-	// 构建设置
-	settings := dto.UserSetting{
-		NotifyType:            req.QuotaWarningType,
-		QuotaWarningThreshold: req.QuotaWarningThreshold,
-		AcceptUnsetRatioModel: req.AcceptUnsetModelRatioModel,
-		RecordIpLog:           req.RecordIpLog,
-	}
+	// 更新设置：只修改本接口涉及的字段，保留其他模块（如 Stripe 自动充值/默认卡、侧边栏配置等）
+	settings := user.GetSetting()
+	settings.NotifyType = req.QuotaWarningType
+	settings.QuotaWarningThreshold = req.QuotaWarningThreshold
+	settings.AcceptUnsetRatioModel = req.AcceptUnsetModelRatioModel
+	settings.RecordIpLog = req.RecordIpLog
 
-	// 如果是webhook类型,添加webhook相关设置
+	// 清空通知相关字段，避免在切换通知类型时残留旧配置
+	settings.WebhookUrl = ""
+	settings.WebhookSecret = ""
+	settings.NotificationEmail = ""
+	settings.BarkUrl = ""
+	settings.GotifyUrl = ""
+	settings.GotifyToken = ""
+	settings.GotifyPriority = 0
+
 	if req.QuotaWarningType == dto.NotifyTypeWebhook {
 		settings.WebhookUrl = req.WebhookUrl
 		if req.WebhookSecret != "" {
 			settings.WebhookSecret = req.WebhookSecret
 		}
 	}
-
-	// 如果提供了通知邮箱，添加到设置中
 	if req.QuotaWarningType == dto.NotifyTypeEmail && req.NotificationEmail != "" {
 		settings.NotificationEmail = req.NotificationEmail
 	}
-
-	// 如果是Bark类型，添加Bark URL到设置中
 	if req.QuotaWarningType == dto.NotifyTypeBark {
 		settings.BarkUrl = req.BarkUrl
 	}
-
-	// 如果是Gotify类型，添加Gotify配置到设置中
 	if req.QuotaWarningType == dto.NotifyTypeGotify {
 		settings.GotifyUrl = req.GotifyUrl
 		settings.GotifyToken = req.GotifyToken
-		// Gotify优先级范围0-10，超出范围则使用默认值5
+		// Gotify 优先级范围 0-10，超出范围则使用默认值 5
 		if req.GotifyPriority < 0 || req.GotifyPriority > 10 {
 			settings.GotifyPriority = 5
 		} else {
@@ -1279,7 +1336,6 @@ func UpdateUserSetting(c *gin.Context) {
 		}
 	}
 
-	// 更新用户设置
 	user.SetSetting(settings)
 	if err := user.Update(false); err != nil {
 		c.JSON(http.StatusOK, gin.H{

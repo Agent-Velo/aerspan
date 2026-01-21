@@ -11,6 +11,7 @@ import (
 func SetApiRouter(router *gin.Engine) {
 	apiRouter := router.Group("/api")
 	apiRouter.Use(gzip.Gzip(gzip.DefaultCompression))
+	apiRouter.Use(middleware.CORS())
 	apiRouter.Use(middleware.GlobalAPIRateLimit())
 	{
 		apiRouter.GET("/setup", controller.GetSetup)
@@ -75,11 +76,20 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/passkey/verify/finish", controller.PasskeyVerifyFinish)
 				selfRoute.DELETE("/passkey", controller.PasskeyDelete)
 				selfRoute.GET("/aff", controller.GetAffCode)
+				selfRoute.GET("/credit_grants", controller.GetSelfCreditGrants)
 				selfRoute.GET("/topup/info", controller.GetTopUpInfo)
 				selfRoute.GET("/topup/self", controller.GetUserTopUps)
 				selfRoute.POST("/topup", middleware.CriticalRateLimit(), controller.TopUp)
 				selfRoute.POST("/stripe/pay", middleware.CriticalRateLimit(), controller.RequestStripePay)
 				selfRoute.POST("/stripe/amount", controller.RequestStripeAmount)
+				// Stripe Elements (card-on-file) flow
+				selfRoute.POST("/stripe/setup_intent", middleware.CriticalRateLimit(), controller.CreateStripeSetupIntent)
+				selfRoute.GET("/stripe/payment_methods", controller.ListStripePaymentMethods)
+				selfRoute.PUT("/stripe/payment_methods/default", middleware.CriticalRateLimit(), controller.SetStripeDefaultPaymentMethod)
+				selfRoute.DELETE("/stripe/payment_methods/:id", middleware.CriticalRateLimit(), controller.DeleteStripePaymentMethod)
+				selfRoute.POST("/stripe/payment_intent", middleware.CriticalRateLimit(), controller.CreateStripePaymentIntent)
+				selfRoute.GET("/stripe/auto_topup", controller.GetStripeAutoTopup)
+				selfRoute.PUT("/stripe/auto_topup", middleware.CriticalRateLimit(), controller.UpdateStripeAutoTopup)
 				selfRoute.POST("/aff_transfer", controller.TransferAffQuota)
 				selfRoute.PUT("/setting", controller.UpdateUserSetting)
 
@@ -103,6 +113,8 @@ func SetApiRouter(router *gin.Engine) {
 				adminRoute.POST("/topup/complete", controller.AdminCompleteTopUp)
 				adminRoute.GET("/search", controller.SearchUsers)
 				adminRoute.GET("/:id", controller.GetUser)
+				adminRoute.GET("/:id/credit_grants", controller.GetUserCreditGrants)
+				adminRoute.POST("/:id/credit_grants", controller.CreateUserCreditGrant)
 				adminRoute.POST("/", controller.CreateUser)
 				adminRoute.POST("/manage", controller.ManageUser)
 				adminRoute.PUT("/", controller.UpdateUser)
@@ -175,6 +187,7 @@ func SetApiRouter(router *gin.Engine) {
 			tokenRoute.GET("/:id", controller.GetToken)
 			tokenRoute.POST("/", controller.AddToken)
 			tokenRoute.PUT("/", controller.UpdateToken)
+			tokenRoute.POST("/:id/roll", controller.RollTokenKey)
 			tokenRoute.DELETE("/:id", controller.DeleteToken)
 			tokenRoute.POST("/batch", controller.DeleteTokenBatch)
 		}
@@ -200,23 +213,22 @@ func SetApiRouter(router *gin.Engine) {
 			redemptionRoute.DELETE("/invalid", controller.DeleteInvalidRedemption)
 			redemptionRoute.DELETE("/:id", controller.DeleteRedemption)
 		}
-		logRoute := apiRouter.Group("/log")
-		logRoute.GET("/", middleware.AdminAuth(), controller.GetAllLogs)
-		logRoute.DELETE("/", middleware.AdminAuth(), controller.DeleteHistoryLogs)
-		logRoute.GET("/stat", middleware.AdminAuth(), controller.GetLogsStat)
-		logRoute.GET("/self/stat", middleware.UserAuth(), controller.GetLogsSelfStat)
-		logRoute.GET("/search", middleware.AdminAuth(), controller.SearchAllLogs)
-		logRoute.GET("/self", middleware.UserAuth(), controller.GetUserLogs)
-		logRoute.GET("/self/search", middleware.UserAuth(), controller.SearchUserLogs)
+		usageLogRoute := apiRouter.Group("/usage_log")
+		usageLogRoute.GET("/", middleware.AdminAuth(), controller.GetAllUsageLogs)
+		usageLogRoute.DELETE("/", middleware.AdminAuth(), controller.DeleteUsageHistoryLogs)
+		usageLogRoute.GET("/stat", middleware.AdminAuth(), controller.GetUsageLogsStat)
+		usageLogRoute.GET("/self/stat", middleware.UserAuth(), controller.GetUsageLogsSelfStat)
+		usageLogRoute.GET("/self", middleware.UserAuth(), controller.GetUserUsageLogs)
+
+		auditLogRoute := apiRouter.Group("/audit_log")
+		auditLogRoute.GET("/", middleware.AdminAuth(), controller.GetAllAuditLogs)
+		auditLogRoute.DELETE("/", middleware.AdminAuth(), controller.DeleteAuditHistoryLogs)
+		auditLogRoute.GET("/self", middleware.UserAuth(), controller.GetUserAuditLogs)
 
 		dataRoute := apiRouter.Group("/data")
 		dataRoute.GET("/", middleware.AdminAuth(), controller.GetAllQuotaDates)
 		dataRoute.GET("/self", middleware.UserAuth(), controller.GetUserQuotaDates)
 
-		logRoute.Use(middleware.CORS())
-		{
-			logRoute.GET("/token", controller.GetLogByKey)
-		}
 		groupRoute := apiRouter.Group("/group")
 		groupRoute.Use(middleware.AdminAuth())
 		{

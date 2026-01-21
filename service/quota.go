@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -74,8 +73,11 @@ func calculateAudioQuota(info QuotaInfo) int {
 	inputAudioTokens := decimal.NewFromInt(int64(info.InputDetails.AudioTokens))
 	outputAudioTokens := decimal.NewFromInt(int64(info.OutputDetails.AudioTokens))
 
-	inputPrice := decimal.NewFromFloat(info.InputPrice)
-	outputPrice := decimal.NewFromFloat(info.OutputPrice)
+	inputTierMultiplier, _ := pricing_setting.GetModelInputTokenPriceMultiplier(info.ModelName, info.InputDetails.TextTokens)
+	outputTierMultiplier, _ := pricing_setting.GetModelOutputTokenPriceMultiplier(info.ModelName, info.OutputDetails.TextTokens)
+
+	inputPrice := decimal.NewFromFloat(info.InputPrice).Mul(decimal.NewFromFloat(inputTierMultiplier))
+	outputPrice := decimal.NewFromFloat(info.OutputPrice).Mul(decimal.NewFromFloat(outputTierMultiplier))
 	audioInPrice := decimal.NewFromFloat(info.AudioInPrice)
 	audioOutPrice := decimal.NewFromFloat(info.AudioOutPrice)
 
@@ -97,11 +99,6 @@ func PreWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usag
 		return nil
 	}
 	userQuota, err := model.GetUserQuota(relayInfo.UserId, false)
-	if err != nil {
-		return err
-	}
-
-	token, err := model.GetTokenByKey(strings.TrimPrefix(relayInfo.TokenKey, "sk-"), false)
 	if err != nil {
 		return err
 	}
@@ -147,10 +144,6 @@ func PreWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usag
 
 	if userQuota < quota {
 		return fmt.Errorf("user quota is not enough, user quota: %s, need quota: %s", logger.FormatQuota(userQuota), logger.FormatQuota(quota))
-	}
-
-	if !token.UnlimitedQuota && token.RemainQuota < quota {
-		return fmt.Errorf("token quota is not enough, token remain quota: %s, need quota: %s", logger.FormatQuota(token.RemainQuota), logger.FormatQuota(quota))
 	}
 
 	err = PostConsumeQuota(relayInfo, quota, 0, false)
@@ -301,15 +294,19 @@ func PostClaudeConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, 
 		// USD prices per 1M tokens
 		dIn := decimal.NewFromFloat(inputPrice)
 		dOut := decimal.NewFromFloat(outputPrice)
+		inputTierMultiplier, _ := pricing_setting.GetModelInputTokenPriceMultiplier(modelName, promptTokens)
+		outputTierMultiplier, _ := pricing_setting.GetModelOutputTokenPriceMultiplier(modelName, completionTokens)
+		dInMultiplier := decimal.NewFromFloat(inputTierMultiplier)
+		dOutMultiplier := decimal.NewFromFloat(outputTierMultiplier)
 		dCacheRead := decimal.NewFromFloat(cacheReadPrice)
 		dCacheCreatePrice := decimal.NewFromFloat(cacheCreationPrice)
 		dCacheCreate5mPrice := decimal.NewFromFloat(cacheCreationPrice5m)
 		dCacheCreate1hPrice := decimal.NewFromFloat(cacheCreationPrice1h)
 
 		usd := decimal.Zero
-		usd = usd.Add(dPrompt.Mul(dIn).Div(unitTokens))
+		usd = usd.Add(dPrompt.Mul(dIn).Mul(dInMultiplier).Div(unitTokens))
 		usd = usd.Add(dCache.Mul(dCacheRead).Div(unitTokens))
-		usd = usd.Add(dCompletion.Mul(dOut).Div(unitTokens))
+		usd = usd.Add(dCompletion.Mul(dOut).Mul(dOutMultiplier).Div(unitTokens))
 
 		usd = usd.Add(dCacheCreate5m.Mul(dCacheCreate5mPrice).Div(unitTokens))
 		usd = usd.Add(dCacheCreate1h.Mul(dCacheCreate1hPrice).Div(unitTokens))
@@ -365,7 +362,9 @@ func PostClaudeConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, 
 		))
 	}
 
-	if quotaDelta != 0 {
+	// When quotaDelta == 0, the actual consumption equals the pre-consumed quota.
+	// In this case, we still need to run post-consume side effects (e.g. auto top-up, quota notifications).
+	if quotaDelta != 0 || relayInfo.FinalPreConsumedQuota != 0 {
 		err := PostConsumeQuota(relayInfo, quotaDelta, relayInfo.FinalPreConsumedQuota, true)
 		if err != nil {
 			logger.LogError(ctx, "error consuming token remain quota: "+err.Error())
@@ -506,7 +505,9 @@ func PostAudioConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, u
 		))
 	}
 
-	if quotaDelta != 0 {
+	// When quotaDelta == 0, the actual consumption equals the pre-consumed quota.
+	// In this case, we still need to run post-consume side effects (e.g. auto top-up, quota notifications).
+	if quotaDelta != 0 || relayInfo.FinalPreConsumedQuota != 0 {
 		err := PostConsumeQuota(relayInfo, quotaDelta, relayInfo.FinalPreConsumedQuota, true)
 		if err != nil {
 			logger.LogError(ctx, "error consuming token remain quota: "+err.Error())
@@ -542,21 +543,7 @@ func PreConsumeTokenQuota(relayInfo *relaycommon.RelayInfo, quota int) error {
 	if relayInfo.IsPlayground {
 		return nil
 	}
-	//if relayInfo.TokenUnlimited {
-	//	return nil
-	//}
-	token, err := model.GetTokenByKey(relayInfo.TokenKey, false)
-	if err != nil {
-		return err
-	}
-	if !relayInfo.TokenUnlimited && token.RemainQuota < quota {
-		return fmt.Errorf("token quota is not enough, token remain quota: %s, need quota: %s", logger.FormatQuota(token.RemainQuota), logger.FormatQuota(quota))
-	}
-	err = model.DecreaseTokenQuota(relayInfo.TokenId, relayInfo.TokenKey, quota)
-	if err != nil {
-		return err
-	}
-	return nil
+	return model.DecreaseTokenQuota(relayInfo.TokenId, relayInfo.TokenKey, quota)
 }
 
 func PostConsumeQuota(relayInfo *relaycommon.RelayInfo, quota int, preConsumedQuota int, sendEmail bool) (err error) {
@@ -564,7 +551,7 @@ func PostConsumeQuota(relayInfo *relaycommon.RelayInfo, quota int, preConsumedQu
 	if quota > 0 {
 		err = model.DecreaseUserQuota(relayInfo.UserId, quota)
 	} else {
-		err = model.IncreaseUserQuota(relayInfo.UserId, -quota, false)
+		err = model.RefundUserQuota(relayInfo.UserId, -quota)
 	}
 	if err != nil {
 		return err
@@ -579,6 +566,12 @@ func PostConsumeQuota(relayInfo *relaycommon.RelayInfo, quota int, preConsumedQu
 		if err != nil {
 			return err
 		}
+	}
+
+	// Auto top-up (Stripe): trigger after quota decreases.
+	consumeQuota := quota + preConsumedQuota
+	if consumeQuota > 0 {
+		maybeTriggerStripeAutoTopup(relayInfo, relayInfo.UserQuota-consumeQuota)
 	}
 
 	if sendEmail {

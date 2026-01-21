@@ -42,6 +42,7 @@ import {
   Col,
   Input,
   InputNumber,
+  DatePicker,
 } from '@douyinfe/semi-ui';
 import {
   IconUser,
@@ -58,11 +59,19 @@ const EditUserModal = (props) => {
   const { t } = useTranslation();
   const userId = props.editingUser.id;
   const [loading, setLoading] = useState(true);
-  const [addQuotaModalOpen, setIsModalOpen] = useState(false);
-  const [addQuotaLocal, setAddQuotaLocal] = useState('');
   const isMobile = useIsMobile();
   const [groupOptions, setGroupOptions] = useState([]);
   const formApiRef = useRef(null);
+
+  const [creditGrantsLoading, setCreditGrantsLoading] = useState(false);
+  const [creditGrants, setCreditGrants] = useState([]);
+
+  const [addGrantModalOpen, setAddGrantModalOpen] = useState(false);
+  const [grantQuota, setGrantQuota] = useState(0);
+  const [grantExpiredTime, setGrantExpiredTime] = useState(null);
+  const [grantRemark, setGrantRemark] = useState('');
+  const [grantReference, setGrantReference] = useState('');
+  const [grantSubmitting, setGrantSubmitting] = useState(false);
 
   const isEdit = Boolean(userId);
 
@@ -76,7 +85,6 @@ const EditUserModal = (props) => {
     wechat_id: '',
     telegram_id: '',
     email: '',
-    quota: 0,
     group: 'default',
     remark: '',
   });
@@ -106,17 +114,39 @@ const EditUserModal = (props) => {
     setLoading(false);
   };
 
+  const loadCreditGrants = async () => {
+    if (!userId) return;
+    setCreditGrantsLoading(true);
+    try {
+      const res = await API.get(`/api/user/${userId}/credit_grants`, {
+        params: { p: 1, page_size: 20 },
+      });
+      const { success, message, data } = res.data;
+      if (!success) {
+        showError(message);
+        return;
+      }
+      setCreditGrants(data.items || []);
+    } catch (e) {
+      showError(e.message);
+    } finally {
+      setCreditGrantsLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadUser();
-    if (userId) fetchGroups();
+    if (userId) {
+      fetchGroups();
+      loadCreditGrants();
+    }
   }, [props.editingUser.id]);
 
   /* ----------------------- submit ----------------------- */
   const submit = async (values) => {
     setLoading(true);
     let payload = { ...values };
-    if (typeof payload.quota === 'string')
-      payload.quota = parseInt(payload.quota) || 0;
+    delete payload.quota;
     if (userId) {
       payload.id = parseInt(userId);
     }
@@ -133,11 +163,44 @@ const EditUserModal = (props) => {
     setLoading(false);
   };
 
-  /* --------------------- quota helper -------------------- */
-  const addLocalQuota = () => {
-    const current = parseInt(formApiRef.current?.getValue('quota') || 0);
-    const delta = parseInt(addQuotaLocal) || 0;
-    formApiRef.current?.setValue('quota', current + delta);
+  /* --------------------- credit grant -------------------- */
+  const submitCreditGrant = async () => {
+    if (!userId) return;
+    const quota = parseInt(String(grantQuota), 10) || 0;
+    if (quota <= 0) {
+      showError(t('请输入大于 0 的额度'));
+      return;
+    }
+    const expiredTime = grantExpiredTime
+      ? Math.floor(grantExpiredTime.getTime() / 1000)
+      : 0;
+
+    setGrantSubmitting(true);
+    try {
+      const res = await API.post(`/api/user/${userId}/credit_grants`, {
+        quota,
+        expired_time: expiredTime,
+        remark: grantRemark,
+        reference: grantReference,
+      });
+      const { success, message } = res.data;
+      if (!success) {
+        showError(message);
+        return;
+      }
+      showSuccess(t('Credit Grant 创建成功！'));
+      setAddGrantModalOpen(false);
+      setGrantQuota(0);
+      setGrantExpiredTime(null);
+      setGrantRemark('');
+      setGrantReference('');
+      await loadUser();
+      await loadCreditGrants();
+    } catch (e) {
+      showError(e.message);
+    } finally {
+      setGrantSubmitting(false);
+    }
   };
 
   /* --------------------------- UI --------------------------- */
@@ -286,27 +349,103 @@ const EditUserModal = (props) => {
                         />
                       </Col>
 
-                      <Col span={10}>
-                        <Form.InputNumber
-                          field='quota'
-                          label={t('剩余额度')}
-                          placeholder={t('请输入新的剩余额度')}
-                          step={500000}
-                          extraText={renderQuotaWithPrompt(values.quota || 0)}
-                          rules={[{ required: true, message: t('请输入额度') }]}
-                          style={{ width: '100%' }}
-                        />
-                      </Col>
-
-                      <Col span={14}>
-                        <Form.Slot label={t('添加额度')}>
-                          <Button
-                            icon={<IconPlus />}
-                            onClick={() => setIsModalOpen(true)}
-                          />
+                      <Col span={24}>
+                        <Form.Slot label={t('剩余额度')}>
+                          <div className='flex w-full items-center justify-between gap-3'>
+                            <div>
+                              <div className='text-base font-medium'>
+                                {renderQuota(values.quota || 0)}
+                              </div>
+                              <div className='text-xs text-gray-600'>
+                                {renderQuotaWithPrompt(values.quota || 0)}
+                              </div>
+                            </div>
+                            <Button
+                              icon={<IconPlus />}
+                              onClick={() => setAddGrantModalOpen(true)}
+                            >
+                              {t('新增 Credit Grant')}
+                            </Button>
+                          </div>
                         </Form.Slot>
                       </Col>
                     </Row>
+                  </Card>
+                )}
+
+                {userId && (
+                  <Card className='!rounded-2xl shadow-sm border-0'>
+                    <div className='flex items-center justify-between mb-2'>
+                      <div>
+                        <Text className='text-lg font-medium'>
+                          {t('Credit Grants')}
+                        </Text>
+                        <div className='text-xs text-gray-600'>
+                          {t('历史 Grant 只读，可通过新增 Grant 调整额度')}
+                        </div>
+                      </div>
+                      <Button
+                        theme='light'
+                        type='primary'
+                        icon={<IconPlus />}
+                        onClick={() => setAddGrantModalOpen(true)}
+                      >
+                        {t('新增')}
+                      </Button>
+                    </div>
+
+                    <Spin spinning={creditGrantsLoading}>
+                      <div className='space-y-2 text-sm'>
+                        {creditGrants.length === 0 ? (
+                          <Text type='secondary'>{t('暂无 Credit Grants')}</Text>
+                        ) : (
+                          creditGrants.map((g) => {
+                            const remaining = (g.quota || 0) - (g.used_quota || 0);
+                            const created = g.created_time
+                              ? new Date(g.created_time * 1000).toLocaleString()
+                              : '—';
+                            const expired = g.expired_time
+                              ? new Date(g.expired_time * 1000).toLocaleString()
+                              : t('永久');
+
+                            return (
+                              <div
+                                key={g.id}
+                                className='flex flex-col gap-1 rounded-lg bg-gray-50 p-3'
+                              >
+                                <div className='flex items-center justify-between gap-2'>
+                                  <div className='font-medium'>
+                                    #{g.id} · {g.grant_type || '—'}
+                                  </div>
+                                  <div className='text-right'>
+                                    {renderQuota(remaining)}
+                                  </div>
+                                </div>
+                                <div className='text-xs text-gray-600 flex flex-wrap gap-x-3 gap-y-1'>
+                                  <span>
+                                    {t('总额')}: {renderQuota(g.quota || 0)}
+                                  </span>
+                                  <span>
+                                    {t('已用')}: {renderQuota(g.used_quota || 0)}
+                                  </span>
+                                  <span>
+                                    {t('创建')}: {created}
+                                  </span>
+                                  <span>
+                                    {t('到期')}: {expired}
+                                  </span>
+                                </div>
+                                {g.remark ? (
+                                  <div className='text-xs text-gray-600'>
+                                    {t('备注')}: {g.remark}
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </Spin>
                   </Card>
                 )}
 
@@ -360,41 +499,77 @@ const EditUserModal = (props) => {
         </Spin>
       </SideSheet>
 
-      {/* 添加额度模态框 */}
+      {/* 新增 Credit Grant */}
       <Modal
         centered
-        visible={addQuotaModalOpen}
-        onOk={() => {
-          addLocalQuota();
-          setIsModalOpen(false);
-        }}
-        onCancel={() => setIsModalOpen(false)}
+        visible={addGrantModalOpen}
+        confirmLoading={grantSubmitting}
+        onOk={submitCreditGrant}
+        onCancel={() => setAddGrantModalOpen(false)}
         closable={null}
         title={
           <div className='flex items-center'>
             <IconPlus className='mr-2' />
-            {t('添加额度')}
+            {t('新增 Credit Grant')}
           </div>
         }
       >
-        <div className='mb-4'>
-          {(() => {
-            const current = formApiRef.current?.getValue('quota') || 0;
-            return (
-              <Text type='secondary' className='block mb-2'>
-                {`${t('新额度：')}${renderQuota(current)} + ${renderQuota(addQuotaLocal)} = ${renderQuota(current + parseInt(addQuotaLocal || 0))}`}
-              </Text>
-            );
-          })()}
+        <div className='space-y-3'>
+          <div>
+            <Text type='secondary' className='block mb-2'>
+              {t('额度')}
+            </Text>
+            <InputNumber
+              placeholder={t('请输入额度')}
+              value={grantQuota}
+              onChange={setGrantQuota}
+              style={{ width: '100%' }}
+              showClear
+              step={500000}
+            />
+            <div className='mt-1 text-xs text-gray-600'>
+              {renderQuotaWithPrompt(Number(grantQuota) || 0)}
+            </div>
+          </div>
+
+          <div>
+            <Text type='secondary' className='block mb-2'>
+              {t('到期时间')}
+            </Text>
+            <DatePicker
+              type='dateTime'
+              placeholder={t('可选，留空为永久')}
+              value={grantExpiredTime}
+              onChange={setGrantExpiredTime}
+              style={{ width: '100%' }}
+              showClear
+            />
+          </div>
+
+          <div>
+            <Text type='secondary' className='block mb-2'>
+              {t('备注')}
+            </Text>
+            <Input
+              value={grantRemark}
+              onChange={setGrantRemark}
+              placeholder={t('可选')}
+              showClear
+            />
+          </div>
+
+          <div>
+            <Text type='secondary' className='block mb-2'>
+              {t('关联标识')}
+            </Text>
+            <Input
+              value={grantReference}
+              onChange={setGrantReference}
+              placeholder={t('可选，用于追踪')}
+              showClear
+            />
+          </div>
         </div>
-        <InputNumber
-          placeholder={t('需要添加的额度（支持负数）')}
-          value={addQuotaLocal}
-          onChange={setAddQuotaLocal}
-          style={{ width: '100%' }}
-          showClear
-          step={500000}
-        />
       </Modal>
     </>
   );

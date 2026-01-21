@@ -26,10 +26,26 @@ import {
 import axios from 'axios';
 import { MESSAGE_ROLES } from '../constants/playground.constants';
 
+const SERVER_BASE_URL = (import.meta.env.VITE_REACT_APP_SERVER_URL || '').trim();
+
+export function getServerBaseUrl() {
+  return SERVER_BASE_URL;
+}
+
+export function buildServerUrl(path) {
+  const base = getServerBaseUrl();
+  if (!base) return path;
+  if (/^https?:\/\//i.test(path)) return path;
+  return new URL(path, base).toString();
+}
+
+export function getServerFetchCredentials() {
+  return getServerBaseUrl() ? 'include' : 'same-origin';
+}
+
 export let API = axios.create({
-  baseURL: import.meta.env.VITE_REACT_APP_SERVER_URL
-    ? import.meta.env.VITE_REACT_APP_SERVER_URL
-    : '',
+  baseURL: SERVER_BASE_URL ? SERVER_BASE_URL : '',
+  withCredentials: Boolean(SERVER_BASE_URL),
   headers: {
     'New-API-User': getUserIdFromLocalStorage(),
     'Cache-Control': 'no-store',
@@ -68,9 +84,8 @@ patchAPIInstance(API);
 
 export function updateAPI() {
   API = axios.create({
-    baseURL: import.meta.env.VITE_REACT_APP_SERVER_URL
-      ? import.meta.env.VITE_REACT_APP_SERVER_URL
-      : '',
+    baseURL: SERVER_BASE_URL ? SERVER_BASE_URL : '',
+    withCredentials: Boolean(SERVER_BASE_URL),
     headers: {
       'New-API-User': getUserIdFromLocalStorage(),
       'Cache-Control': 'no-store',
@@ -167,10 +182,20 @@ export const handleApiError = (error, response = null) => {
 
 // 处理模型数据
 export const processModelsData = (data, currentModel) => {
-  const modelOptions = data.map((model) => ({
-    label: model,
-    value: model,
-  }));
+  const modelOptions = (data || [])
+    .map((model) => {
+      if (typeof model === 'string') {
+        return { label: model, value: model };
+      }
+      if (model && typeof model === 'object') {
+        const id = model.id || model.model_name || '';
+        const label = model.display_name || model.displayName || id;
+        return { label, value: id };
+      }
+      const fallback = String(model ?? '');
+      return { label: fallback, value: fallback };
+    })
+    .filter((opt) => opt.value);
 
   const hasCurrentModel = modelOptions.some(
     (option) => option.value === currentModel,

@@ -610,6 +610,7 @@ export function renderModelTag(modelName, options = {}) {
     shape = 'circle',
     onClick,
     suffixIcon,
+    label,
   } = options;
 
   const categories = getModelCategories(i18next.t);
@@ -631,7 +632,7 @@ export function renderModelTag(modelName, options = {}) {
       shape={shape}
       onClick={onClick}
     >
-      {modelName}
+      {label ?? modelName}
     </Tag>
   );
 }

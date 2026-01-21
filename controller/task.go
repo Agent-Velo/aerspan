@@ -165,7 +165,7 @@ func updateSunoTaskAll(ctx context.Context, channelId int, taskIds []string, tas
 			} else {
 				quota := task.Quota
 				if quota != 0 {
-					err = model.IncreaseUserQuota(task.UserId, quota, false)
+					err = model.RefundUserQuota(task.UserId, quota)
 					if err != nil {
 						logger.LogError(ctx, "fail to increase user quota: "+err.Error())
 					}

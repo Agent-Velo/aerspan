@@ -34,8 +34,9 @@ type User struct {
 	VerificationCode string         `json:"verification_code" gorm:"-:all"`                                    // this field is only for Email verification, don't save it to database!
 	AccessToken      *string        `json:"access_token" gorm:"type:char(32);column:access_token;uniqueIndex"` // this token is for system management
 	Quota            int            `json:"quota" gorm:"type:int;default:0"`
-	UsedQuota        int            `json:"used_quota" gorm:"type:int;default:0;column:used_quota"` // used quota
-	RequestCount     int            `json:"request_count" gorm:"type:int;default:0;"`               // request number
+	QuotaExpiresAt   int64          `json:"quota_expires_at" gorm:"type:bigint;default:0;column:quota_expires_at"` // earliest expiration time among active credit grants (0 means no expiry)
+	UsedQuota        int            `json:"used_quota" gorm:"type:int;default:0;column:used_quota"`                // used quota
+	RequestCount     int            `json:"request_count" gorm:"type:int;default:0;"`                              // request number
 	Group            string         `json:"group" gorm:"type:varchar(64);default:'default'"`
 	AffCode          string         `json:"aff_code" gorm:"type:varchar(32);column:aff_code;uniqueIndex"`
 	AffCount         int            `json:"aff_count" gorm:"type:int;default:0;column:aff_count"`
@@ -51,13 +52,14 @@ type User struct {
 
 func (user *User) ToBaseUser() *UserBase {
 	cache := &UserBase{
-		Id:       user.Id,
-		Group:    user.Group,
-		Quota:    user.Quota,
-		Status:   user.Status,
-		Username: user.Username,
-		Setting:  user.Setting,
-		Email:    user.Email,
+		Id:             user.Id,
+		Group:          user.Group,
+		Quota:          user.Quota,
+		QuotaExpiresAt: user.QuotaExpiresAt,
+		Status:         user.Status,
+		Username:       user.Username,
+		Setting:        user.Setting,
+		Email:          user.Email,
 	}
 	return cache
 }
@@ -301,12 +303,32 @@ func GetUserById(id int, selectAll bool) (*User, error) {
 }
 
 func GetUserIdByAffCode(affCode string) (int, error) {
+	affCode = strings.TrimSpace(affCode)
 	if affCode == "" {
 		return 0, errors.New("Missing affiliate code")
 	}
 	var user User
 	err := DB.Select("id").First(&user, "aff_code = ?", affCode).Error
-	return user.Id, err
+	if err == nil {
+		return user.Id, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return 0, err
+	}
+
+	var alias AffCodeAlias
+	err = DB.Select("user_id").First(&alias, "code = ?", affCode).Error
+	if err != nil {
+		return 0, err
+	}
+
+	// Keep the behavior consistent with the original query: if the user is deleted,
+	// this invite code should not be usable.
+	err = DB.Select("id").First(&user, "id = ?", alias.UserId).Error
+	if err != nil {
+		return 0, err
+	}
+	return alias.UserId, nil
 }
 
 func DeleteUserById(id int) (err error) {
@@ -362,10 +384,19 @@ func (user *User) TransferAffQuotaToQuota(quota int) error {
 
 	// 更新用户额度
 	user.AffQuota -= quota
-	user.Quota += quota
-
-	// 保存用户状态
-	if err := tx.Save(user).Error; err != nil {
+	if err := tx.Model(&User{}).Where("id = ?", user.Id).Update("aff_quota", user.AffQuota).Error; err != nil {
+		return err
+	}
+	if _, err := CreateCreditGrantTx(tx, CreateCreditGrantParams{
+		UserId:      user.Id,
+		Quota:       quota,
+		GrantType:   "aff_transfer",
+		Reference:   fmt.Sprintf("aff_transfer:%d", user.Id),
+		Remark:      "transfer from referral balance",
+		CreatedBy:   user.Id,
+		CreatedTime: common.GetTimestamp(),
+		ExpiredTime: 0,
+	}); err != nil {
 		return err
 	}
 
@@ -381,9 +412,14 @@ func (user *User) Insert(inviterId int) error {
 			return err
 		}
 	}
-	user.Quota = common.QuotaForNewUser
+	user.Quota = 0
+	user.QuotaExpiresAt = 0
 	//user.SetAccessToken(common.GetUUID())
-	user.AffCode = common.GetRandomString(4)
+	affCode, err := GenerateUniqueAffCodeV2()
+	if err != nil {
+		return err
+	}
+	user.AffCode = affCode
 
 	// 初始化用户设置，包括默认的边栏配置
 	if user.Setting == "" {
@@ -392,9 +428,40 @@ func (user *User) Insert(inviterId int) error {
 		user.SetSetting(defaultSetting)
 	}
 
-	result := DB.Create(user)
-	if result.Error != nil {
-		return result.Error
+	createdAt := common.GetTimestamp()
+	if err := DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(user).Error; err != nil {
+			return err
+		}
+		if common.QuotaForNewUser > 0 {
+			if _, err := CreateCreditGrantTx(tx, CreateCreditGrantParams{
+				UserId:      user.Id,
+				Quota:       common.QuotaForNewUser,
+				GrantType:   "signup",
+				Reference:   fmt.Sprintf("signup:%d", user.Id),
+				Remark:      "sign-up bonus",
+				CreatedTime: createdAt,
+				ExpiredTime: 0,
+			}); err != nil {
+				return err
+			}
+		}
+		if inviterId != 0 && common.QuotaForInvitee > 0 {
+			if _, err := CreateCreditGrantTx(tx, CreateCreditGrantParams{
+				UserId:      user.Id,
+				Quota:       common.QuotaForInvitee,
+				GrantType:   "invite_bonus",
+				Reference:   fmt.Sprintf("invite_bonus:%d", inviterId),
+				Remark:      "invite code bonus",
+				CreatedTime: createdAt,
+				ExpiredTime: 0,
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	// 用户创建成功后，根据角色初始化边栏配置
@@ -417,7 +484,6 @@ func (user *User) Insert(inviterId int) error {
 	}
 	if inviterId != 0 {
 		if common.QuotaForInvitee > 0 {
-			_ = IncreaseUserQuota(user.Id, common.QuotaForInvitee, true)
 			RecordLog(user.Id, LogTypeSystem, fmt.Sprintf("Invite code bonus: %s", logger.LogQuota(common.QuotaForInvitee)))
 		}
 		if common.QuotaForInviter > 0 {
@@ -461,7 +527,6 @@ func (user *User) Edit(updatePassword bool) error {
 		"username":     newUser.Username,
 		"display_name": newUser.DisplayName,
 		"group":        newUser.Group,
-		"quota":        newUser.Quota,
 		"remark":       newUser.Remark,
 	}
 	if updatePassword {
@@ -767,17 +832,32 @@ func IncreaseUserQuota(id int, quota int, db bool) (err error) {
 	if quota < 0 {
 		return errors.New("Quota can't be negative")
 	}
+	if quota == 0 {
+		return nil
+	}
+	// Legacy API: increasing quota now always creates a non-expiring credit grant.
+	// The db/batch-update flags are ignored to keep grants consistent.
+	_, err = CreateCreditGrant(CreateCreditGrantParams{
+		UserId:      id,
+		Quota:       quota,
+		GrantType:   "system",
+		Reference:   fmt.Sprintf("system:%d", id),
+		Remark:      "system grant",
+		CreatedTime: common.GetTimestamp(),
+		ExpiredTime: 0,
+	})
+	if err != nil {
+		return err
+	}
+
 	gopool.Go(func() {
 		err := cacheIncrUserQuota(id, int64(quota))
 		if err != nil {
 			common.SysLog("failed to increase user quota: " + err.Error())
 		}
 	})
-	if !db && common.BatchUpdateEnabled {
-		addNewRecord(BatchUpdateTypeUserQuota, id, quota)
-		return nil
-	}
-	return increaseUserQuota(id, quota)
+	_ = db
+	return nil
 }
 
 func increaseUserQuota(id int, quota int) (err error) {
@@ -792,17 +872,20 @@ func DecreaseUserQuota(id int, quota int) (err error) {
 	if quota < 0 {
 		return errors.New("Quota can't be negative")
 	}
+	if quota == 0 {
+		return nil
+	}
+	err = ConsumeUserQuota(id, quota)
+	if err != nil {
+		return err
+	}
 	gopool.Go(func() {
 		err := cacheDecrUserQuota(id, int64(quota))
 		if err != nil {
 			common.SysLog("failed to decrease user quota: " + err.Error())
 		}
 	})
-	if common.BatchUpdateEnabled {
-		addNewRecord(BatchUpdateTypeUserQuota, id, -quota)
-		return nil
-	}
-	return decreaseUserQuota(id, quota)
+	return nil
 }
 
 func decreaseUserQuota(id int, quota int) (err error) {

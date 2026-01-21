@@ -393,6 +393,13 @@ const Playground = () => {
     }
   }, [searchParams, t]);
 
+  useEffect(() => {
+    const modelFromUrl = searchParams.get('model');
+    if (!modelFromUrl) return;
+    if (!models || !models.includes(modelFromUrl)) return;
+    handleInputChange('model', modelFromUrl);
+  }, [searchParams, models, handleInputChange]);
+
   // Playground 组件无需再监听窗口变化，isMobile 由 useIsMobile Hook 自动更新
 
   // 构建预览payload
