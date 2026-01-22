@@ -42,21 +42,24 @@ export function AccessTokenPage() {
                   className='font-mono text-xs'
                 />
               </TextField>
-              <div className='flex gap-2'>
-                <Button
-                  variant='secondary'
-                  onPress={() =>
-                    copyText(accessToken).then((ok) =>
-                      ok ? toast.success('Copied') : toast.error('Copy failed'),
-                    )
-                  }
-                  isDisabled={!accessToken}
-                >
-                  Copy
-                </Button>
-                <Button onPress={() => regenerateAccessToken().catch(() => {})}>
-                  Regenerate
-                </Button>
+              <div className='flex flex-col gap-0.5'>
+                <Label className='invisible'>Actions</Label>
+                <div className='flex gap-2'>
+                  <Button
+                    variant='secondary'
+                    onPress={() =>
+                      copyText(accessToken).then((ok) =>
+                        ok ? toast.success('Copied') : toast.error('Copy failed'),
+                      )
+                    }
+                    isDisabled={!accessToken}
+                  >
+                    Copy
+                  </Button>
+                  <Button onPress={() => regenerateAccessToken().catch(() => {})}>
+                    Regenerate
+                  </Button>
+                </div>
               </div>
             </div>
             <Button size='sm' variant='ghost' onPress={loadAccessTokenFromUser}>

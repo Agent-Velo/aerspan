@@ -695,7 +695,7 @@ export function PlaygroundPage() {
               </div>
 
               <div className='grid grid-cols-1 gap-2'>
-                <div className='flex items-end justify-between gap-2'>
+                <div className='flex items-center justify-between gap-2'>
                   <div className='flex items-center gap-3'>
                     <Checkbox
                       id='pg-param-temperature'
@@ -718,7 +718,7 @@ export function PlaygroundPage() {
                     className='w-28'
                   />
                 </div>
-                <div className='flex items-end justify-between gap-2'>
+                <div className='flex items-center justify-between gap-2'>
                   <div className='flex items-center gap-3'>
                     <Checkbox
                       id='pg-param-top-p'
@@ -741,7 +741,7 @@ export function PlaygroundPage() {
                     className='w-28'
                   />
                 </div>
-                <div className='flex items-end justify-between gap-2'>
+                <div className='flex items-center justify-between gap-2'>
                   <div className='flex items-center gap-3'>
                     <Checkbox
                       id='pg-param-max-tokens'
@@ -763,7 +763,7 @@ export function PlaygroundPage() {
                     className='w-28'
                   />
                 </div>
-                <div className='flex items-end justify-between gap-2'>
+                <div className='flex items-center justify-between gap-2'>
                   <div className='flex items-center gap-3'>
                     <Checkbox
                       id='pg-param-frequency-penalty'
@@ -786,7 +786,7 @@ export function PlaygroundPage() {
                     className='w-28'
                   />
                 </div>
-                <div className='flex items-end justify-between gap-2'>
+                <div className='flex items-center justify-between gap-2'>
                   <div className='flex items-center gap-3'>
                     <Checkbox
                       id='pg-param-presence-penalty'
@@ -809,7 +809,7 @@ export function PlaygroundPage() {
                     className='w-28'
                   />
                 </div>
-                <div className='flex items-end justify-between gap-2'>
+                <div className='flex items-center justify-between gap-2'>
                   <div className='flex items-center gap-3'>
                     <Checkbox
                       id='pg-param-seed'

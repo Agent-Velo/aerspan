@@ -1,15 +1,31 @@
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Ban, Check, Copy, Eye, Pencil, RefreshCcw, Trash2 } from 'lucide-react';
-import { fetchJson } from '@/api/client';
-import type { ApiResponse } from '@/api/types';
-import { useStatus } from '@/stores/status/StatusStore';
-import { toast } from '@/ui/toast';
-import { confirmModal } from '@/ui/confirmModal';
-import { copyText } from '@/lib/clipboard';
-import { formatTokenApiKey, getTokenApiKeyPrefix } from '@/lib/tokenApiKey';
-import { Button, Card, Chip, Label, ListBox, Modal, Select } from '@/components/ui/heroui';
-import { TableActionButton } from '@/components/ui/TableActionButton';
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Ban,
+  Check,
+  Copy,
+  Eye,
+  Pencil,
+  RefreshCcw,
+  Trash2,
+} from "lucide-react";
+import { fetchJson } from "@/api/client";
+import type { ApiResponse } from "@/api/types";
+import { useStatus } from "@/stores/status/StatusStore";
+import { toast } from "@/ui/toast";
+import { confirmModal } from "@/ui/confirmModal";
+import { copyText } from "@/lib/clipboard";
+import { formatTokenApiKey, getTokenApiKeyPrefix } from "@/lib/tokenApiKey";
+import {
+  Button,
+  Card,
+  Chip,
+  Label,
+  ListBox,
+  Modal,
+  Select,
+} from "@/components/ui/heroui";
+import { TableActionButton } from "@/components/ui/TableActionButton";
 
 type TokenStatus = 1 | 2 | 3 | 4;
 
@@ -46,7 +62,7 @@ function normalizeUserModels(data: unknown): {
 
   const items = Array.isArray(data) ? (data as UserModelItem[]) : [];
   for (const item of items) {
-    if (typeof item === 'string') {
+    if (typeof item === "string") {
       const id = item;
       if (!id || seen.has(id)) continue;
       seen.add(id);
@@ -54,9 +70,9 @@ function normalizeUserModels(data: unknown): {
       labels[id] = id;
       continue;
     }
-    if (item && typeof item === 'object') {
+    if (item && typeof item === "object") {
       const raw = item as UserModelInfo;
-      const id = String(raw.id || '');
+      const id = String(raw.id || "");
       if (!id || seen.has(id)) continue;
       seen.add(id);
       ids.push(id);
@@ -68,15 +84,19 @@ function normalizeUserModels(data: unknown): {
 }
 
 function tokenStatusLabel(status: TokenStatus) {
-  return status === 2 ? 'Disabled' : 'Enabled';
+  return status === 2 ? "Disabled" : "Enabled";
 }
 
-function tokenStatusChipColor(status: TokenStatus): 'default' | 'success' | 'warning' | 'danger' {
-  return status === 2 ? 'default' : 'success';
+function tokenStatusChipColor(
+  status: TokenStatus,
+): "default" | "success" | "warning" | "danger" {
+  return status === 2 ? "default" : "success";
 }
 
 function getServerAddress(status: any): string {
-  return (status?.server_address as string | undefined) || window.location.origin;
+  return (
+    (status?.server_address as string | undefined) || window.location.origin
+  );
 }
 
 function FluentPrefillModal({
@@ -105,25 +125,27 @@ function FluentPrefillModal({
         if (!isOpen) onClose();
       }}
     >
-      <Button className='sr-only' variant='ghost'>
+      <Button className="sr-only" variant="ghost">
         Open
       </Button>
 
       <Modal.Backdrop>
-        <Modal.Container size='sm'>
+        <Modal.Container size="sm">
           <Modal.Dialog>
             <Modal.CloseTrigger />
             <Modal.Header>
               <Modal.Heading>FluentRead detected</Modal.Heading>
             </Modal.Header>
             <Modal.Body>
-              <div className='text-sm text-muted'>Select a model and prefill FluentRead.</div>
-              <div className='mt-3'>
+              <div className="text-sm text-muted">
+                Select a model and prefill FluentRead.
+              </div>
+              <div className="mt-3">
                 <Select
                   fullWidth
-                  placeholder='Select…'
+                  placeholder="Select…"
                   value={selectedModel || null}
-                  onChange={(value) => setSelectedModel(String(value || ''))}
+                  onChange={(value) => setSelectedModel(String(value || ""))}
                 >
                   <Label>Model</Label>
                   <Select.Trigger>
@@ -137,7 +159,7 @@ function FluentPrefillModal({
                         return (
                           <ListBox.Item key={m} id={m} textValue={label}>
                             {label}
-                          <ListBox.ItemIndicator />
+                            <ListBox.ItemIndicator />
                           </ListBox.Item>
                         );
                       })}
@@ -149,14 +171,16 @@ function FluentPrefillModal({
             <Modal.Footer>
               {showSuppress ? (
                 <Button
-                  slot='close'
-                  variant='tertiary'
-                  onPress={() => localStorage.setItem('fluent_notify_suppressed', '1')}
+                  slot="close"
+                  variant="tertiary"
+                  onPress={() =>
+                    localStorage.setItem("fluent_notify_suppressed", "1")
+                  }
                 >
                   Don't remind again
                 </Button>
               ) : null}
-              <Button slot='close' variant='secondary'>
+              <Button slot="close" variant="secondary">
                 Close
               </Button>
               <Button isDisabled={!selectedModel} onPress={onPrefill}>
@@ -170,8 +194,14 @@ function FluentPrefillModal({
   );
 }
 
-function TokenKeyModal({ token, onClose }: { token: Token | null; onClose: () => void }) {
-  const apiKey = token ? formatTokenApiKey(token.key) : '';
+function TokenKeyModal({
+  token,
+  onClose,
+}: {
+  token: Token | null;
+  onClose: () => void;
+}) {
+  const apiKey = token ? formatTokenApiKey(token.key) : "";
 
   return (
     <Modal
@@ -180,35 +210,41 @@ function TokenKeyModal({ token, onClose }: { token: Token | null; onClose: () =>
         if (!isOpen) onClose();
       }}
     >
-      <Button className='sr-only' variant='ghost'>
+      <Button className="sr-only" variant="ghost">
         Open
       </Button>
 
       <Modal.Backdrop>
-        <Modal.Container size='sm'>
-          <Modal.Dialog className='sm:max-w-[520px]'>
+        <Modal.Container size="sm">
+          <Modal.Dialog className="sm:max-w-[520px]">
             <Modal.CloseTrigger />
             <Modal.Header>
-              <Modal.Heading>{token?.name ? `API Key: ${token.name}` : 'API Key'}</Modal.Heading>
+              <Modal.Heading>
+                {token?.name ? `API Key: ${token.name}` : "API Key"}
+              </Modal.Heading>
             </Modal.Header>
             <Modal.Body>
-              <div className='space-y-2'>
-                <div className='text-sm text-muted'>Keep this key secret. Anyone with it can access your account.</div>
-                <Card variant='secondary'>
-                  <pre className='overflow-auto p-3 text-xs'>
-                    <code className='font-mono'>{apiKey}</code>
+              <div className="space-y-2">
+                <div className="text-sm text-muted">
+                  Keep this key secret. Anyone with it can access your account.
+                </div>
+                <Card variant="secondary">
+                  <pre className="overflow-auto p-3 text-xs">
+                    <code className="font-mono">{apiKey}</code>
                   </pre>
                 </Card>
               </div>
             </Modal.Body>
-            <Modal.Footer className='flex gap-2'>
-              <Button slot='close' variant='secondary'>
+            <Modal.Footer className="flex gap-2">
+              <Button slot="close" variant="secondary">
                 Close
               </Button>
               <Button
                 onPress={() => {
                   if (!token) return;
-                  copyText(apiKey).then((ok) => (ok ? toast.success('Copied') : toast.error('Copy failed')));
+                  copyText(apiKey).then((ok) =>
+                    ok ? toast.success("Copied") : toast.error("Copy failed"),
+                  );
                 }}
               >
                 Copy
@@ -236,9 +272,12 @@ export function TokenListPage() {
   const refresh = async (nextPage = page, nextSize = pageSize) => {
     setLoading(true);
     try {
-      const res = await fetchJson<ApiResponse<PageInfo<Token[]>>>(`/api/token/`, {
-        params: { p: nextPage, size: nextSize },
-      });
+      const res = await fetchJson<ApiResponse<PageInfo<Token[]>>>(
+        `/api/token/`,
+        {
+          params: { p: nextPage, size: nextSize },
+        },
+      );
       setTokens(res.data.items || []);
       setTotal(res.data.total || 0);
       setPage(res.data.page || nextPage);
@@ -256,30 +295,36 @@ export function TokenListPage() {
   const setStatus = async (token: Token, nextStatus: 1 | 2) => {
     setLoading(true);
     try {
-      const res = await fetchJson<ApiResponse<Token>>('/api/token/', {
-        method: 'PUT',
+      const res = await fetchJson<ApiResponse<Token>>("/api/token/", {
+        method: "PUT",
         params: { status_only: true },
         body: { id: token.id, status: nextStatus },
       });
-      setTokens((prev) => prev.map((t) => (t.id === token.id ? { ...t, status: res.data.status } : t)));
-      toast.success('Updated');
+      setTokens((prev) =>
+        prev.map((t) =>
+          t.id === token.id ? { ...t, status: res.data.status } : t,
+        ),
+      );
+      toast.success("Updated");
     } finally {
       setLoading(false);
     }
   };
 
   const deleteToken = async (token: Token) => {
-    const ok = await confirmModal('Delete this token?', {
-      title: 'Delete token',
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
-      confirmVariant: 'danger',
+    const ok = await confirmModal("Delete this token?", {
+      title: "Delete token",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      confirmVariant: "danger",
     });
     if (!ok) return;
     setLoading(true);
     try {
-      await fetchJson<ApiResponse<any>>(`/api/token/${token.id}`, { method: 'DELETE' });
-      toast.success('Deleted');
+      await fetchJson<ApiResponse<any>>(`/api/token/${token.id}`, {
+        method: "DELETE",
+      });
+      toast.success("Deleted");
       await refresh(page, pageSize);
     } finally {
       setLoading(false);
@@ -287,19 +332,27 @@ export function TokenListPage() {
   };
 
   const rollTokenKey = async (token: Token) => {
-    const ok = await confirmModal('Roll this key? The old key will stop working immediately.', {
-      title: 'Roll key',
-      confirmText: 'Roll',
-      cancelText: 'Cancel',
-      confirmVariant: 'danger',
-    });
+    const ok = await confirmModal(
+      "Roll this key? The old key will stop working immediately.",
+      {
+        title: "Roll key",
+        confirmText: "Roll",
+        cancelText: "Cancel",
+        confirmVariant: "danger",
+      },
+    );
     if (!ok) return;
     setLoading(true);
     try {
-      const res = await fetchJson<ApiResponse<Token>>(`/api/token/${token.id}/roll`, { method: 'POST' });
-      setTokens((prev) => prev.map((t) => (t.id === token.id ? { ...t, key: res.data.key } : t)));
+      const res = await fetchJson<ApiResponse<Token>>(
+        `/api/token/${token.id}/roll`,
+        { method: "POST" },
+      );
+      setTokens((prev) =>
+        prev.map((t) => (t.id === token.id ? { ...t, key: res.data.key } : t)),
+      );
       setKeyModalToken({ ...token, key: res.data.key });
-      toast.success('Rolled');
+      toast.success("Rolled");
     } finally {
       setLoading(false);
     }
@@ -307,25 +360,30 @@ export function TokenListPage() {
 
   const [fluentOpen, setFluentOpen] = useState(false);
   const [fluentModels, setFluentModels] = useState<string[]>([]);
-  const [fluentModelLabels, setFluentModelLabels] = useState<Record<string, string>>({});
-  const [fluentSelectedModel, setFluentSelectedModel] = useState('');
-  const [fluentOverrideKey, setFluentOverrideKey] = useState<string | null>(null);
+  const [fluentModelLabels, setFluentModelLabels] = useState<
+    Record<string, string>
+  >({});
+  const [fluentSelectedModel, setFluentSelectedModel] = useState("");
+  const [fluentOverrideKey, setFluentOverrideKey] = useState<string | null>(
+    null,
+  );
   const fluentContainerRef = useRef<HTMLElement | null>(null);
 
   const loadUserModels = async () => {
     if (fluentModels.length > 0) return;
-    const res = await fetchJson<ApiResponse<UserModelItem[]>>('/api/user/models');
+    const res =
+      await fetchJson<ApiResponse<UserModelItem[]>>("/api/user/models");
     const { ids, labels } = normalizeUserModels(res.data);
     setFluentModels(ids);
     setFluentModelLabels(labels);
   };
 
   const openFluentModal = async (overrideKey?: string) => {
-    const suppressed = localStorage.getItem('fluent_notify_suppressed') === '1';
+    const suppressed = localStorage.getItem("fluent_notify_suppressed") === "1";
     if (!overrideKey && suppressed) return;
-    const el = document.getElementById('fluent-new-api-container');
+    const el = document.getElementById("fluent-new-api-container");
     if (!el) {
-      toast.warning('FluentRead container not found.');
+      toast.warning("FluentRead container not found.");
       return;
     }
     fluentContainerRef.current = el;
@@ -337,36 +395,37 @@ export function TokenListPage() {
   const prefillToFluent = () => {
     const container = fluentContainerRef.current;
     if (!container) {
-      toast.error('Fluent container not found.');
+      toast.error("Fluent container not found.");
       return;
     }
     if (!fluentSelectedModel) {
-      toast.warning('Please select a model.');
+      toast.warning("Please select a model.");
       return;
     }
     const serverAddress = getServerAddress(status);
-    const tokenToUse = fluentOverrideKey || (tokens.length > 0 ? tokens[0]?.key : '');
+    const tokenToUse =
+      fluentOverrideKey || (tokens.length > 0 ? tokens[0]?.key : "");
     if (!tokenToUse) {
-      toast.warning('No token available.');
+      toast.warning("No token available.");
       return;
     }
 
     container.dispatchEvent(
-      new CustomEvent('fluent:prefill', {
+      new CustomEvent("fluent:prefill", {
         detail: {
-          id: 'new-api',
+          id: "new-api",
           baseUrl: serverAddress,
           apiKey: formatTokenApiKey(tokenToUse),
           model: fluentSelectedModel,
         },
       }),
     );
-    toast.success('Sent to FluentRead');
+    toast.success("Sent to FluentRead");
     setFluentOpen(false);
   };
 
   useEffect(() => {
-    const selector = '#fluent-new-api-container';
+    const selector = "#fluent-new-api-container";
     const root = document.body || document.documentElement;
     const existing = document.querySelector(selector);
     if (existing) {
@@ -376,8 +435,10 @@ export function TokenListPage() {
     const isOrContainsTarget = (node: Node) => {
       if (!(node && (node as any).nodeType === 1)) return false;
       const el = node as Element;
-      if (el.id === 'fluent-new-api-container') return true;
-      return typeof el.querySelector === 'function' && !!el.querySelector(selector);
+      if (el.id === "fluent-new-api-container") return true;
+      return (
+        typeof el.querySelector === "function" && !!el.querySelector(selector)
+      );
     };
 
     const observer = new MutationObserver((mutations) => {
@@ -396,7 +457,7 @@ export function TokenListPage() {
   }, [tokens]);
 
   return (
-    <div className='space-y-4'>
+    <div className="space-y-4">
       <FluentPrefillModal
         open={fluentOpen}
         models={fluentModels}
@@ -408,20 +469,25 @@ export function TokenListPage() {
         showSuppress={!fluentOverrideKey}
       />
 
-      <TokenKeyModal token={keyModalToken} onClose={() => setKeyModalToken(null)} />
+      <TokenKeyModal
+        token={keyModalToken}
+        onClose={() => setKeyModalToken(null)}
+      />
 
-      <div className='flex flex-col justify-between gap-3 md:flex-row md:items-end'>
+      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
         <div>
-          <div className='text-lg font-semibold'>API Keys</div>
-          <div className='mt-1 text-sm text-muted'>Manage API keys.</div>
+          <div className="text-lg font-semibold">API Keys</div>
+          <div className="mt-1 text-sm text-muted">Manage API keys.</div>
         </div>
-        <div className='flex flex-wrap gap-2'>
-          <Button onPress={() => navigate('/api-keys/new')}>Create API Key</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onPress={() => navigate("/api-keys/new")}>
+            Create API Key
+          </Button>
         </div>
       </div>
 
-      <Card className='gap-0 overflow-hidden p-0'>
-        <table className='app-table app-table-align-middle'>
+      <Card className="gap-0 overflow-hidden p-0">
+        <table className="app-table app-table-align-middle">
           <thead>
             <tr>
               <th>Name</th>
@@ -434,35 +500,47 @@ export function TokenListPage() {
             {tokens.map((token) => {
               const muted = token.status === 2;
               return (
-                <tr key={token.id} className={muted ? 'app-table-row-muted' : undefined}>
-                  <td>{token.name || '(unnamed)'}</td>
+                <tr
+                  key={token.id}
+                  className={muted ? "app-table-row-muted" : undefined}
+                >
+                  <td>{token.name || "(unnamed)"}</td>
                   <td>
-                    <Chip size='sm' variant='secondary' color={tokenStatusChipColor(token.status)}>
+                    <Chip
+                      size="sm"
+                      variant="secondary"
+                      color={tokenStatusChipColor(token.status)}
+                    >
                       {tokenStatusLabel(token.status)}
                     </Chip>
                   </td>
                   <td>
-                    <div className='flex items-center gap-2'>
-                      <Chip size='sm' variant='soft'>
-                        <span className='font-mono'>
+                    <div className="flex items-center gap-2">
+                      <Chip size="sm" variant="soft">
+                        <span className="font-mono">
                           {getTokenApiKeyPrefix(token.key)}********
                         </span>
                       </Chip>
-                      <TableActionButton label='Show' onPress={() => setKeyModalToken(token)}>
+                      <TableActionButton
+                        label="Show"
+                        onPress={() => setKeyModalToken(token)}
+                      >
                         <Eye size={16} />
                       </TableActionButton>
                       <TableActionButton
-                        label='Copy'
+                        label="Copy"
                         onPress={() =>
                           copyText(formatTokenApiKey(token.key)).then((ok) =>
-                            ok ? toast.success('Copied') : toast.error('Copy failed'),
+                            ok
+                              ? toast.success("Copied")
+                              : toast.error("Copy failed"),
                           )
                         }
                       >
                         <Copy size={16} />
                       </TableActionButton>
                       <TableActionButton
-                        label='Roll'
+                        label="Roll"
                         isDisabled={loading}
                         onPress={() => rollTokenKey(token)}
                       >
@@ -471,10 +549,10 @@ export function TokenListPage() {
                     </div>
                   </td>
                   <td>
-                    <div className='flex flex-wrap gap-2'>
+                    <div className="flex flex-wrap gap-2">
                       {token.status === 2 ? (
                         <TableActionButton
-                          label='Enable'
+                          label="Enable"
                           isDisabled={loading}
                           onPress={() => setStatus(token, 1)}
                         >
@@ -482,17 +560,24 @@ export function TokenListPage() {
                         </TableActionButton>
                       ) : (
                         <TableActionButton
-                          label='Disable'
+                          label="Disable"
                           isDisabled={loading}
                           onPress={() => setStatus(token, 2)}
                         >
                           <Ban size={16} />
                         </TableActionButton>
                       )}
-                      <TableActionButton label='Edit' onPress={() => navigate(`/api-keys/${token.id}/edit`)}>
+                      <TableActionButton
+                        label="Edit"
+                        onPress={() => navigate(`/api-keys/${token.id}/edit`)}
+                      >
                         <Pencil size={16} />
                       </TableActionButton>
-                      <TableActionButton label='Delete' variant='danger-soft' onPress={() => deleteToken(token)}>
+                      <TableActionButton
+                        label="Delete"
+                        variant="danger-soft"
+                        onPress={() => deleteToken(token)}
+                      >
                         <Trash2 size={16} />
                       </TableActionButton>
                     </div>
@@ -503,30 +588,28 @@ export function TokenListPage() {
           </tbody>
         </table>
 
-        <div className='app-table-footer flex items-center justify-between px-4 py-3 text-sm'>
-          <div>{loading ? 'Loading…' : `Total ${total}`}</div>
-          <div className='flex items-center gap-2'>
+        <div className="app-table-footer flex items-center justify-between px-4 py-3 text-sm">
+          <div>{loading ? "Loading…" : `Total ${total}`}</div>
+          <div className="flex items-center gap-2">
             <Button
-              size='sm'
-              variant='secondary'
+              size="sm"
+              variant="secondary"
               isDisabled={page <= 1 || loading}
               onPress={() => refresh(page - 1, pageSize)}
             >
               Prev
             </Button>
-            <span>
-              Page {page}
-            </span>
+            <span>Page {page}</span>
             <Button
-              size='sm'
-              variant='secondary'
+              size="sm"
+              variant="secondary"
               isDisabled={page * pageSize >= total || loading}
               onPress={() => refresh(page + 1, pageSize)}
             >
               Next
             </Button>
             <Select
-              placeholder='Page size'
+              placeholder="Page size"
               value={String(pageSize)}
               onChange={(value) => {
                 const size = Number(value);
@@ -534,15 +617,18 @@ export function TokenListPage() {
                 refresh(1, size).catch(() => {});
               }}
             >
-              <Label>Page size</Label>
-              <Select.Trigger className='min-w-[120px]'>
+              <Select.Trigger className="min-w-[120px]">
                 <Select.Value />
                 <Select.Indicator />
               </Select.Trigger>
               <Select.Popover>
                 <ListBox>
                   {[10, 20, 50].map((s) => (
-                    <ListBox.Item key={String(s)} id={String(s)} textValue={`${s} / page`}>
+                    <ListBox.Item
+                      key={String(s)}
+                      id={String(s)}
+                      textValue={`${s} / page`}
+                    >
                       {s} / page
                       <ListBox.ItemIndicator />
                     </ListBox.Item>
