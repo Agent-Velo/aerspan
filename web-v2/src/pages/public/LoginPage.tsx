@@ -7,7 +7,7 @@ import { toast } from '@/ui/toast';
 import { useAuth } from '@/stores/auth/AuthStore';
 import { useStatus } from '@/stores/status/StatusStore';
 import { buildAssertionResult, isPasskeySupported, prepareCredentialRequestOptions } from '@/lib/passkey';
-import { Button, Card, Checkbox, Input, Label, TextField } from '@/components/ui/heroui';
+import { Alert, Button, Card, Checkbox, Input, Label, TextField } from '@/components/ui/heroui';
 
 type LoginResponse =
   | ApiResponse<UserBase>
@@ -25,6 +25,10 @@ export function LoginPage() {
   const location = useLocation();
   const { login } = useAuth();
   const { status } = useStatus();
+
+  const [method, setMethod] = useState<'magic' | 'password'>('magic');
+  const [magicEmail, setMagicEmail] = useState('');
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -72,6 +76,30 @@ export function LoginPage() {
   const completeLogin = (user: UserBase) => {
     login(user);
     navigate(redirectTo, { replace: true });
+  };
+
+  const sendMagicLinkLogin = async () => {
+    if (!ensureTerms()) return;
+    if (!ensureTurnstile()) return;
+    if (!magicEmail.trim()) {
+      toast.warning('Please enter your email.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await fetchJson<ApiResponse<any>>('/api/user/magic_link', {
+        params: {
+          email: magicEmail.trim(),
+          action: 'login',
+          redirect: redirectTo,
+          turnstile: turnstileEnabled ? turnstileToken : undefined,
+        },
+      });
+      setMagicLinkSent(true);
+      toast.success('If the account exists, a magic link has been sent.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handlePasswordLogin = async () => {
@@ -267,11 +295,35 @@ export function LoginPage() {
       <Card>
         <Card.Header>
           <Card.Title>Sign in</Card.Title>
-          <Card.Description>Use your password, 2FA, OAuth, or Passkey.</Card.Description>
+          <Card.Description>Use a magic link (default), password, 2FA, OAuth, or Passkey.</Card.Description>
         </Card.Header>
 
         <Card.Content className='space-y-3'>
-          {step === 'password' ? (
+          {method === 'magic' ? (
+            <>
+              {magicLinkSent ? (
+                <Alert status='success'>
+                  <Alert.Indicator />
+                  <Alert.Content>
+                    <Alert.Description>Check your inbox for a sign-in link.</Alert.Description>
+                  </Alert.Content>
+                </Alert>
+              ) : null}
+
+              <TextField
+                fullWidth
+                name='email'
+                type='email'
+                onChange={(next) => {
+                  setMagicEmail(next);
+                  setMagicLinkSent(false);
+                }}
+              >
+                <Label>Email</Label>
+                <Input value={magicEmail} autoComplete='email' />
+              </TextField>
+            </>
+          ) : step === 'password' ? (
             <>
               <TextField fullWidth name='username' onChange={setUsername}>
                 <Label>Username / Email</Label>
@@ -316,20 +368,52 @@ export function LoginPage() {
           ) : null}
 
           <div className='flex flex-wrap gap-2'>
-            <Button
-              isDisabled={submitting}
-              onPress={step === 'password' ? handlePasswordLogin : handle2faLogin}
-            >
-              {step === 'password' ? 'Sign in' : 'Verify'}
-            </Button>
-            {step === '2fa' ? (
-              <Button variant='secondary' isDisabled={submitting} onPress={() => setStep('password')}>
-                Back
-              </Button>
-            ) : null}
-            <Button variant='secondary' onPress={() => navigate('/auth/recover')}>
-              Forgot password
-            </Button>
+            {method === 'magic' ? (
+              <>
+                <Button isDisabled={submitting} onPress={sendMagicLinkLogin}>
+                  Send magic link
+                </Button>
+                <Button
+                  variant='ghost'
+                  isDisabled={submitting}
+                  onPress={() => {
+                    setMethod('password');
+                    setMagicLinkSent(false);
+                    setStep('password');
+                  }}
+                >
+                  Use password instead
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  isDisabled={submitting}
+                  onPress={step === 'password' ? handlePasswordLogin : handle2faLogin}
+                >
+                  {step === 'password' ? 'Sign in' : 'Verify'}
+                </Button>
+                {step === '2fa' ? (
+                  <Button variant='secondary' isDisabled={submitting} onPress={() => setStep('password')}>
+                    Back
+                  </Button>
+                ) : null}
+                <Button
+                  variant='ghost'
+                  isDisabled={submitting}
+                  onPress={() => {
+                    setMethod('magic');
+                    setMagicLinkSent(false);
+                    setTurnstileToken('');
+                  }}
+                >
+                  Use magic link instead
+                </Button>
+                <Button variant='secondary' onPress={() => navigate('/auth/recover')}>
+                  Forgot password
+                </Button>
+              </>
+            )}
           </div>
         </Card.Content>
       </Card>

@@ -1,14 +1,14 @@
 import { NavLink, useMatch, useNavigate, useResolvedPath } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
-import { LogOut, Moon, Sun } from 'lucide-react';
+import { ExternalLink, LogOut, Moon, Sun } from 'lucide-react';
 import { getDocsLink, getLogoUrl, getSystemName } from '@/lib/branding';
 import { useAuth } from '@/stores/auth/AuthStore';
 import { useStatus } from '@/stores/status/StatusStore';
 import { NoticeCenterButton } from '@/components/NoticeCenter';
 import { ThemeContext } from '@/theme/ThemeProvider';
 import { useContext } from 'react';
-import { Button, Link as HeroLink } from '@/components/ui/heroui';
+import { Button } from '@/components/ui/heroui';
 
 function isPricingEnabled(headerNavModules?: string): boolean {
   if (!headerNavModules) return true;
@@ -80,10 +80,14 @@ export function Header() {
               </HeaderNavButton>
             ) : null}
             {docsLink ? (
-              <HeroLink href={docsLink} target='_blank' rel='noreferrer'>
+              <Button
+                size='sm'
+                variant='ghost'
+                onPress={() => window.open(docsLink, '_blank', 'noopener,noreferrer')}
+              >
                 Docs
-                <HeroLink.Icon />
-              </HeroLink>
+                <ExternalLink size={14} className='ml-1' />
+              </Button>
             ) : null}
             <HeaderNavButton to='/about' end>
               About

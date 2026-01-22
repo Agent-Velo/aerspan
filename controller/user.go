@@ -176,17 +176,24 @@ func Register(c *gin.Context) {
 		if user.Email == "" || user.VerificationCode == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "Email verification is required. Enter your email and code",
+				"message": "Email verification is required. Use the magic link (or code) sent to your email",
 			})
 			return
 		}
-		if !common.VerifyCodeWithKey(user.Email, user.VerificationCode, common.EmailVerificationPurpose) {
+		verifiedPurpose := ""
+		if common.VerifyCodeWithKey(user.Email, user.VerificationCode, common.PasswordRegisterEmailVerificationPurpose) {
+			verifiedPurpose = common.PasswordRegisterEmailVerificationPurpose
+		} else if common.VerifyCodeWithKey(user.Email, user.VerificationCode, common.EmailVerificationPurpose) {
+			verifiedPurpose = common.EmailVerificationPurpose
+		}
+		if verifiedPurpose == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "Invalid or expired code",
+				"message": "Invalid or expired verification",
 			})
 			return
 		}
+		common.DeleteKey(user.Email, verifiedPurpose)
 	}
 	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email)
 	if err != nil {

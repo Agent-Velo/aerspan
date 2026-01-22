@@ -59,7 +59,10 @@ func SetApiRouter(router *gin.Engine) {
 		userRoute := apiRouter.Group("/user")
 		{
 			userRoute.POST("/register", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.Register)
+			userRoute.GET("/register/magic_link", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordRegisterEmailMagicLink)
 			userRoute.POST("/login", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.Login)
+			userRoute.GET("/magic_link", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendMagicLink)
+			userRoute.POST("/magic_link/verify", middleware.CriticalRateLimit(), controller.VerifyMagicLink)
 			userRoute.POST("/login/2fa", middleware.CriticalRateLimit(), controller.Verify2FALogin)
 			userRoute.POST("/passkey/login/begin", middleware.CriticalRateLimit(), controller.PasskeyLoginBegin)
 			userRoute.POST("/passkey/login/finish", middleware.CriticalRateLimit(), controller.PasskeyLoginFinish)

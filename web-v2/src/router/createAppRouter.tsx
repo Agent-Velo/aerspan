@@ -14,6 +14,7 @@ import { LoginPage } from '@/pages/public/LoginPage';
 import { RegisterPage } from '@/pages/public/RegisterPage';
 import { ResetRequestPage } from '@/pages/public/ResetRequestPage';
 import { ResetConfirmPage } from '@/pages/public/ResetConfirmPage';
+import { MagicLinkCallbackPage } from '@/pages/public/MagicLinkCallbackPage';
 import { OAuthCallbackPage } from '@/pages/public/OAuthCallbackPage';
 import { SetupPage } from '@/pages/public/SetupPage';
 
@@ -92,6 +93,7 @@ export function createAppRouter() {
             </AuthRedirect>
           ),
         },
+        { path: 'auth/magic', element: <MagicLinkCallbackPage /> },
         { path: 'auth/recover', element: <ResetRequestPage /> },
         { path: 'auth/recover/confirm', element: <ResetConfirmPage /> },
         { path: 'auth/callback/:provider', element: <OAuthCallbackPage /> },

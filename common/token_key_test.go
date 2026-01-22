@@ -13,15 +13,15 @@ func TestGenerateTokenKey_Format(t *testing.T) {
 	if len(key) != TokenKeyHexLength {
 		t.Fatalf("unexpected key length: got %d, want %d", len(key), TokenKeyHexLength)
 	}
-	if !regexp.MustCompile(`^[0-9a-f]{32}$`).MatchString(key) {
+	if !regexp.MustCompile(`^[0-9a-f]{72}$`).MatchString(key) {
 		t.Fatalf("key is not lower hex: %q", key)
 	}
 }
 
 func TestParseTokenAPIKey_NewFormat(t *testing.T) {
-	apiKey := TokenAPIKeyPrefix + "0123456789abcdef0123456789abcdef"
+	apiKey := TokenAPIKeyPrefix + "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567"
 	key, parts := ParseTokenAPIKey(apiKey)
-	if key != "0123456789abcdef0123456789abcdef" {
+	if key != "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567" {
 		t.Fatalf("unexpected key: %q", key)
 	}
 	if len(parts) != 1 || parts[0] != key {
@@ -30,12 +30,23 @@ func TestParseTokenAPIKey_NewFormat(t *testing.T) {
 }
 
 func TestParseTokenAPIKey_NewFormat_WithExtra(t *testing.T) {
-	apiKey := TokenAPIKeyPrefix + "0123456789abcdef0123456789abcdef-123"
+	apiKey := TokenAPIKeyPrefix + "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567-123"
+	key, parts := ParseTokenAPIKey(apiKey)
+	if key != "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234567" {
+		t.Fatalf("unexpected key: %q", key)
+	}
+	if len(parts) != 2 || parts[0] != key || parts[1] != "123" {
+		t.Fatalf("unexpected parts: %#v", parts)
+	}
+}
+
+func TestParseTokenAPIKey_NewFormat32Hex_BackwardCompatible(t *testing.T) {
+	apiKey := TokenAPIKeyPrefix + "0123456789abcdef0123456789abcdef"
 	key, parts := ParseTokenAPIKey(apiKey)
 	if key != "0123456789abcdef0123456789abcdef" {
 		t.Fatalf("unexpected key: %q", key)
 	}
-	if len(parts) != 2 || parts[0] != key || parts[1] != "123" {
+	if len(parts) != 1 || parts[0] != key {
 		t.Fatalf("unexpected parts: %#v", parts)
 	}
 }

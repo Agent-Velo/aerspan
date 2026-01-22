@@ -12,7 +12,7 @@ import (
 type Token struct {
 	Id                 int            `json:"id"`
 	UserId             int            `json:"user_id" gorm:"index"`
-	Key                string         `json:"key" gorm:"type:char(48);uniqueIndex"`
+	Key                string         `json:"key" gorm:"type:char(72);uniqueIndex"`
 	Status             int            `json:"status" gorm:"default:1"`
 	Name               string         `json:"name" gorm:"index" `
 	CreatedTime        int64          `json:"created_time" gorm:"bigint"`
@@ -27,6 +27,14 @@ type Token struct {
 	Group              string         `json:"group,omitempty" gorm:"default:''"`
 	CrossGroupRetry    bool           `json:"cross_group_retry,omitempty"` // 跨分组重试，仅auto分组有效
 	DeletedAt          gorm.DeletedAt `gorm:"index"`
+}
+
+func (token *Token) AfterFind(_ *gorm.DB) (err error) {
+	// The DB column is CHAR(n) for historical reasons. Some databases (e.g.
+	// PostgreSQL) may right-pad CHAR values with spaces on read, which breaks
+	// API key prefix detection and token cache keys.
+	token.Key = strings.TrimSpace(token.Key)
+	return nil
 }
 
 func (token *Token) Clean() {

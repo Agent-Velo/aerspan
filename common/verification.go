@@ -16,6 +16,13 @@ type verificationValue struct {
 const (
 	EmailVerificationPurpose = "v"
 	PasswordResetPurpose     = "r"
+	// PasswordRegisterEmailVerificationPurpose is used to verify email ownership
+	// during password sign-up via a magic link (instead of a numeric code).
+	PasswordRegisterEmailVerificationPurpose = "pr"
+	// MagicLinkLoginPurpose is used for passwordless login via email magic link.
+	MagicLinkLoginPurpose = "ml"
+	// MagicLinkRegisterPurpose is used for passwordless sign-up via email magic link.
+	MagicLinkRegisterPurpose = "mr"
 )
 
 var verificationMutex sync.Mutex

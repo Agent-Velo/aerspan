@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Modal } from '@/components/ui/heroui';
 import {
   confirmModal,
@@ -11,7 +11,6 @@ import {
 export function ConfirmModalHost() {
   const [queue, setQueue] = useState<ConfirmModalRequest[]>([]);
   const current = queue[0] ?? null;
-  const pendingResultRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -36,7 +35,6 @@ export function ConfirmModalHost() {
   const closeCurrent = (result: boolean) => {
     if (!current) return;
     resolveConfirmModal(current.id, result);
-    pendingResultRef.current = null;
     setQueue((prev) => prev.slice(1));
   };
 
@@ -47,7 +45,7 @@ export function ConfirmModalHost() {
       isOpen
       onOpenChange={(nextOpen) => {
         if (nextOpen) return;
-        closeCurrent(pendingResultRef.current ?? false);
+        closeCurrent(false);
       }}
     >
       {/*
@@ -69,21 +67,20 @@ export function ConfirmModalHost() {
             </Modal.Body>
 
             <Modal.Footer className='flex gap-2'>
+              {/*
+                NOTE: Don't rely on `slot="close"` for these buttons.
+                React Aria chains slot handlers before component props, which means the dialog
+                can request close before our `onPress` runs. Resolve and pop the queue directly.
+              */}
               <Button
                 variant='secondary'
-                slot='close'
-                onPress={() => {
-                  pendingResultRef.current = false;
-                }}
+                onPress={() => closeCurrent(false)}
               >
                 {current.cancelText ?? 'Cancel'}
               </Button>
               <Button
                 variant={current.confirmVariant ?? 'primary'}
-                slot='close'
-                onPress={() => {
-                  pendingResultRef.current = true;
-                }}
+                onPress={() => closeCurrent(true)}
               >
                 {current.confirmText ?? 'Confirm'}
               </Button>

@@ -9,14 +9,14 @@ import (
 const (
 	// TokenAPIKeyPrefix is the user-facing API key prefix.
 	//
-	// Full format: sk-ae-v1-[32 hex]
+	// Full format: sk-ae-v1-[72 hex]
 	TokenAPIKeyPrefix = "sk-ae-v1-"
 
 	// LegacyTokenAPIKeyPrefix is kept for backward compatibility.
 	LegacyTokenAPIKeyPrefix = "sk-"
 
 	// TokenKeyHexLength is the length of the random part (hex encoded).
-	TokenKeyHexLength = 32
+	TokenKeyHexLength = 72
 )
 
 // GenerateTokenKey generates the raw token key stored in the database.
@@ -33,7 +33,8 @@ func GenerateTokenKey() (string, error) {
 // ParseTokenAPIKey normalizes a user-provided API key into the raw token key.
 //
 // Supported formats:
-// - sk-ae-v1-[32 hex](-<extra>)
+// - sk-ae-v1-[72 hex](-<extra>)
+// - sk-ae-v1-[32 hex](-<extra>) (backward compatibility)
 // - sk-<legacy>(-<extra>)
 // - <raw>(-<extra>)
 //

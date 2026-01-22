@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Turnstile from 'react-turnstile';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchJson } from '@/api/client';
 import type { ApiResponse } from '@/api/types';
 import { toast } from '@/ui/toast';
 import { useStatus } from '@/stores/status/StatusStore';
-import { Button, Card, Checkbox, Input, Label, TextField } from '@/components/ui/heroui';
+import { Alert, Button, Card, Checkbox, Input, Label, TextField } from '@/components/ui/heroui';
 
 function getInviteCode(): string | null {
   const raw = localStorage.getItem('via') || localStorage.getItem('aff');
@@ -14,7 +14,10 @@ function getInviteCode(): string | null {
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { status } = useStatus();
+
+  const [mode, setMode] = useState<'magic' | 'password'>('magic');
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -26,6 +29,7 @@ export function RegisterPage() {
   const [turnstileToken, setTurnstileToken] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   const emailVerificationEnabled = Boolean(status?.email_verification);
   const selfUseMode = Boolean(status?.self_use_mode_enabled);
@@ -35,18 +39,64 @@ export function RegisterPage() {
 
   const needsTerms = Boolean(status?.user_agreement_enabled || status?.privacy_policy_enabled);
 
+  const signupVerificationStorageKey = 'aerspan:signup_email_verification';
+
+  useEffect(() => {
+    const verifiedEmail = (searchParams.get('email') || '').trim();
+    const verifiedToken = (searchParams.get('verification_token') || '').trim();
+    if (!verifiedEmail || !verifiedToken) return;
+
+    const payload = { email: verifiedEmail, token: verifiedToken, ts: Date.now() };
+    localStorage.setItem(signupVerificationStorageKey, JSON.stringify(payload));
+    setMode('password');
+    setEmail(verifiedEmail);
+    setVerificationCode(verifiedToken);
+    toast.success('Email verified. You can close this tab.');
+    navigate('/auth/signup', { replace: true });
+  }, [navigate, searchParams]);
+
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== signupVerificationStorageKey) return;
+      if (!event.newValue) return;
+      try {
+        const parsed = JSON.parse(event.newValue) as any;
+        const nextEmail = typeof parsed?.email === 'string' ? parsed.email.trim() : '';
+        const nextToken = typeof parsed?.token === 'string' ? parsed.token.trim() : '';
+        const ts = typeof parsed?.ts === 'number' ? parsed.ts : 0;
+        if (!nextEmail || !nextToken) return;
+        if (ts && Date.now() - ts > 15 * 60 * 1000) return;
+        setMode('password');
+        setEmail(nextEmail);
+        setVerificationCode(nextToken);
+        toast.success('Email verified.');
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   const canSubmit = useMemo(() => {
     if (selfUseMode) return false;
-    if (!username.trim() || !password || !password2) return false;
-    if (password !== password2) return false;
-    if (emailVerificationEnabled) {
-      if (!email.trim() || !verificationCode.trim()) return false;
+
+    if (mode === 'magic') {
+      if (!email.trim()) return false;
+    } else {
+      if (!username.trim() || !password || !password2) return false;
+      if (password !== password2) return false;
+      if (emailVerificationEnabled) {
+        if (!email.trim() || !verificationCode.trim()) return false;
+      }
     }
+
     if (turnstileEnabled && !turnstileToken) return false;
     if (needsTerms && !termsAccepted) return false;
     return true;
   }, [
     selfUseMode,
+    mode,
     username,
     password,
     password2,
@@ -73,19 +123,51 @@ export function RegisterPage() {
     return false;
   };
 
-  const sendEmailCode = async () => {
+  const sendPasswordRegisterEmailLink = async () => {
     if (!ensureTurnstile()) return;
     if (!email.trim()) {
       toast.warning('Please enter your email.');
       return;
     }
-    await fetchJson<ApiResponse<any>>('/api/verification', {
+    setSubmitting(true);
+    try {
+      await fetchJson<ApiResponse<any>>('/api/user/register/magic_link', {
       params: { email: email.trim(), turnstile: turnstileEnabled ? turnstileToken : undefined },
-    });
-    toast.success('Verification code sent.');
+      });
+      toast.success('Magic link sent.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const register = async () => {
+  const sendMagicLinkRegister = async () => {
+    if (selfUseMode) return;
+    if (!ensureTerms()) return;
+    if (!ensureTurnstile()) return;
+    if (!email.trim()) {
+      toast.warning('Please enter your email.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const aff = getInviteCode();
+      await fetchJson<ApiResponse<any>>('/api/user/magic_link', {
+        params: {
+          email: email.trim(),
+          action: 'register',
+          via: aff || undefined,
+          redirect: '/dashboard',
+          turnstile: turnstileEnabled ? turnstileToken : undefined,
+        },
+      });
+      setMagicLinkSent(true);
+      toast.success('Magic link sent.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const registerWithPassword = async () => {
     if (selfUseMode) return;
     if (!ensureTerms()) return;
     if (!ensureTurnstile()) return;
@@ -141,47 +223,99 @@ export function RegisterPage() {
       <Card>
         <Card.Header>
           <Card.Title>Register</Card.Title>
-          <Card.Description>Create an account.</Card.Description>
+          <Card.Description>Create an account with a magic link (default) or a password.</Card.Description>
         </Card.Header>
 
         <Card.Content className='space-y-3'>
-          <TextField fullWidth name='username' onChange={setUsername}>
-            <Label>Username</Label>
-            <Input value={username} autoComplete='username' />
-          </TextField>
+          {mode === 'magic' ? (
+            <>
+              {magicLinkSent ? (
+                <Alert status='success'>
+                  <Alert.Indicator />
+                  <Alert.Content>
+                    <Alert.Description>
+                      Magic link sent. Check your inbox to finish signing up.
+                    </Alert.Description>
+                  </Alert.Content>
+                </Alert>
+              ) : null}
 
-          <TextField fullWidth name='password' type='password' onChange={setPassword}>
-            <Label>Password</Label>
-            <Input value={password} autoComplete='new-password' />
-          </TextField>
+              <TextField
+                fullWidth
+                name='email'
+                type='email'
+                onChange={(next) => {
+                  setEmail(next);
+                  setMagicLinkSent(false);
+                }}
+              >
+                <Label>Email</Label>
+                <Input value={email} autoComplete='email' />
+              </TextField>
+            </>
+          ) : (
+            <>
+              <TextField fullWidth name='username' onChange={setUsername}>
+                <Label>Username</Label>
+                <Input value={username} autoComplete='username' />
+              </TextField>
 
-          <TextField fullWidth name='password2' type='password' onChange={setPassword2}>
-            <Label>Confirm password</Label>
-            <Input value={password2} autoComplete='new-password' />
-          </TextField>
+              <TextField fullWidth name='password' type='password' onChange={setPassword}>
+                <Label>Password</Label>
+                <Input value={password} autoComplete='new-password' />
+              </TextField>
 
-          {emailVerificationEnabled ? (
-            <Card variant='secondary'>
-              <Card.Header>
-                <Card.Title>Email verification</Card.Title>
-              </Card.Header>
-              <Card.Content className='space-y-2'>
-                <div className='flex flex-col gap-2 md:flex-row md:items-end'>
-                  <TextField fullWidth name='email' type='email' onChange={setEmail}>
-                    <Label>Email</Label>
-                    <Input value={email} autoComplete='email' />
-                  </TextField>
-                  <Button variant='secondary' onPress={sendEmailCode} isDisabled={submitting}>
-                    Send code
-                  </Button>
-                </div>
-                <TextField fullWidth name='verificationCode' onChange={setVerificationCode}>
-                  <Label>Verification code</Label>
-                  <Input value={verificationCode} />
-                </TextField>
-              </Card.Content>
-            </Card>
-          ) : null}
+              <TextField fullWidth name='password2' type='password' onChange={setPassword2}>
+                <Label>Confirm password</Label>
+                <Input value={password2} autoComplete='new-password' />
+              </TextField>
+
+              {emailVerificationEnabled ? (
+                <Card variant='secondary'>
+                  <Card.Header>
+                    <Card.Title>Email verification</Card.Title>
+                    <Card.Description>We'll send a magic link to verify your email.</Card.Description>
+                  </Card.Header>
+                  <Card.Content className='space-y-2'>
+                    <div className='flex flex-col gap-2 md:flex-row md:items-end'>
+                      <TextField
+                        fullWidth
+                        name='email'
+                        type='email'
+                        onChange={(next) => {
+                          setEmail(next);
+                          setVerificationCode('');
+                        }}
+                      >
+                        <Label>Email</Label>
+                        <Input value={email} autoComplete='email' />
+                      </TextField>
+                      <Button
+                        variant='secondary'
+                        onPress={sendPasswordRegisterEmailLink}
+                        isDisabled={submitting}
+                      >
+                        Send link
+                      </Button>
+                    </div>
+
+                    {verificationCode.trim() ? (
+                      <Alert status='success'>
+                        <Alert.Indicator />
+                        <Alert.Content>
+                          <Alert.Description>Email verified.</Alert.Description>
+                        </Alert.Content>
+                      </Alert>
+                    ) : (
+                      <div className='text-xs text-muted'>
+                        After clicking the link, this page will update automatically.
+                      </div>
+                    )}
+                  </Card.Content>
+                </Card>
+              ) : null}
+            </>
+          )}
 
           {turnstileEnabled && turnstileSiteKey ? (
             <Card variant='secondary'>
@@ -204,9 +338,26 @@ export function RegisterPage() {
           ) : null}
 
           <div className='flex flex-wrap gap-2'>
-            <Button onPress={register} isDisabled={!canSubmit || submitting}>
-              Register
-            </Button>
+            {mode === 'magic' ? (
+              <>
+                <Button onPress={sendMagicLinkRegister} isDisabled={!canSubmit || submitting}>
+                  Send magic link
+                </Button>
+                <Button variant='ghost' onPress={() => setMode('password')} isDisabled={submitting}>
+                  Use password instead
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button onPress={registerWithPassword} isDisabled={!canSubmit || submitting}>
+                  Register
+                </Button>
+                <Button variant='ghost' onPress={() => setMode('magic')} isDisabled={submitting}>
+                  Use magic link instead
+                </Button>
+              </>
+            )}
+
             <Button variant='secondary' onPress={() => navigate('/auth/signin')}>
               Back to login
             </Button>

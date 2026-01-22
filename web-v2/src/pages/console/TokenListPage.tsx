@@ -8,7 +8,7 @@ import { toast } from '@/ui/toast';
 import { confirmModal } from '@/ui/confirmModal';
 import { copyText } from '@/lib/clipboard';
 import { formatTokenApiKey, getTokenApiKeyPrefix } from '@/lib/tokenApiKey';
-import { Button, Card, Chip, Input, Label, ListBox, Modal, Select, TextField } from '@/components/ui/heroui';
+import { Button, Card, Chip, Label, ListBox, Modal, Select } from '@/components/ui/heroui';
 import { TableActionButton } from '@/components/ui/TableActionButton';
 
 type TokenStatus = 1 | 2 | 3 | 4;
@@ -231,10 +231,6 @@ export function TokenListPage() {
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
 
-  const [keyword, setKeyword] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [searchMode, setSearchMode] = useState(false);
-
   const [keyModalToken, setKeyModalToken] = useState<Token | null>(null);
 
   const refresh = async (nextPage = page, nextSize = pageSize) => {
@@ -247,7 +243,6 @@ export function TokenListPage() {
       setTotal(res.data.total || 0);
       setPage(res.data.page || nextPage);
       setPageSize(res.data.page_size || nextSize);
-      setSearchMode(false);
     } finally {
       setLoading(false);
     }
@@ -257,27 +252,6 @@ export function TokenListPage() {
     refresh(1, pageSize).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const search = async () => {
-    if (!keyword.trim()) {
-      await refresh(1, pageSize);
-      return;
-    }
-    setSearching(true);
-    try {
-      const res = await fetchJson<ApiResponse<Token[]>>('/api/token/search', {
-        params: {
-          keyword: keyword.trim(),
-        },
-      });
-      setTokens(res.data || []);
-      setTotal((res.data || []).length);
-      setPage(1);
-      setSearchMode(true);
-    } finally {
-      setSearching(false);
-    }
-  };
 
   const setStatus = async (token: Token, nextStatus: 1 | 2) => {
     setLoading(true);
@@ -446,31 +420,6 @@ export function TokenListPage() {
         </div>
       </div>
 
-      <Card>
-        <Card.Content className='space-y-3'>
-          <div className='flex flex-col gap-2 md:flex-row md:items-end'>
-            <TextField fullWidth name='keyword' onChange={setKeyword}>
-              <Label>Keyword</Label>
-              <Input value={keyword} />
-            </TextField>
-            <div className='flex gap-2'>
-              <Button onPress={search} isDisabled={searching}>
-                Search
-              </Button>
-              <Button
-                variant='secondary'
-                onPress={() => {
-                  setKeyword('');
-                  refresh(1, pageSize).catch(() => {});
-                }}
-              >
-                Reset
-              </Button>
-            </div>
-          </div>
-        </Card.Content>
-      </Card>
-
       <Card className='gap-0 overflow-hidden p-0'>
         <table className='app-table'>
           <thead>
@@ -555,43 +504,39 @@ export function TokenListPage() {
         </table>
 
         <div className='app-table-footer flex items-center justify-between px-4 py-3 text-sm'>
-          <div>
-            {loading ? 'Loading…' : searchMode ? `Showing ${tokens.length} results` : `Total ${total}`}
+          <div>{loading ? 'Loading…' : `Total ${total}`}</div>
+          <div className='flex items-center gap-2'>
+            <Button
+              size='sm'
+              variant='secondary'
+              isDisabled={page <= 1 || loading}
+              onPress={() => refresh(page - 1, pageSize)}
+            >
+              Prev
+            </Button>
+            <span>
+              Page {page}
+            </span>
+            <Button
+              size='sm'
+              variant='secondary'
+              isDisabled={page * pageSize >= total || loading}
+              onPress={() => refresh(page + 1, pageSize)}
+            >
+              Next
+            </Button>
+            <select
+              value={String(pageSize)}
+              onChange={(e) => refresh(1, Number(e.target.value))}
+              className='rounded-md'
+            >
+              {[10, 20, 50].map((s) => (
+                <option key={s} value={String(s)}>
+                  {s} / page
+                </option>
+              ))}
+            </select>
           </div>
-          {!searchMode ? (
-            <div className='flex items-center gap-2'>
-              <Button
-                size='sm'
-                variant='secondary'
-                isDisabled={page <= 1 || loading}
-                onPress={() => refresh(page - 1, pageSize)}
-              >
-                Prev
-              </Button>
-              <span>
-                Page {page}
-              </span>
-              <Button
-                size='sm'
-                variant='secondary'
-                isDisabled={page * pageSize >= total || loading}
-                onPress={() => refresh(page + 1, pageSize)}
-              >
-                Next
-              </Button>
-              <select
-                value={String(pageSize)}
-                onChange={(e) => refresh(1, Number(e.target.value))}
-                className='rounded-md'
-              >
-                {[10, 20, 50].map((s) => (
-                  <option key={s} value={String(s)}>
-                    {s} / page
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
         </div>
       </Card>
     </div>
