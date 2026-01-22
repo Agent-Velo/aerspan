@@ -247,22 +247,33 @@ export function AuditLogsPage() {
             >
               Next
             </Button>
-            <select
+            <Select
+              placeholder='Page size'
               value={String(pageSize)}
-              onChange={(e) => {
-                const size = Number(e.target.value);
+              onChange={(value) => {
+                const size = Number(value);
+                if (!Number.isFinite(size)) return;
                 setPageSize(size);
                 savePageSize(size);
                 setPage(1);
               }}
-              className='rounded-md'
             >
-              {[10, 20, 50, 100].map((s) => (
-                <option key={s} value={String(s)}>
-                  {s} / page
-                </option>
-              ))}
-            </select>
+              <Label>Page size</Label>
+              <Select.Trigger className='min-w-[120px]'>
+                <Select.Value />
+                <Select.Indicator />
+              </Select.Trigger>
+              <Select.Popover>
+                <ListBox>
+                  {[10, 20, 50, 100].map((s) => (
+                    <ListBox.Item key={String(s)} id={String(s)} textValue={`${s} / page`}>
+                      {s} / page
+                      <ListBox.ItemIndicator />
+                    </ListBox.Item>
+                  ))}
+                </ListBox>
+              </Select.Popover>
+            </Select>
           </div>
         </div>
       </Card>

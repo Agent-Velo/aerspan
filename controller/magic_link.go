@@ -168,11 +168,11 @@ func SendMagicLink(c *gin.Context) {
 		return
 	}
 
-	trimmedServerAddress := strings.TrimRight(system_setting.ServerAddress, "/")
-	if trimmedServerAddress == "" {
+	frontendBaseURL := system_setting.GetFrontendBaseURL()
+	if frontendBaseURL == "" {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "Server address is not configured",
+			"message": "Frontend base URL is not configured",
 		})
 		return
 	}
@@ -207,7 +207,7 @@ func SendMagicLink(c *gin.Context) {
 	token := common.GenerateVerificationCode(0)
 	common.RegisterVerificationCodeWithKey(email, token, action.purpose())
 
-	link := fmt.Sprintf("%s/auth/magic?email=%s&token=%s&action=%s", trimmedServerAddress, url.QueryEscape(email), url.QueryEscape(token), url.QueryEscape(string(action)))
+	link := fmt.Sprintf("%s/auth/magic?email=%s&token=%s&action=%s", frontendBaseURL, url.QueryEscape(email), url.QueryEscape(token), url.QueryEscape(string(action)))
 	if redirect != "" {
 		link = link + "&redirect=" + url.QueryEscape(redirect)
 	}
@@ -216,24 +216,35 @@ func SendMagicLink(c *gin.Context) {
 	}
 
 	var subject string
-	var content string
+	var doc common.EmailDocument
 	if action == magicLinkActionRegister {
 		subject = fmt.Sprintf("%s finish sign-up", common.SystemName)
-		content = fmt.Sprintf(
-			"<p>Click <a href='%s'>here</a> to finish signing up.</p>"+
-				"<p>If the link doesn't open, copy and paste this URL into your browser:<br>%s</p>"+
-				"<p>This link expires in %d minutes. If you didn't request this, you can ignore this email.</p>",
-			link, link, common.VerificationValidMinutes,
-		)
+		doc = common.EmailDocument{
+			Title:       "Finish sign-up",
+			PreviewText: fmt.Sprintf("Finish signing up to %s", common.SystemName),
+			BodyHTML: fmt.Sprintf(
+				"<p style=\"margin:0 0 12px 0;\">Use the button below to finish signing up.</p>"+
+					"<p style=\"margin:0;color:#9fa5ae;font-size:12px;line-height:18px;\">This link expires in %d minutes. "+
+					"If you didn't request this, you can ignore this email.</p>",
+				common.VerificationValidMinutes,
+			),
+			Action: &common.EmailAction{Label: "Finish sign-up", URL: link},
+		}
 	} else {
 		subject = fmt.Sprintf("%s sign-in link", common.SystemName)
-		content = fmt.Sprintf(
-			"<p>Click <a href='%s'>here</a> to sign in.</p>"+
-				"<p>If the link doesn't open, copy and paste this URL into your browser:<br>%s</p>"+
-				"<p>This link expires in %d minutes. If you didn't request this, you can ignore this email.</p>",
-			link, link, common.VerificationValidMinutes,
-		)
+		doc = common.EmailDocument{
+			Title:       "Sign in",
+			PreviewText: fmt.Sprintf("Sign in to %s", common.SystemName),
+			BodyHTML: fmt.Sprintf(
+				"<p style=\"margin:0 0 12px 0;\">Use the button below to sign in.</p>"+
+					"<p style=\"margin:0;color:#9fa5ae;font-size:12px;line-height:18px;\">This link expires in %d minutes. "+
+					"If you didn't request this, you can ignore this email.</p>",
+				common.VerificationValidMinutes,
+			),
+			Action: &common.EmailAction{Label: "Sign in", URL: link},
+		}
 	}
+	content := common.RenderEmailDocument(doc)
 
 	if err := common.SendEmail(subject, email, content); err != nil {
 		common.ApiError(c, err)
@@ -286,25 +297,30 @@ func SendPasswordRegisterEmailMagicLink(c *gin.Context) {
 		return
 	}
 
-	trimmedServerAddress := strings.TrimRight(system_setting.ServerAddress, "/")
-	if trimmedServerAddress == "" {
+	frontendBaseURL := system_setting.GetFrontendBaseURL()
+	if frontendBaseURL == "" {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "Server address is not configured",
+			"message": "Frontend base URL is not configured",
 		})
 		return
 	}
 
 	token := common.GenerateVerificationCode(0)
 	common.RegisterVerificationCodeWithKey(email, token, common.PasswordRegisterEmailVerificationPurpose)
-	link := fmt.Sprintf("%s/auth/signup?email=%s&verification_token=%s", trimmedServerAddress, url.QueryEscape(email), url.QueryEscape(token))
+	link := fmt.Sprintf("%s/auth/signup?email=%s&verification_token=%s", frontendBaseURL, url.QueryEscape(email), url.QueryEscape(token))
 	subject := fmt.Sprintf("%s email verification", common.SystemName)
-	content := fmt.Sprintf(
-		"<p>Click <a href='%s'>here</a> to verify your email for sign-up.</p>"+
-			"<p>If the link doesn't open, copy and paste this URL into your browser:<br>%s</p>"+
-			"<p>This link expires in %d minutes. If you didn't request this, you can ignore this email.</p>",
-		link, link, common.VerificationValidMinutes,
-	)
+	content := common.RenderEmailDocument(common.EmailDocument{
+		Title:       "Verify your email",
+		PreviewText: fmt.Sprintf("Verify your email (expires in %d minutes)", common.VerificationValidMinutes),
+		BodyHTML: fmt.Sprintf(
+			"<p style=\"margin:0 0 12px 0;\">Use the button below to verify your email for sign-up.</p>"+
+				"<p style=\"margin:0;color:#9fa5ae;font-size:12px;line-height:18px;\">This link expires in %d minutes. "+
+				"If you didn't request this, you can ignore this email.</p>",
+			common.VerificationValidMinutes,
+		),
+		Action: &common.EmailAction{Label: "Verify email", URL: link},
+	})
 	if err := common.SendEmail(subject, email, content); err != nil {
 		common.ApiError(c, err)
 		return

@@ -3,6 +3,7 @@ package common
 import (
 	crand "crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -228,6 +229,20 @@ func GetUUID() string {
 	code := uuid.New().String()
 	code = strings.Replace(code, "-", "", -1)
 	return code
+}
+
+func GenerateRandomHexKey(length int) (string, error) {
+	if length <= 0 {
+		return "", errors.New("invalid hex key length")
+	}
+	if length%2 != 0 {
+		return "", errors.New("hex key length must be even")
+	}
+	bytes := make([]byte, length/2)
+	if _, err := crand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
 }
 
 const keyChars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"

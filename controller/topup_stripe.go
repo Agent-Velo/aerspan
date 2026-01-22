@@ -369,9 +369,10 @@ func genStripeLink(customerId string, email string, amount int64) (string, strin
 
 	stripe.Key = setting.StripeApiSecret
 
+	frontendBaseURL := system_setting.GetFrontendBaseURL()
 	params := &stripe.CheckoutSessionParams{
-		SuccessURL: stripe.String(system_setting.ServerAddress + "/console/log"),
-		CancelURL:  stripe.String(system_setting.ServerAddress + "/console/topup"),
+		SuccessURL: stripe.String(frontendBaseURL + "/console/log"),
+		CancelURL:  stripe.String(frontendBaseURL + "/console/topup"),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			{
 				Price:    stripe.String(setting.StripePriceId),

@@ -432,7 +432,7 @@ func CreateStripePaymentIntent(c *gin.Context) {
 		PaymentMethod: stripe.String(paymentMethodID),
 		Confirm:       stripe.Bool(true),
 		UseStripeSDK:  stripe.Bool(true),
-		ReturnURL:     stripe.String(system_setting.ServerAddress + "/console/topup"),
+		ReturnURL:     stripe.String(system_setting.GetFrontendBaseURL() + "/console/topup"),
 		Description:   stripe.String(fmt.Sprintf("Top-up %s", referenceID)),
 		Metadata: map[string]string{
 			"reference_id": referenceID,

@@ -23,6 +23,90 @@ type TopUp struct {
 	Status        string  `json:"status"`
 }
 
+type inviteCashbackGrant struct {
+	InviterID      int
+	InviteeID      int
+	TradeNo        string
+	PaymentIndex   int64
+	MaxPayments    int
+	RatePercentage float64
+	CashbackQuota  int
+}
+
+func applyInviteCashbackForTopUpTx(tx *gorm.DB, topUp *TopUp, quotaToAdd int) (*inviteCashbackGrant, error) {
+	if tx == nil {
+		return nil, errors.New("tx is nil")
+	}
+	if topUp == nil {
+		return nil, errors.New("topUp is nil")
+	}
+	if topUp.UserId <= 0 {
+		return nil, errors.New("invalid topUp user_id")
+	}
+	if quotaToAdd <= 0 {
+		return nil, nil
+	}
+
+	maxPayments := common.InviteCashbackMaxPayments
+	rate := common.InviteCashbackRate
+	if maxPayments <= 0 || rate <= 0 {
+		return nil, nil
+	}
+	if rate > 100 {
+		rate = 100
+	}
+
+	var invitee User
+	if err := tx.Select("id", "inviter_id").First(&invitee, topUp.UserId).Error; err != nil {
+		return nil, err
+	}
+	inviterID := invitee.InviterId
+	if inviterID <= 0 || inviterID == topUp.UserId {
+		return nil, nil
+	}
+
+	var paymentIndex int64
+	countStatuses := []string{common.TopUpStatusSuccess, common.TopUpStatusRefundPending, common.TopUpStatusRefunded}
+	if err := tx.Model(&TopUp{}).
+		Where("user_id = ?", topUp.UserId).
+		Where("status IN ?", countStatuses).
+		Count(&paymentIndex).Error; err != nil {
+		return nil, err
+	}
+	if paymentIndex <= 0 || int(paymentIndex) > maxPayments {
+		return nil, nil
+	}
+
+	cashbackQuota := int(decimal.NewFromInt(int64(quotaToAdd)).
+		Mul(decimal.NewFromFloat(rate)).
+		Div(decimal.NewFromInt(100)).
+		IntPart())
+	if cashbackQuota <= 0 {
+		return nil, nil
+	}
+
+	res := tx.Model(&User{}).Where("id = ?", inviterID).Updates(map[string]any{
+		"aff_quota":   gorm.Expr("aff_quota + ?", cashbackQuota),
+		"aff_history": gorm.Expr("aff_history + ?", cashbackQuota),
+	})
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	if res.RowsAffected != 1 {
+		return nil, nil
+	}
+
+	return &inviteCashbackGrant{
+		InviterID:      inviterID,
+		InviteeID:      topUp.UserId,
+		TradeNo:        topUp.TradeNo,
+		PaymentIndex:   paymentIndex,
+		MaxPayments:    maxPayments,
+		RatePercentage: rate,
+		CashbackQuota:  cashbackQuota,
+	}, nil
+}
+
 func (topUp *TopUp) Insert() error {
 	var err error
 	err = DB.Create(topUp).Error
@@ -61,6 +145,7 @@ func Recharge(referenceId string, customerId string) (err error) {
 	}
 
 	var quotaToAdd int
+	var cashbackGrant *inviteCashbackGrant
 	topUp := &TopUp{}
 
 	refCol := "`trade_no`"
@@ -109,6 +194,13 @@ func Recharge(referenceId string, customerId string) (err error) {
 			return err
 		}
 
+		grant, err := applyInviteCashbackForTopUpTx(tx, topUp, quotaToAdd)
+		if err != nil {
+			common.SysLog(fmt.Sprintf("invite cashback skipped: %v", err))
+			return nil
+		}
+		cashbackGrant = grant
+
 		return nil
 	})
 
@@ -117,6 +209,17 @@ func Recharge(referenceId string, customerId string) (err error) {
 	}
 
 	RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("Online top-up completed: %v added, paid %d", logger.FormatQuota(quotaToAdd), topUp.Amount))
+	if cashbackGrant != nil {
+		RecordLog(cashbackGrant.InviterID, LogTypeSystem, fmt.Sprintf(
+			"Invite cashback: %s from user %d top-up %s (%d/%d, rate %.4f%%)",
+			logger.LogQuota(cashbackGrant.CashbackQuota),
+			cashbackGrant.InviteeID,
+			cashbackGrant.TradeNo,
+			cashbackGrant.PaymentIndex,
+			cashbackGrant.MaxPayments,
+			cashbackGrant.RatePercentage,
+		))
+	}
 
 	return nil
 }
@@ -280,6 +383,7 @@ func ManualCompleteTopUp(tradeNo string) error {
 	var userId int
 	var quotaToAdd int
 	var payMoney float64
+	var cashbackGrant *inviteCashbackGrant
 
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		topUp := &TopUp{}
@@ -331,6 +435,13 @@ func ManualCompleteTopUp(tradeNo string) error {
 			return err
 		}
 
+		grant, err := applyInviteCashbackForTopUpTx(tx, topUp, quotaToAdd)
+		if err != nil {
+			common.SysLog(fmt.Sprintf("invite cashback skipped: %v", err))
+			return nil
+		}
+		cashbackGrant = grant
+
 		userId = topUp.UserId
 		payMoney = topUp.Money
 		return nil
@@ -342,5 +453,16 @@ func ManualCompleteTopUp(tradeNo string) error {
 
 	// 事务外记录日志，避免阻塞
 	RecordLog(userId, LogTypeTopup, fmt.Sprintf("Admin completed top-up: %v added, paid %f", logger.FormatQuota(quotaToAdd), payMoney))
+	if cashbackGrant != nil {
+		RecordLog(cashbackGrant.InviterID, LogTypeSystem, fmt.Sprintf(
+			"Invite cashback: %s from user %d top-up %s (%d/%d, rate %.4f%%)",
+			logger.LogQuota(cashbackGrant.CashbackQuota),
+			cashbackGrant.InviteeID,
+			cashbackGrant.TradeNo,
+			cashbackGrant.PaymentIndex,
+			cashbackGrant.MaxPayments,
+			cashbackGrant.RatePercentage,
+		))
+	}
 	return nil
 }

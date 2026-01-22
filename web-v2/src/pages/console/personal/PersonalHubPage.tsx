@@ -152,12 +152,6 @@ export function PersonalHubPage() {
       description: 'Configure how you receive notifications',
       path: '/personal/notifications',
     },
-    {
-      id: 'sidebar',
-      title: 'Sidebar Modules',
-      description: 'Customize which sidebar items are visible',
-      path: '/personal/sidebar',
-    },
   ];
 
   const visibleCards = settingCards.filter((card) => card.condition !== false);

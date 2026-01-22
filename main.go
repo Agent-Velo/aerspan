@@ -105,6 +105,8 @@ func main() {
 
 	// Codex credential auto-refresh check every 10 minutes, refresh when expires within 1 day
 	service.StartCodexCredentialAutoRefreshTask()
+	// Stripe $1 preauth auto-void for reward claims
+	service.StartRewardPreauthAutoVoidTask()
 
 	if common.IsMasterNode && constant.UpdateTask {
 		gopool.Go(func() {

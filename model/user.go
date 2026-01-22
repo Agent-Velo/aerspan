@@ -433,29 +433,22 @@ func (user *User) Insert(inviterId int) error {
 		if err := tx.Create(user).Error; err != nil {
 			return err
 		}
-		if common.QuotaForNewUser > 0 {
-			if _, err := CreateCreditGrantTx(tx, CreateCreditGrantParams{
-				UserId:      user.Id,
-				Quota:       common.QuotaForNewUser,
-				GrantType:   "signup",
-				Reference:   fmt.Sprintf("signup:%d", user.Id),
-				Remark:      "sign-up bonus",
-				CreatedTime: createdAt,
-				ExpiredTime: 0,
-			}); err != nil {
-				return err
-			}
+
+		pending := &RewardClaim{
+			UserId:          user.Id,
+			InviterId:       inviterId,
+			SignupQuota:     common.QuotaForNewUser,
+			InviteeQuota:    0,
+			InviterAffQuota: 0,
+			Status:          RewardClaimStatusPending,
+			CreatedTime:     createdAt,
 		}
-		if inviterId != 0 && common.QuotaForInvitee > 0 {
-			if _, err := CreateCreditGrantTx(tx, CreateCreditGrantParams{
-				UserId:      user.Id,
-				Quota:       common.QuotaForInvitee,
-				GrantType:   "invite_bonus",
-				Reference:   fmt.Sprintf("invite_bonus:%d", inviterId),
-				Remark:      "invite code bonus",
-				CreatedTime: createdAt,
-				ExpiredTime: 0,
-			}); err != nil {
+		if inviterId != 0 {
+			pending.InviteeQuota = common.QuotaForInvitee
+			pending.InviterAffQuota = common.QuotaForInviter
+		}
+		if pending.SignupQuota > 0 || pending.InviteeQuota > 0 || pending.InviterAffQuota > 0 {
+			if err := CreateRewardClaimTx(tx, pending); err != nil {
 				return err
 			}
 		}
@@ -479,19 +472,6 @@ func (user *User) Insert(inviterId int) error {
 		}
 	}
 
-	if common.QuotaForNewUser > 0 {
-		RecordLog(user.Id, LogTypeSystem, fmt.Sprintf("Sign-up bonus: %s", logger.LogQuota(common.QuotaForNewUser)))
-	}
-	if inviterId != 0 {
-		if common.QuotaForInvitee > 0 {
-			RecordLog(user.Id, LogTypeSystem, fmt.Sprintf("Invite code bonus: %s", logger.LogQuota(common.QuotaForInvitee)))
-		}
-		if common.QuotaForInviter > 0 {
-			//_ = IncreaseUserQuota(inviterId, common.QuotaForInviter)
-			RecordLog(inviterId, LogTypeSystem, fmt.Sprintf("Referral bonus: %s", logger.LogQuota(common.QuotaForInviter)))
-			_ = inviteUser(inviterId)
-		}
-	}
 	return nil
 }
 

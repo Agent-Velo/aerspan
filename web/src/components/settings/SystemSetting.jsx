@@ -99,6 +99,8 @@ const SystemSetting = () => {
     LinuxDOClientSecret: '',
     LinuxDOMinimumTrustLevel: '',
     ServerAddress: '',
+    FrontendBaseUrl: '',
+    BackendBaseUrl: '',
     // SSRF防护配置
     'fetch_setting.enable_ssrf_protection': true,
     'fetch_setting.allow_private_ip': '',
@@ -212,6 +214,11 @@ const SystemSetting = () => {
         }
         newInputs[item.key] = item.value;
       });
+
+      const legacyServerAddress = newInputs.ServerAddress || '';
+      newInputs.BackendBaseUrl = newInputs.BackendBaseUrl || legacyServerAddress;
+      newInputs.FrontendBaseUrl = newInputs.FrontendBaseUrl || legacyServerAddress;
+
       setInputs(newInputs);
       setOriginInputs(newInputs);
       // 同步模式布尔到本地状态
@@ -312,8 +319,14 @@ const SystemSetting = () => {
   };
 
   const submitServerAddress = async () => {
-    let ServerAddress = removeTrailingSlash(inputs.ServerAddress);
-    await updateOptions([{ key: 'ServerAddress', value: ServerAddress }]);
+    const backendBaseUrl = removeTrailingSlash(inputs.BackendBaseUrl);
+    const frontendBaseUrl = removeTrailingSlash(inputs.FrontendBaseUrl);
+    await updateOptions([
+      { key: 'BackendBaseUrl', value: backendBaseUrl },
+      { key: 'FrontendBaseUrl', value: frontendBaseUrl },
+      // Backward compatibility.
+      { key: 'ServerAddress', value: backendBaseUrl },
+    ]);
   };
 
   const submitSMTP = async () => {
@@ -711,19 +724,29 @@ const SystemSetting = () => {
                   <Row
                     gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
                   >
-                    <Col xs={24} sm={24} md={24} lg={24} xl={24}>
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
                       <Form.Input
-                        field='ServerAddress'
-                        label={t('服务器地址')}
-                        placeholder='https://yourdomain.com'
+                        field='BackendBaseUrl'
+                        label={t('后端 Base URL')}
+                        placeholder='https://api.yourdomain.com'
                         extraText={t(
-                          '该服务器地址将影响支付回调地址以及默认首页展示的地址，请确保正确配置',
+                          '用于 OAuth/支付回调/Webhook 等后端回调地址；留空则回退到旧的服务器地址',
+                        )}
+                      />
+                    </Col>
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                      <Form.Input
+                        field='FrontendBaseUrl'
+                        label={t('前端 Base URL')}
+                        placeholder='https://app.yourdomain.com'
+                        extraText={t(
+                          '用于邮件中的用户跳转链接（如 magic link）；留空则回退到旧的服务器地址',
                         )}
                       />
                     </Col>
                   </Row>
                   <Button onClick={submitServerAddress}>
-                    {t('更新服务器地址')}
+                    {t('更新 Base URL')}
                   </Button>
                 </Form.Section>
               </Card>
@@ -1344,7 +1367,7 @@ const SystemSetting = () => {
                   </Text>
                   <Banner
                     type='info'
-                    description={`${t('主页链接填')} ${inputs.ServerAddress ? inputs.ServerAddress : t('网站地址')}，${t('重定向 URL 填')} ${inputs.ServerAddress ? inputs.ServerAddress : t('网站地址')}/oauth/oidc`}
+                    description={`${t('主页链接填')} ${inputs.FrontendBaseUrl || inputs.ServerAddress || t('网站地址')}，${t('重定向 URL 填')} ${inputs.BackendBaseUrl || inputs.ServerAddress || t('网站地址')}/oauth/oidc`}
                     style={{ marginBottom: 20, marginTop: 16 }}
                   />
                   <Text>
@@ -1418,7 +1441,7 @@ const SystemSetting = () => {
                   <Text>{t('用以支持通过 GitHub 进行登录注册')}</Text>
                   <Banner
                     type='info'
-                    description={`${t('Homepage URL 填')} ${inputs.ServerAddress ? inputs.ServerAddress : t('网站地址')}，${t('Authorization callback URL 填')} ${inputs.ServerAddress ? inputs.ServerAddress : t('网站地址')}/oauth/github`}
+                    description={`${t('Homepage URL 填')} ${inputs.FrontendBaseUrl || inputs.ServerAddress || t('网站地址')}，${t('Authorization callback URL 填')} ${inputs.BackendBaseUrl || inputs.ServerAddress || t('网站地址')}/oauth/github`}
                     style={{ marginBottom: 20, marginTop: 16 }}
                   />
                   <Row
@@ -1449,7 +1472,7 @@ const SystemSetting = () => {
                   <Text>{t('用以支持通过 Discord 进行登录注册')}</Text>
                   <Banner
                     type='info'
-                    description={`${t('Homepage URL 填')} ${inputs.ServerAddress ? inputs.ServerAddress : t('网站地址')}，${t('Authorization callback URL 填')} ${inputs.ServerAddress ? inputs.ServerAddress : t('网站地址')}/oauth/discord`}
+                    description={`${t('Homepage URL 填')} ${inputs.FrontendBaseUrl || inputs.ServerAddress || t('网站地址')}，${t('Authorization callback URL 填')} ${inputs.BackendBaseUrl || inputs.ServerAddress || t('网站地址')}/oauth/discord`}
                     style={{ marginBottom: 20, marginTop: 16 }}
                   />
                   <Row
@@ -1495,7 +1518,7 @@ const SystemSetting = () => {
                   </Text>
                   <Banner
                     type='info'
-                    description={`${t('回调 URL 填')} ${inputs.ServerAddress ? inputs.ServerAddress : t('网站地址')}/oauth/linuxdo`}
+                    description={`${t('回调 URL 填')} ${inputs.BackendBaseUrl || inputs.ServerAddress || t('网站地址')}/oauth/linuxdo`}
                     style={{ marginBottom: 20, marginTop: 16 }}
                   />
                   <Row

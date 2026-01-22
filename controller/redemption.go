@@ -96,7 +96,11 @@ func AddRedemption(c *gin.Context) {
 	}
 	var keys []string
 	for i := 0; i < redemption.Count; i++ {
-		key := common.GetUUID()
+		key, err := common.GenerateRandomHexKey(16)
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
 		cleanRedemption := model.Redemption{
 			UserId:           c.GetInt("id"),
 			Name:             redemption.Name,

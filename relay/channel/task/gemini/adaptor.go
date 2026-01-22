@@ -256,7 +256,7 @@ func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, e
 
 	taskID := encodeLocalTaskID(op.Name)
 	ti.TaskID = taskID
-	ti.Url = fmt.Sprintf("%s/v1/videos/%s/content", system_setting.ServerAddress, taskID)
+	ti.Url = fmt.Sprintf("%s/v1/videos/%s/content", system_setting.GetBackendBaseURL(), taskID)
 
 	// Extract URL from generateVideoResponse if available
 	if len(op.Response.GenerateVideoResponse.GeneratedSamples) > 0 {

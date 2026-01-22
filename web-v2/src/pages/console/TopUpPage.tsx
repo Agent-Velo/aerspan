@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
-import { Trash2 } from 'lucide-react';
+import { Check, Trash2 } from 'lucide-react';
 import { fetchJson } from '@/api/client';
 import type { ApiResponse, PaymentResponse } from '@/api/types';
 import { toast } from '@/ui/toast';
@@ -11,6 +11,7 @@ import { formatUnixSeconds } from '@/lib/time';
 import { confirmModal } from '@/ui/confirmModal';
 import { useAuth } from '@/stores/auth/AuthStore';
 import { useStatus } from '@/stores/status/StatusStore';
+import { ThemeContext } from '@/theme/ThemeProvider';
 import { Button, Card, Checkbox, Input, Label, Modal, Spinner, TextField } from '@/components/ui/heroui';
 
 type TopUpInfo = {
@@ -52,6 +53,34 @@ type StripeAutoTopupData = {
   threshold: number;
   amount: number;
   payment_method_id: string;
+};
+
+type RewardStatusData = {
+  eligible: boolean;
+  pending: boolean;
+  claimed: boolean;
+  signup_quota: number;
+  invitee_quota: number;
+  inviter_aff_quota: number;
+  total_quota: number;
+  stripe_preauth_amount: number;
+  stripe_currency: string;
+  payment_intent_id?: string;
+  payment_intent_status?: string;
+  void_after?: number;
+  voided_time?: number;
+};
+
+type RewardClaimData = {
+  claim_status: string;
+  granted_quota?: number;
+  signup_quota?: number;
+  invitee_quota?: number;
+  inviter_aff_quota?: number;
+  payment_intent_id?: string;
+  payment_intent_status?: string;
+  client_secret?: string;
+  void_after?: number;
 };
 
 type CreditGrantRow = {
@@ -118,9 +147,15 @@ function BindCardModal({
   stripePromise: ReturnType<typeof loadStripe> | null;
   onBound: (paymentMethodId?: string) => void;
 }) {
+  const { resolvedTheme } = useContext(ThemeContext);
   const [clientSecret, setClientSecret] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const elementsAppearance = useMemo(
+    () => ({ theme: resolvedTheme === 'dark' ? 'night' : 'stripe' }),
+    [resolvedTheme],
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -187,10 +222,11 @@ function BindCardModal({
               ) : null}
               {!loading && stripePromise && clientSecret ? (
                 <Elements
+                  key={resolvedTheme}
                   stripe={stripePromise}
                   options={{
                     clientSecret,
-                    appearance: { theme: 'stripe' },
+                    appearance: elementsAppearance,
                   }}
                 >
                   <BindCardForm saving={saving} onSubmit={submit} />
@@ -248,14 +284,27 @@ export function TopUpPage() {
   const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(false);
   const [deletingPaymentMethodId, setDeletingPaymentMethodId] = useState('');
 
+  const [rewardStatus, setRewardStatus] = useState<RewardStatusData | null>(null);
+  const [rewardLoading, setRewardLoading] = useState(false);
+  const [rewardClaiming, setRewardClaiming] = useState(false);
+  const [rewardClaimAfterBind, setRewardClaimAfterBind] = useState(false);
+
   const defaultCard = useMemo(
     () => paymentMethods.find((pm) => pm.id === defaultPaymentMethodId) ?? null,
     [paymentMethods, defaultPaymentMethodId],
   );
+
+  const effectivePaymentMethodId = selectedPaymentMethodId || defaultPaymentMethodId;
   const selectedCard = useMemo(
-    () => paymentMethods.find((pm) => pm.id === selectedPaymentMethodId) ?? null,
-    [paymentMethods, selectedPaymentMethodId],
+    () => paymentMethods.find((pm) => pm.id === effectivePaymentMethodId) ?? null,
+    [paymentMethods, effectivePaymentMethodId],
   );
+
+  useEffect(() => {
+    if (!selectedPaymentMethodId) return;
+    if (paymentMethods.some((pm) => pm.id === selectedPaymentMethodId)) return;
+    setSelectedPaymentMethodId('');
+  }, [paymentMethods, selectedPaymentMethodId]);
 
   const [autoTopup, setAutoTopup] = useState<StripeAutoTopupData>({
     enabled: false,
@@ -338,6 +387,22 @@ export function TopUpPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  const loadRewardStatus = async () => {
+    setRewardLoading(true);
+    try {
+      const res = await fetchJson<ApiResponse<RewardStatusData>>('/api/user/reward/status');
+      setRewardStatus(res.data);
+    } finally {
+      setRewardLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!user?.id) return;
+    loadRewardStatus().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   const loadStripePaymentMethods = async () => {
     if (!stripeEnabled) return;
     setPaymentMethodsLoading(true);
@@ -357,6 +422,69 @@ export function TopUpPage() {
     }
   };
 
+  const claimReward = async ({ allowRecursion = true }: { allowRecursion?: boolean } = {}) => {
+    if (rewardClaiming) return;
+    if (!stripeEnabled) {
+      toast.error('Card binding is not enabled.');
+      return;
+    }
+
+    if (!defaultPaymentMethodId) {
+      setRewardClaimAfterBind(true);
+      setBindCardOpen(true);
+      return;
+    }
+
+    setRewardClaiming(true);
+    try {
+      const res = await fetchJson<ApiResponse<RewardClaimData>>('/api/user/reward/claim', {
+        method: 'POST',
+      });
+
+      if (res.data.claim_status === 'no_reward') {
+        toast.info('No reward available');
+        await loadRewardStatus();
+        return;
+      }
+
+      if (res.data.claim_status === 'claimed') {
+        const granted = res.data.granted_quota || 0;
+        const dollars = granted > 0 ? (granted / quotaPerUnit).toFixed(2) : '';
+        toast.success(dollars ? `Reward claimed: $${dollars}` : 'Reward claimed');
+        await refreshSelf();
+        loadCreditGrants(1).catch(() => {});
+        await loadRewardStatus();
+        return;
+      }
+
+      if (res.data.claim_status === 'requires_action' && res.data.client_secret && stripePromise) {
+        const stripe = await stripePromise;
+        if (!stripe) {
+          toast.error('Stripe is not available');
+          return;
+        }
+        const confirmed = await stripe.confirmCardPayment(res.data.client_secret);
+        if (confirmed.error) {
+          toast.error(confirmed.error.message || 'Verification failed');
+          return;
+        }
+
+        if (allowRecursion) {
+          await claimReward({ allowRecursion: false });
+        } else {
+          toast.success('Verified');
+          await loadRewardStatus();
+        }
+        return;
+      }
+
+      toast.error(`Reward claim status: ${res.data.claim_status}`);
+      await loadRewardStatus();
+    } finally {
+      setRewardClaiming(false);
+    }
+  };
+
   const loadStripeAutoTopup = async () => {
     if (!stripeEnabled) return;
     const res = await fetchJson<ApiResponse<StripeAutoTopupData>>('/api/user/stripe/auto_topup');
@@ -369,6 +497,14 @@ export function TopUpPage() {
     loadStripeAutoTopup().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stripeEnabled]);
+
+  useEffect(() => {
+    if (!rewardClaimAfterBind) return;
+    if (!defaultPaymentMethodId) return;
+    setRewardClaimAfterBind(false);
+    claimReward().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rewardClaimAfterBind, defaultPaymentMethodId]);
 
   const redeem = async () => {
     if (!redeemCode.trim()) {
@@ -615,7 +751,7 @@ export function TopUpPage() {
                       <div className='space-y-2'>
                         {paymentMethods.map((pm) => {
                           const isDefault = pm.id === defaultPaymentMethodId;
-                          const isSelected = pm.id === selectedPaymentMethodId;
+                          const isSelected = pm.id === effectivePaymentMethodId;
                           const deleting = deletingPaymentMethodId === pm.id;
 
                           return (
@@ -632,14 +768,32 @@ export function TopUpPage() {
                                   onClick={() => setSelectedPaymentMethodId(pm.id)}
                                   disabled={paying || deleting}
                                 >
-                                  <div className='flex flex-wrap items-center gap-2'>
-                                    <div className='font-medium'>
-                                      {pm.brand?.toUpperCase?.() || pm.brand} •••• {pm.last4}
+                                  <div className='flex items-start gap-3'>
+                                    <div
+                                      className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition ${
+                                        isSelected
+                                          ? 'border-primary bg-primary/15 text-primary'
+                                          : 'border-border bg-muted/20 text-muted'
+                                      }`}
+                                      aria-hidden='true'
+                                    >
+                                      <Check
+                                        size={14}
+                                        className={`transition-opacity ${isSelected ? 'opacity-100' : 'opacity-0'}`}
+                                      />
                                     </div>
-                                    {isDefault ? <span className='text-xs text-primary'>Default</span> : null}
-                                  </div>
-                                  <div className='mt-1 text-xs text-muted'>
-                                    Expires {pm.exp_month}/{pm.exp_year}
+
+                                    <div className='min-w-0 flex-1'>
+                                      <div className='flex flex-wrap items-center gap-2'>
+                                        <div className='font-medium'>
+                                          {pm.brand?.toUpperCase?.() || pm.brand} •••• {pm.last4}
+                                        </div>
+                                        {isDefault ? <span className='text-xs text-primary'>Default</span> : null}
+                                      </div>
+                                      <div className='mt-1 text-xs text-muted'>
+                                        Expires {pm.exp_month}/{pm.exp_year}
+                                      </div>
+                                    </div>
                                   </div>
                                 </button>
 
@@ -707,12 +861,12 @@ export function TopUpPage() {
                   <div className='mt-2 text-sm text-muted'>
                     Payable: {stripePreview ? stripePreview : '—'}
                   </div>
-                  {selectedPaymentMethodId && paymentMethods.length > 0 ? (
+                  {effectivePaymentMethodId && paymentMethods.length > 0 ? (
                     <div className='mt-1 text-xs text-muted'>
                       Paying with:{' '}
                       {selectedCard
                         ? `${selectedCard.brand?.toUpperCase?.() || selectedCard.brand} •••• ${selectedCard.last4}`
-                        : selectedPaymentMethodId}
+                        : effectivePaymentMethodId}
                     </div>
                   ) : null}
                   <Button fullWidth onPress={payStripe} isDisabled={paying}>
@@ -817,8 +971,8 @@ export function TopUpPage() {
             </Card.Header>
             <Card.Content className='flex gap-2'>
               <TextField fullWidth name='redeemCode' onChange={setRedeemCode}>
-                <Label>Redeem code</Label>
-                <Input value={redeemCode} placeholder='Redeem code' />
+                <Label className='sr-only'>Redeem code</Label>
+                <Input value={redeemCode} placeholder='Enter redeem code' />
               </TextField>
               <Button onPress={redeem} isDisabled={redeeming}>
                 Redeem
@@ -854,6 +1008,40 @@ export function TopUpPage() {
                 <div>Aff history: ${displayAffHistoryQuota}</div>
                 <div>Invites: {user?.aff_count ?? '—'}</div>
               </div>
+
+              {rewardStatus?.eligible ? (
+                <div className='rounded-lg border border-border p-3 text-sm'>
+                  <div className='flex items-start justify-between gap-3'>
+                    <div className='min-w-0 space-y-1'>
+                      <div className='font-medium'>Registration reward</div>
+                      {rewardStatus.claimed ? (
+                        <div className='text-muted'>Already claimed.</div>
+                      ) : rewardStatus.pending ? (
+                        <div className='text-muted'>
+                          Available: ${formatDollarsFromQuota(rewardStatus.total_quota || 0)}. Bind a card to place a
+                          $1 authorization (voided in 24 hours) and claim.
+                        </div>
+                      ) : (
+                        <div className='text-muted'>Not available.</div>
+                      )}
+                      {rewardStatus.pending && rewardStatus.payment_intent_status === 'requires_action' ? (
+                        <div className='text-xs text-muted'>Verification requires action. Click Claim to continue.</div>
+                      ) : null}
+                      {rewardStatus.pending && rewardStatus.void_after ? (
+                        <div className='text-xs text-muted'>Authorization void after: {formatUnixSeconds(rewardStatus.void_after)}</div>
+                      ) : null}
+                    </div>
+                    <div className='shrink-0'>
+                      {rewardStatus.claimed ? null : rewardStatus.pending ? (
+                        <Button onPress={() => claimReward().catch(() => {})} isDisabled={rewardClaiming || rewardLoading}>
+                          {rewardClaiming ? <Spinner size='sm' /> : null}
+                          {defaultPaymentMethodId ? 'Claim' : 'Bind & Claim'}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               <div className='flex items-end gap-2'>
                 <TextField

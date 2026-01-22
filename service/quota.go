@@ -599,7 +599,7 @@ func checkAndSendQuotaNotify(relayInfo *relaycommon.RelayInfo, quota int, preCon
 		}
 		if quotaTooLow {
 			prompt := "Quota is running low"
-			topUpLink := fmt.Sprintf("%s/console/topup", system_setting.ServerAddress)
+			topUpLink := fmt.Sprintf("%s/console/topup", system_setting.GetFrontendBaseURL())
 
 			// 根据通知方式生成不同的内容格式
 			var content string

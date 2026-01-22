@@ -110,8 +110,9 @@ autoDetect:
 	host := r.Host
 
 	// 如果无法从请求获取Host，尝试从ServerAddress获取
-	if host == "" && system_setting.ServerAddress != "" {
-		if parsed, err := url.Parse(system_setting.ServerAddress); err == nil && parsed.Host != "" {
+	fallbackBaseURL := system_setting.GetFrontendBaseURL()
+	if host == "" && fallbackBaseURL != "" {
+		if parsed, err := url.Parse(fallbackBaseURL); err == nil && parsed.Host != "" {
 			host = parsed.Host
 			if scheme == "" && parsed.Scheme != "" {
 				scheme = parsed.Scheme
@@ -119,7 +120,7 @@ autoDetect:
 		}
 	}
 	if host == "" {
-		return nil, fmt.Errorf("Couldn't determine passkey origin. Set it in System settings or Passkey settings. Host: '%s', ServerAddress: '%s'", r.Host, system_setting.ServerAddress)
+		return nil, fmt.Errorf("Couldn't determine passkey origin. Set it in System settings or Passkey settings. Host: '%s', BaseURL: '%s'", r.Host, fallbackBaseURL)
 	}
 	if scheme == "" {
 		scheme = "https"

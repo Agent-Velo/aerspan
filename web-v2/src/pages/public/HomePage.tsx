@@ -7,12 +7,10 @@ import { useAuth } from '@/stores/auth/AuthStore';
 import { copyText } from '@/lib/clipboard';
 import { toast } from '@/ui/toast';
 import { API_ENDPOINT_HINTS } from '@/constants/apiEndpoints';
-import { fetchJson } from '@/api/client';
-import type { ApiResponse } from '@/api/types';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 import { ThemeContext } from '@/theme/ThemeProvider';
 import { useContext } from 'react';
-import { Button, Card, Input, Label, ListBox, Modal, Select, Spinner, TextField } from '@/components/ui/heroui';
+import { Button, Card, Input, Label, ListBox, Select, Spinner, TextField } from '@/components/ui/heroui';
 
 function isAbsoluteUrl(value: string) {
   try {
@@ -22,69 +20,6 @@ function isAbsoluteUrl(value: string) {
   } catch {
     return false;
   }
-}
-
-function todayString() {
-  return new Date().toDateString();
-}
-
-function todayYmd() {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function isNoticeClosedToday(value: string | null) {
-  // Compatible with old frontend (toDateString) and early web-v2 builds (YYYY-MM-DD).
-  return value === todayString() || value === todayYmd();
-}
-
-function NoticeModal({
-  open,
-  markdown,
-  onClose,
-  onCloseToday,
-}: {
-  open: boolean;
-  markdown: string;
-  onClose: () => void;
-  onCloseToday: () => void;
-}) {
-  return (
-    <Modal
-      isOpen={open}
-      onOpenChange={(isOpen) => {
-        if (!isOpen) onClose();
-      }}
-    >
-      <Button className='sr-only' variant='ghost'>
-        Open
-      </Button>
-      <Modal.Backdrop>
-        <Modal.Container size='lg'>
-          <Modal.Dialog>
-            <Modal.CloseTrigger />
-            <Modal.Header>
-              <Modal.Heading>Notice</Modal.Heading>
-            </Modal.Header>
-            <Modal.Body>
-              <div className='max-h-[70vh] overflow-auto'>
-                <MarkdownRenderer markdown={markdown} />
-              </div>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button slot='close' variant='secondary' onPress={onCloseToday}>
-                Close for today
-              </Button>
-              <Button slot='close'>Close</Button>
-            </Modal.Footer>
-          </Modal.Dialog>
-        </Modal.Container>
-      </Modal.Backdrop>
-    </Modal>
-  );
 }
 
 export function HomePage() {
@@ -115,9 +50,6 @@ export function HomePage() {
     return trimmed.startsWith('https://') || isAbsoluteUrl(trimmed);
   }, [homeContent]);
 
-  const [noticeOpen, setNoticeOpen] = useState(false);
-  const [noticeMarkdown, setNoticeMarkdown] = useState('');
-
   useEffect(() => {
     if (!homeIsUrl) return;
     const win = iframeRef.current?.contentWindow;
@@ -127,39 +59,8 @@ export function HomePage() {
     win.postMessage({ lang: i18n.language || 'en' }, '*');
   }, [homeIsUrl, resolvedTheme, i18n.language]);
 
-  useEffect(() => {
-    const closeDate = localStorage.getItem('notice_close_date');
-    if (isNoticeClosedToday(closeDate)) return;
-
-    let cancelled = false;
-    (async () => {
-      const res = await fetchJson<ApiResponse<string>>('/api/notice', { skipErrorHandler: true });
-      const markdown = (res.data || '').trim();
-      if (!markdown) return;
-      if (cancelled) return;
-      setNoticeMarkdown(markdown);
-      setNoticeOpen(true);
-    })().catch(() => {
-      // ignore
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   return (
     <div className='space-y-6'>
-      <NoticeModal
-        open={noticeOpen}
-        markdown={noticeMarkdown}
-        onClose={() => setNoticeOpen(false)}
-        onCloseToday={() => {
-          localStorage.setItem('notice_close_date', todayString());
-          setNoticeOpen(false);
-        }}
-      />
-
       <Card>
         <Card.Content className='space-y-4'>
           <div className='text-2xl font-bold'>{status?.system_name || 'Aerspan'}</div>

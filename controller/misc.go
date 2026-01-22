@@ -45,6 +45,8 @@ func GetStatus(c *gin.Context) {
 
 	passkeySetting := system_setting.GetPasskeySettings()
 	legalSetting := system_setting.GetLegalSettings()
+	backendBaseURL := system_setting.GetBackendBaseURL()
+	frontendBaseURL := system_setting.GetFrontendBaseURL()
 
 	data := gin.H{
 		"version":                     common.Version,
@@ -64,7 +66,9 @@ func GetStatus(c *gin.Context) {
 		"footer_html":                 common.Footer,
 		"wechat_qrcode":               common.WeChatAccountQRCodeImageURL,
 		"wechat_login":                common.WeChatAuthEnabled,
-		"server_address":              system_setting.ServerAddress,
+		"server_address":              backendBaseURL,
+		"frontend_base_url":           frontendBaseURL,
+		"backend_base_url":            backendBaseURL,
 		"turnstile_check":             common.TurnstileCheckEnabled,
 		"turnstile_site_key":          common.TurnstileSiteKey,
 		"top_up_link":                 common.TopUpLink,
@@ -253,11 +257,19 @@ func SendEmailVerification(c *gin.Context) {
 	code := common.GenerateVerificationCode(6)
 	common.RegisterVerificationCodeWithKey(email, code, common.EmailVerificationPurpose)
 	subject := fmt.Sprintf("%s email verification", common.SystemName)
-	content := fmt.Sprintf(
-		"<p>Your verification code is <strong>%s</strong>.</p>"+
-			"<p>It expires in %d minutes. If you didn't request this, you can ignore this email.</p>",
-		code, common.VerificationValidMinutes,
-	)
+	content := common.RenderEmailDocument(common.EmailDocument{
+		Title:       "Email verification",
+		PreviewText: fmt.Sprintf("Your verification code is %s", code),
+		BodyHTML: fmt.Sprintf(
+			"<p style=\"margin:0 0 12px 0;\">Use the verification code below to continue.</p>"+
+				"<div style=\"margin:14px 0 14px 0;padding:14px 16px;border:1px solid #191b1d;background:#010306;border-radius:8px;"+
+				"font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace;"+
+				"font-size:28px;font-weight:700;letter-spacing:0.35em;text-align:center;\">%s</div>"+
+				"<p style=\"margin:0;color:#9fa5ae;font-size:12px;line-height:18px;\">This code expires in %d minutes. "+
+				"If you didn't request this, you can ignore this email.</p>",
+			code, common.VerificationValidMinutes,
+		),
+	})
 	err := common.SendEmail(subject, email, content)
 	if err != nil {
 		common.ApiError(c, err)
@@ -290,12 +302,17 @@ func SendPasswordResetEmail(c *gin.Context) {
 	common.RegisterVerificationCodeWithKey(email, code, common.PasswordResetPurpose)
 	link := fmt.Sprintf("%s/user/reset?email=%s&token=%s", system_setting.ServerAddress, email, code)
 	subject := fmt.Sprintf("%s password reset", common.SystemName)
-	content := fmt.Sprintf(
-		"<p>Click <a href='%s'>here</a> to reset your password.</p>"+
-			"<p>If the link doesn't open, copy and paste this URL into your browser:<br>%s</p>"+
-			"<p>This link expires in %d minutes. If you didn't request this, you can ignore this email.</p>",
-		link, link, common.VerificationValidMinutes,
-	)
+	content := common.RenderEmailDocument(common.EmailDocument{
+		Title:       "Reset your password",
+		PreviewText: fmt.Sprintf("Reset your password (expires in %d minutes)", common.VerificationValidMinutes),
+		BodyHTML: fmt.Sprintf(
+			"<p style=\"margin:0 0 12px 0;\">We received a request to reset your password.</p>"+
+				"<p style=\"margin:0;color:#9fa5ae;font-size:12px;line-height:18px;\">This link expires in %d minutes. "+
+				"If you didn't request this, you can ignore this email.</p>",
+			common.VerificationValidMinutes,
+		),
+		Action: &common.EmailAction{Label: "Reset password", URL: link},
+	})
 	err := common.SendEmail(subject, email, content)
 	if err != nil {
 		common.ApiError(c, err)

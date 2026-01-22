@@ -39,6 +39,9 @@ import { useTranslation } from 'react-i18next';
 export default function SettingsPaymentGateway(props) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
+  const backendBaseUrl = removeTrailingSlash(
+    props.options?.BackendBaseUrl || props.options?.ServerAddress || '',
+  );
   const [inputs, setInputs] = useState({
     StripeApiSecret: '',
     StripePublishableKey: '',
@@ -87,8 +90,8 @@ export default function SettingsPaymentGateway(props) {
   };
 
   const submitStripeSetting = async () => {
-    if (props.options.ServerAddress === '') {
-      showError(t('请先填写服务器地址'));
+    if (backendBaseUrl === '') {
+      showError(t('请先填写后端 Base URL'));
       return;
     }
 
@@ -207,7 +210,7 @@ export default function SettingsPaymentGateway(props) {
           </Text>
           <Banner
             type='info'
-            description={`Webhook 填：${props.options.ServerAddress ? removeTrailingSlash(props.options.ServerAddress) : t('网站地址')}/api/stripe/webhook`}
+            description={`Webhook 填：${backendBaseUrl ? backendBaseUrl : t('网站地址')}/api/stripe/webhook`}
           />
           <Banner
             type='warning'

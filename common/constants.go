@@ -99,6 +99,11 @@ var TelegramBotName = ""
 var QuotaForNewUser = 0
 var QuotaForInviter = 0
 var QuotaForInvitee = 0
+
+// InviteCashbackMaxPayments: inviter earns cashback from invitee's first X payments.
+// InviteCashbackRate: cashback percentage (e.g. 10 means 10%).
+var InviteCashbackMaxPayments = 0
+var InviteCashbackRate = 0.0
 var ChannelDisableThreshold = 5.0
 var AutomaticDisableChannelEnabled = false
 var AutomaticEnableChannelEnabled = false
@@ -201,10 +206,10 @@ const (
 )
 
 const (
-	TopUpStatusPending = "pending"
-	TopUpStatusSuccess = "success"
-	TopUpStatusExpired = "expired"
-	TopUpStatusFailed  = "failed"
+	TopUpStatusPending       = "pending"
+	TopUpStatusSuccess       = "success"
+	TopUpStatusExpired       = "expired"
+	TopUpStatusFailed        = "failed"
 	TopUpStatusRefundPending = "refund_pending"
 	TopUpStatusRefunded      = "refunded"
 )

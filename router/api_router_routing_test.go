@@ -60,7 +60,9 @@ func TestApiRouterHandlesCorsPreflight(t *testing.T) {
 	SetApiRouter(router)
 
 	request := httptest.NewRequest(http.MethodOptions, "/api/user/login", nil)
-	request.Header.Set("Origin", "https://example.com")
+	// Use a different host than httptest.NewRequest's default (example.com) so the
+	// CORS middleware treats it as a cross-origin request.
+	request.Header.Set("Origin", "https://cors.example.com")
 	request.Header.Set("Access-Control-Request-Method", http.MethodPost)
 	request.Header.Set("Access-Control-Request-Headers", "content-type,authorization")
 

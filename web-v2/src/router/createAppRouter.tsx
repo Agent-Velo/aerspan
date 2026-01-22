@@ -38,7 +38,6 @@ import { PasskeyPage } from '@/pages/console/personal/PasskeyPage';
 import { TwoFactorAuthPage } from '@/pages/console/personal/TwoFactorAuthPage';
 import { CheckinPage } from '@/pages/console/personal/CheckinPage';
 import { NotificationSettingsPage } from '@/pages/console/personal/NotificationSettingsPage';
-import { SidebarModulesPage } from '@/pages/console/personal/SidebarModulesPage';
 import { NotFoundPage } from '@/pages/public/NotFoundPage';
 
 export function createAppRouter() {
@@ -128,7 +127,6 @@ export function createAppRouter() {
         { path: '/personal/2fa', element: <TwoFactorAuthPage /> },
         { path: '/personal/checkin', element: <CheckinPage /> },
         { path: '/personal/notifications', element: <NotificationSettingsPage /> },
-        { path: '/personal/sidebar', element: <SidebarModulesPage /> },
       ],
     },
   ]);

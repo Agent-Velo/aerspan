@@ -101,6 +101,8 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.GET("/stripe/auto_topup", controller.GetStripeAutoTopup)
 				selfRoute.PUT("/stripe/auto_topup", middleware.CriticalRateLimit(), controller.UpdateStripeAutoTopup)
 				selfRoute.POST("/aff_transfer", controller.TransferAffQuota)
+				selfRoute.GET("/reward/status", controller.GetRewardStatus)
+				selfRoute.POST("/reward/claim", middleware.CriticalRateLimit(), controller.ClaimReward)
 				selfRoute.PUT("/setting", controller.UpdateUserSetting)
 
 				// 2FA routes

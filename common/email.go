@@ -20,6 +20,7 @@ func generateMessageID() (string, error) {
 }
 
 func SendEmail(subject string, receiver string, content string) error {
+	content = wrapEmailContent(subject, content)
 	if SMTPFrom == "" { // for compatibility
 		SMTPFrom = SMTPAccount
 	}
