@@ -170,7 +170,7 @@ docker compose -f docker-compose.traefik.yml up -d --build
 > 严格四域名分离时，前端不再同源反代后端路径，需要在 `.env` 里配置：
 > - `VITE_REACT_APP_SERVER_URL=https://api.example.com`（web/）
 > - `VITE_API_BASE_URL=https://api.example.com`（web-v2/）
-> - 以及后端跨域允许列表：`CORS_ALLOW_ORIGINS=https://admin.example.com,https://app.example.com`。
+> - 以及后端跨域允许列表：`CORS_ALLOW_ORIGINS=https://admin.example.com,https://app.example.com`（已支持浏览器 CORS preflight / `OPTIONS`）。
 >
 > 如果前端需要通过 Cookie Session 登录，请同时设置：`SESSION_COOKIE_SECURE=true`，并按需调整 `SESSION_COOKIE_SAMESITE`。
 
