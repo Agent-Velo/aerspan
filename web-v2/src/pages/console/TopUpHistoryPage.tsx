@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Eye } from 'lucide-react';
+import { Eye, Undo2 } from 'lucide-react';
 import { fetchJson } from '@/api/client';
 import type { ApiResponse } from '@/api/types';
 import { formatUnixSeconds } from '@/lib/time';
 import { copyText } from '@/lib/clipboard';
+import { confirmModal } from '@/ui/confirmModal';
 import { toast } from '@/ui/toast';
 import { Button, Card, Modal } from '@/components/ui/heroui';
 import { TableActionButton } from '@/components/ui/TableActionButton';
@@ -17,6 +18,9 @@ type TopUpRow = {
   create_time: number;
   complete_time: number;
   status: string;
+  refundable?: boolean;
+  refund_ineligible_reason?: string;
+  refund_window_seconds_left?: number;
 };
 
 type PageInfo<T> = { page: number; page_size: number; total: number; items: T };
@@ -24,11 +28,16 @@ type PageInfo<T> = { page: number; page_size: number; total: number; items: T };
 function TopUpDetailModal({
   topUp,
   onClose,
+  onRefund,
+  refunding,
 }: {
   topUp: TopUpRow | null;
   onClose: () => void;
+  onRefund: (topUp: TopUpRow) => void;
+  refunding: boolean;
 }) {
   const tradeNo = topUp?.trade_no || '';
+  const refundable = Boolean(topUp?.refundable);
 
   return (
     <Modal
@@ -82,11 +91,21 @@ function TopUpDetailModal({
                       <div className='text-muted'>Status</div>
                       <div className='mt-1'>{topUp.status}</div>
                     </div>
+                    <div className='sm:col-span-2'>
+                      <div className='text-muted'>Refund</div>
+                      <div className='mt-1 text-sm'>
+                        {refundable
+                          ? 'Eligible (within 24h and credits unused)'
+                          : topUp.refund_ineligible_reason
+                            ? `Not eligible: ${topUp.refund_ineligible_reason}`
+                            : 'Not eligible'}
+                      </div>
+                    </div>
                   </div>
 
                   <Card variant='secondary'>
                     <Card.Content className='space-y-2'>
-                      <div className='text-sm text-muted'>Order number (Stripe: cs_*)</div>
+                      <div className='text-sm text-muted'>Order number (Stripe: cs_* / pi_*)</div>
                       <pre className='overflow-auto p-3 text-xs'>
                         <code className='font-mono'>{tradeNo}</code>
                       </pre>
@@ -98,6 +117,16 @@ function TopUpDetailModal({
             <Modal.Footer className='flex gap-2'>
               <Button slot='close' variant='secondary'>
                 Close
+              </Button>
+              <Button
+                variant='danger'
+                isDisabled={!refundable || refunding}
+                onPress={() => {
+                  if (!topUp) return;
+                  onRefund(topUp);
+                }}
+              >
+                {refunding ? 'Refunding…' : 'Refund'}
               </Button>
               <Button
                 isDisabled={!tradeNo}
@@ -122,6 +151,7 @@ export function TopUpHistoryPage() {
   const [historyPageSize] = useState(20);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [detailTopUp, setDetailTopUp] = useState<TopUpRow | null>(null);
+  const [refundingId, setRefundingId] = useState<number>(0);
 
   const loadHistory = async (page = historyPage) => {
     setHistoryLoading(true);
@@ -141,6 +171,36 @@ export function TopUpHistoryPage() {
     loadHistory(1).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const refundTopUp = async (row: TopUpRow) => {
+    if (!row.refundable) {
+      toast.warning(row.refund_ineligible_reason || 'Not eligible for refund');
+      return;
+    }
+    const ok = await confirmModal(
+      `Refund this invoice?\n\nOrder: ${row.trade_no}\n\nThis will remove the credited balance (if unused) and request a Stripe refund.`,
+      {
+        title: 'Refund invoice',
+        confirmText: 'Refund',
+        cancelText: 'Cancel',
+        confirmVariant: 'danger',
+      },
+    );
+    if (!ok) return;
+
+    setRefundingId(row.id);
+    try {
+      await fetchJson<ApiResponse<{ refund_id?: string }>>('/api/user/topup/refund', {
+        method: 'POST',
+        body: { id: row.id },
+      });
+      toast.success('Refund requested');
+      setDetailTopUp(null);
+      await loadHistory(historyPage);
+    } finally {
+      setRefundingId(0);
+    }
+  };
 
   return (
     <div className='space-y-4'>
@@ -179,9 +239,41 @@ export function TopUpHistoryPage() {
                     <td>{row.payment_method}</td>
                     <td>{row.status}</td>
                     <td className='text-right'>
-                      <TableActionButton label='Details' onPress={() => setDetailTopUp(row)}>
-                        <Eye size={16} />
-                      </TableActionButton>
+                      <div className='flex justify-end gap-1'>
+                        <TableActionButton label='Details' onPress={() => setDetailTopUp(row)}>
+                          <Eye size={16} />
+                        </TableActionButton>
+                        {row.payment_method === 'stripe' &&
+                        (row.status === 'success' ||
+                          row.status === 'refund_pending' ||
+                          row.status === 'refunded') ? (
+                          <TableActionButton
+                            label={
+                              row.status === 'refunded'
+                                ? 'Refunded'
+                                : row.status === 'refund_pending'
+                                  ? 'Refund pending'
+                                  : row.refundable
+                                    ? 'Refund'
+                                    : 'Not refundable'
+                            }
+                            tooltip={
+                              row.refundable
+                                ? 'Refund'
+                                : row.status === 'refunded'
+                                  ? 'Already refunded'
+                                  : row.status === 'refund_pending'
+                                    ? 'Refund in progress'
+                                    : row.refund_ineligible_reason || 'Not eligible'
+                            }
+                            variant={row.refundable ? 'danger' : 'ghost'}
+                            isDisabled={!row.refundable || refundingId === row.id}
+                            onPress={() => refundTopUp(row)}
+                          >
+                            <Undo2 size={16} />
+                          </TableActionButton>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -213,7 +305,12 @@ export function TopUpHistoryPage() {
         </Card.Content>
       </Card>
 
-      <TopUpDetailModal topUp={detailTopUp} onClose={() => setDetailTopUp(null)} />
+      <TopUpDetailModal
+        topUp={detailTopUp}
+        refunding={Boolean(detailTopUp && refundingId === detailTopUp.id)}
+        onRefund={refundTopUp}
+        onClose={() => setDetailTopUp(null)}
+      />
     </div>
   );
 }

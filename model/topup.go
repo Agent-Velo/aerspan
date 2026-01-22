@@ -75,7 +75,7 @@ func Recharge(referenceId string, customerId string) (err error) {
 		}
 
 		// Idempotency: Stripe webhooks may be delivered more than once.
-		if topUp.Status == common.TopUpStatusSuccess {
+		if topUp.Status == common.TopUpStatusSuccess || topUp.Status == common.TopUpStatusRefundPending || topUp.Status == common.TopUpStatusRefunded {
 			return nil
 		}
 		if topUp.Status != common.TopUpStatusPending {
