@@ -1,4 +1,11 @@
-FROM oven/bun:latest AS builder
+FROM oven/bun:latest AS deps
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+
+FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
 
@@ -7,11 +14,9 @@ ARG VITE_REACT_APP_SERVER_URL
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_REACT_APP_SERVER_URL=${VITE_REACT_APP_SERVER_URL}
 
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
-
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN bun run build
+RUN node scripts/vite.mjs build
 
 FROM nginx:alpine
 
