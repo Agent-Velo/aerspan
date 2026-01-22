@@ -69,7 +69,15 @@ export default defineConfig({
       output: {
         manualChunks: {
           'react-core': ['react', 'react-dom', 'react-router-dom'],
-          'semi-ui': ['@douyinfe/semi-icons', '@douyinfe/semi-ui'],
+          // NOTE: keep Semi UI + i18n libs in the same chunk to avoid Rollup's
+          // "Circular chunk: semi-ui -> i18n -> semi-ui" warning.
+          'semi-ui': [
+            '@douyinfe/semi-icons',
+            '@douyinfe/semi-ui',
+            'i18next',
+            'react-i18next',
+            'i18next-browser-languagedetector',
+          ],
           tools: ['axios', 'history', 'marked'],
           'react-components': [
             'react-dropzone',
@@ -77,11 +85,6 @@ export default defineConfig({
             'react-telegram-login',
             'react-toastify',
             'react-turnstile',
-          ],
-          i18n: [
-            'i18next',
-            'react-i18next',
-            'i18next-browser-languagedetector',
           ],
         },
       },
