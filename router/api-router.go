@@ -79,6 +79,7 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.GET("/credit_grants", controller.GetSelfCreditGrants)
 				selfRoute.GET("/topup/info", controller.GetTopUpInfo)
 				selfRoute.GET("/topup/self", controller.GetUserTopUps)
+				selfRoute.POST("/topup/refund", middleware.CriticalRateLimit(), controller.RefundTopUpSelf)
 				selfRoute.POST("/topup", middleware.CriticalRateLimit(), controller.TopUp)
 				selfRoute.POST("/stripe/pay", middleware.CriticalRateLimit(), controller.RequestStripePay)
 				selfRoute.POST("/stripe/amount", controller.RequestStripeAmount)
