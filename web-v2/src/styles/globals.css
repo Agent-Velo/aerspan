@@ -89,6 +89,11 @@ body {
   vertical-align: top;
 }
 
+.app-table.app-table-align-middle th,
+.app-table.app-table-align-middle td {
+  vertical-align: middle;
+}
+
 .app-table thead th {
   font-size: 0.75rem;
   font-weight: 600;

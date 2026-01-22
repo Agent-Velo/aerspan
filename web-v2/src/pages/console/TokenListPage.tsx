@@ -421,7 +421,7 @@ export function TokenListPage() {
       </div>
 
       <Card className='gap-0 overflow-hidden p-0'>
-        <table className='app-table'>
+        <table className='app-table app-table-align-middle'>
           <thead>
             <tr>
               <th>Name</th>
