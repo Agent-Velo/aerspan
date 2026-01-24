@@ -26,7 +26,9 @@ import {
 import axios from 'axios';
 import { MESSAGE_ROLES } from '../constants/playground.constants';
 
-const SERVER_BASE_URL = (import.meta.env.VITE_REACT_APP_SERVER_URL || '').trim();
+const SERVER_BASE_URL = (
+  import.meta.env.VITE_REACT_APP_SERVER_URL || ''
+).trim();
 
 export function getServerBaseUrl() {
   return SERVER_BASE_URL;
@@ -47,7 +49,7 @@ export let API = axios.create({
   baseURL: SERVER_BASE_URL ? SERVER_BASE_URL : '',
   withCredentials: Boolean(SERVER_BASE_URL),
   headers: {
-    'New-API-User': getUserIdFromLocalStorage(),
+    'Aerspan-User': getUserIdFromLocalStorage(),
     'Cache-Control': 'no-store',
   },
 });
@@ -87,7 +89,7 @@ export function updateAPI() {
     baseURL: SERVER_BASE_URL ? SERVER_BASE_URL : '',
     withCredentials: Boolean(SERVER_BASE_URL),
     headers: {
-      'New-API-User': getUserIdFromLocalStorage(),
+      'Aerspan-User': getUserIdFromLocalStorage(),
       'Cache-Control': 'no-store',
     },
   });
@@ -231,9 +233,7 @@ async function prepareOAuthState(options = {}) {
   if (shouldLogout) {
     try {
       await API.get('/api/user/logout', { skipErrorHandler: true });
-    } catch (err) {
-
-    }
+    } catch (err) {}
     localStorage.removeItem('user');
     updateAPI();
   }

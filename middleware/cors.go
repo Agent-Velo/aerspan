@@ -37,7 +37,7 @@ func CORS() gin.HandlerFunc {
 		"Content-Length",
 		"Content-Type",
 		"Authorization",
-		"New-Api-User",
+		"Aerspan-User",
 		"X-Api-Key",
 		"X-Goog-Api-Key",
 		"Anthropic-Version",

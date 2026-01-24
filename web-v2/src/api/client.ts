@@ -1,8 +1,8 @@
-import { getApiBaseUrl } from '@/lib/env';
-import { clearStoredUser, getStoredUserId } from '@/lib/storage';
-import { toast } from '@/ui/toast';
+import { getApiBaseUrl } from "@/lib/env";
+import { clearStoredUser, getStoredUserId } from "@/lib/storage";
+import { toast } from "@/ui/toast";
 
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 
 export type FetchJsonOptions = {
   method?: HttpMethod;
@@ -15,14 +15,14 @@ export type FetchJsonOptions = {
 
 const inFlightGetRequests = new Map<string, Promise<any>>();
 
-const UNAUTHORIZED_EVENT = 'aerspan:unauthorized';
+const UNAUTHORIZED_EVENT = "aerspan:unauthorized";
 
 export function onUnauthorized(handler: () => void) {
   window.addEventListener(UNAUTHORIZED_EVENT, handler);
   return () => window.removeEventListener(UNAUTHORIZED_EVENT, handler);
 }
 
-function buildUrl(path: string, params?: FetchJsonOptions['params']): string {
+function buildUrl(path: string, params?: FetchJsonOptions["params"]): string {
   const base = getApiBaseUrl();
 
   const url = (() => {
@@ -41,11 +41,11 @@ function buildUrl(path: string, params?: FetchJsonOptions['params']): string {
 }
 
 async function readErrorBody(response: Response): Promise<string> {
-  const contentType = response.headers.get('content-type') || '';
+  const contentType = response.headers.get("content-type") || "";
   try {
-    if (contentType.includes('application/json')) {
+    if (contentType.includes("application/json")) {
       const json = await response.json();
-      if (typeof json?.message === 'string') return json.message;
+      if (typeof json?.message === "string") return json.message;
       return JSON.stringify(json);
     }
     return await response.text();
@@ -54,12 +54,15 @@ async function readErrorBody(response: Response): Promise<string> {
   }
 }
 
-export async function fetchJson<T>(path: string, options: FetchJsonOptions = {}): Promise<T> {
-  const method = options.method ?? 'GET';
+export async function fetchJson<T>(
+  path: string,
+  options: FetchJsonOptions = {},
+): Promise<T> {
+  const method = options.method ?? "GET";
   const dedupeGet = options.dedupeGet ?? true;
 
   const url = buildUrl(path, options.params);
-  const dedupeKey = method === 'GET' ? `${url}` : null;
+  const dedupeKey = method === "GET" ? `${url}` : null;
   if (dedupeKey && dedupeGet && inFlightGetRequests.has(dedupeKey)) {
     return inFlightGetRequests.get(dedupeKey) as Promise<T>;
   }
@@ -67,11 +70,11 @@ export async function fetchJson<T>(path: string, options: FetchJsonOptions = {})
   const userId = getStoredUserId();
 
   const headers = new Headers({
-    'Cache-Control': 'no-store',
+    "Cache-Control": "no-store",
     ...options.headers,
   });
-  if (typeof userId === 'number' && userId > 0) {
-    headers.set('New-Api-User', String(userId));
+  if (typeof userId === "number" && userId > 0) {
+    headers.set("Aerspan-User", String(userId));
   }
 
   let body: BodyInit | undefined;
@@ -79,7 +82,7 @@ export async function fetchJson<T>(path: string, options: FetchJsonOptions = {})
     if (options.body instanceof FormData) {
       body = options.body;
     } else {
-      headers.set('Content-Type', 'application/json');
+      headers.set("Content-Type", "application/json");
       body = JSON.stringify(options.body);
     }
   }
@@ -91,10 +94,10 @@ export async function fetchJson<T>(path: string, options: FetchJsonOptions = {})
         method,
         headers,
         body,
-        credentials: getApiBaseUrl() ? 'include' : 'same-origin',
+        credentials: getApiBaseUrl() ? "include" : "same-origin",
       });
     } catch (error) {
-      if (!options.skipErrorHandler) toast.error('Network connection failed');
+      if (!options.skipErrorHandler) toast.error("Network connection failed");
       throw error;
     }
 
@@ -104,21 +107,22 @@ export async function fetchJson<T>(path: string, options: FetchJsonOptions = {})
         clearStoredUser();
         window.dispatchEvent(new CustomEvent(UNAUTHORIZED_EVENT));
       }
-      if (!options.skipErrorHandler) toast.error(message || 'Request failed');
+      if (!options.skipErrorHandler) toast.error(message || "Request failed");
       throw new Error(message || `HTTP ${response.status}`);
     }
 
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
       const text = await response.text();
       return text as unknown as T;
     }
 
     const json = (await response.json()) as any;
-    if (json && typeof json.success === 'boolean') {
+    if (json && typeof json.success === "boolean") {
       if (!json.success) {
-        if (!options.skipErrorHandler) toast.error(json.message || 'Request failed');
-        throw new Error(json.message || 'Request failed');
+        if (!options.skipErrorHandler)
+          toast.error(json.message || "Request failed");
+        throw new Error(json.message || "Request failed");
       }
       return json as T;
     }

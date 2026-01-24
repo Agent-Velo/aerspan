@@ -337,20 +337,23 @@ const OllamaModelModal = ({
       const fetchHeaders = {
         'Content-Type': 'application/json',
         Accept: 'text/event-stream',
-        'New-API-User': String(userId),
+        'Aerspan-User': String(userId),
         ...authHeaders,
       };
 
-      const response = await fetch(buildServerUrl('/api/channel/ollama/pull/stream'), {
-        method: 'POST',
-        headers: fetchHeaders,
-        credentials: getServerFetchCredentials(),
-        body: JSON.stringify({
-          channel_id: channelId,
-          model_name: pullModelName.trim(),
-        }),
-        signal: controller.signal,
-      });
+      const response = await fetch(
+        buildServerUrl('/api/channel/ollama/pull/stream'),
+        {
+          method: 'POST',
+          headers: fetchHeaders,
+          credentials: getServerFetchCredentials(),
+          body: JSON.stringify({
+            channel_id: channelId,
+            model_name: pullModelName.trim(),
+          }),
+          signal: controller.signal,
+        },
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

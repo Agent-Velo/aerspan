@@ -70,12 +70,12 @@ func authHelper(c *gin.Context, minRole int) {
 			return
 		}
 	}
-	// get header New-Api-User
-	apiUserIdStr := c.Request.Header.Get("New-Api-User")
+	// get header Aerspan-User
+	apiUserIdStr := c.Request.Header.Get("Aerspan-User")
 	if apiUserIdStr == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "Missing New-Api-User header",
+			"message": "Missing Aerspan-User header",
 		})
 		c.Abort()
 		return
@@ -84,7 +84,7 @@ func authHelper(c *gin.Context, minRole int) {
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "Invalid New-Api-User header",
+			"message": "Invalid Aerspan-User header",
 		})
 		c.Abort()
 		return
@@ -93,7 +93,7 @@ func authHelper(c *gin.Context, minRole int) {
 	if id != apiUserId {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "New-Api-User doesn't match the signed-in user",
+			"message": "Aerspan-User doesn't match the signed-in user",
 		})
 		c.Abort()
 		return
