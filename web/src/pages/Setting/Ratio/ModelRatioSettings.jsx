@@ -46,6 +46,7 @@ export default function ModelRatioSettings(props) {
     ModelInputTokenPriceMultiplier: '',
     ModelOutputTokenPriceMultiplier: '',
     ModelCacheReadPrice: '',
+    ModelCacheWritePrice: '',
     ModelImageInputPrice: '',
     ModelAudioInputPrice: '',
     ModelAudioOutputPrice: '',
@@ -258,7 +259,7 @@ export default function ModelRatioSettings(props) {
           <Col xs={24} sm={16}>
             <Form.TextArea
               label={t('模型缓存读取价格（USD/1M tokens）')}
-              extraText={t('仅部分模型支持该计费，未设置时默认等于输入价格')}
+              extraText={t('需与“模型缓存写入价格”同时设置才会生效，否则视为不支持缓存')}
               placeholder={t('为一个 JSON 文本，键为模型名称，值为 USD/1M tokens')}
               field={'ModelCacheReadPrice'}
               autosize={{ minRows: 6, maxRows: 12 }}
@@ -272,6 +273,28 @@ export default function ModelRatioSettings(props) {
               ]}
               onChange={(value) =>
                 setInputs({ ...inputs, ModelCacheReadPrice: value })
+              }
+            />
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col xs={24} sm={16}>
+            <Form.TextArea
+              label={t('模型缓存写入价格（USD/1M tokens）')}
+              extraText={t('需与“模型缓存读取价格”同时设置才会生效，否则视为不支持缓存')}
+              placeholder={t('为一个 JSON 文本，键为模型名称，值为 USD/1M tokens')}
+              field={'ModelCacheWritePrice'}
+              autosize={{ minRows: 6, maxRows: 12 }}
+              trigger='blur'
+              stopValidateWithError
+              rules={[
+                {
+                  validator: (rule, value) => verifyJSON(value),
+                  message: '不是合法的 JSON 字符串',
+                },
+              ]}
+              onChange={(value) =>
+                setInputs({ ...inputs, ModelCacheWritePrice: value })
               }
             />
           </Col>

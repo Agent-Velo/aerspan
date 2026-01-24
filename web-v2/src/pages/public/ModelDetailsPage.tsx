@@ -301,8 +301,7 @@ export function ModelDetailsPage() {
   }
 
   const title = item.display_name?.trim() || item.model_name;
-  const cacheRead = typeof item.cache_read_price === 'number' ? item.cache_read_price : item.input_price;
-  const cacheWrite = typeof item.cache_write_price === 'number' ? item.cache_write_price : item.input_price * 1.25;
+  const hasCachePricing = typeof item.cache_read_price === 'number' && typeof item.cache_write_price === 'number';
   const hasTierPricing =
     (item.input_token_price_multiplier_tiers?.length || 0) > 0 ||
     (item.output_token_price_multiplier_tiers?.length || 0) > 0;
@@ -400,10 +399,18 @@ export function ModelDetailsPage() {
         <MetricTableCard
           leftLabel='Cache Read'
           rightLabel='Cache Write'
-          leftValue={item.quota_type === 1 ? '—' : formatUsd(cacheRead)}
-          rightValue={item.quota_type === 1 ? '—' : formatUsd(cacheWrite)}
-          leftHint={item.quota_type === 1 ? undefined : 'per 1M tokens'}
-          rightHint={item.quota_type === 1 ? undefined : 'per 1M tokens'}
+          leftValue={
+            item.quota_type === 1 ? '—' : hasCachePricing ? formatUsd(item.cache_read_price!) : '-'
+          }
+          rightValue={
+            item.quota_type === 1 ? '—' : hasCachePricing ? formatUsd(item.cache_write_price!) : '-'
+          }
+          leftHint={
+            item.quota_type === 1 ? undefined : hasCachePricing ? 'per 1M tokens' : 'Cache not supported'
+          }
+          rightHint={
+            item.quota_type === 1 ? undefined : hasCachePricing ? 'per 1M tokens' : 'Cache not supported'
+          }
         />
       </div>
 

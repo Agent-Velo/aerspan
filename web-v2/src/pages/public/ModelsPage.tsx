@@ -81,18 +81,42 @@ function formatUsd(value: number) {
   return `$${rounded}`;
 }
 
+function normalizeMultiSelectValue(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((v) => String(v)).filter(Boolean);
+  if (value === null || value === undefined) return [];
+  const asString = String(value).trim();
+  return asString ? [asString] : [];
+}
+
+function formatMultiSelectLabel({
+  placeholder,
+  isPlaceholder,
+  selectedItems,
+  selectedText,
+}: {
+  placeholder: string;
+  isPlaceholder: boolean;
+  selectedItems: unknown[];
+  selectedText: string;
+}) {
+  if (isPlaceholder) return placeholder;
+  const count = selectedItems.filter(Boolean).length;
+  if (count <= 1) return selectedText;
+  return `${count} selected`;
+}
+
 function ModelsFilters({
   loading,
   query,
   setQuery,
-  quotaType,
-  setQuotaType,
-  endpointType,
-  setEndpointType,
-  vendorId,
-  setVendorId,
-  tag,
-  setTag,
+  quotaTypes,
+  setQuotaTypes,
+  endpointTypes,
+  setEndpointTypes,
+  vendorIds,
+  setVendorIds,
+  tags,
+  setTags,
   vendors,
   allEndpointTypes,
   allTags,
@@ -102,14 +126,14 @@ function ModelsFilters({
   loading: boolean;
   query: string;
   setQuery: (value: string) => void;
-  quotaType: string;
-  setQuotaType: (value: string) => void;
-  endpointType: string;
-  setEndpointType: (value: string) => void;
-  vendorId: string;
-  setVendorId: (value: string) => void;
-  tag: string;
-  setTag: (value: string) => void;
+  quotaTypes: string[];
+  setQuotaTypes: (value: string[]) => void;
+  endpointTypes: string[];
+  setEndpointTypes: (value: string[]) => void;
+  vendorIds: string[];
+  setVendorIds: (value: string[]) => void;
+  tags: string[];
+  setTags: (value: string[]) => void;
   vendors: Vendor[];
   allEndpointTypes: string[];
   allTags: string[];
@@ -137,12 +161,22 @@ function ModelsFilters({
 
         <Select
           placeholder='Quota type'
-          value={quotaType || null}
-          onChange={(value) => setQuotaType(String(value || ''))}
+          selectionMode='multiple'
+          value={quotaTypes}
+          onChange={(value) => setQuotaTypes(normalizeMultiSelectValue(value))}
         >
           <Label>Quota type</Label>
           <Select.Trigger>
-            <Select.Value />
+            <Select.Value>
+              {({ isPlaceholder, selectedItems, selectedText }) =>
+                formatMultiSelectLabel({
+                  placeholder: 'Quota type',
+                  isPlaceholder,
+                  selectedItems,
+                  selectedText,
+                })
+              }
+            </Select.Value>
             <Select.Indicator />
           </Select.Trigger>
           <Select.Popover>
@@ -161,12 +195,22 @@ function ModelsFilters({
 
         <Select
           placeholder='Endpoint'
-          value={endpointType || null}
-          onChange={(value) => setEndpointType(String(value || ''))}
+          selectionMode='multiple'
+          value={endpointTypes}
+          onChange={(value) => setEndpointTypes(normalizeMultiSelectValue(value))}
         >
           <Label>Endpoint</Label>
           <Select.Trigger>
-            <Select.Value />
+            <Select.Value>
+              {({ isPlaceholder, selectedItems, selectedText }) =>
+                formatMultiSelectLabel({
+                  placeholder: 'Endpoint',
+                  isPlaceholder,
+                  selectedItems,
+                  selectedText,
+                })
+              }
+            </Select.Value>
             <Select.Indicator />
           </Select.Trigger>
           <Select.Popover>
@@ -181,10 +225,24 @@ function ModelsFilters({
           </Select.Popover>
         </Select>
 
-        <Select placeholder='Vendor' value={vendorId || null} onChange={(value) => setVendorId(String(value || ''))}>
+        <Select
+          placeholder='Vendor'
+          selectionMode='multiple'
+          value={vendorIds}
+          onChange={(value) => setVendorIds(normalizeMultiSelectValue(value))}
+        >
           <Label>Vendor</Label>
           <Select.Trigger>
-            <Select.Value />
+            <Select.Value>
+              {({ isPlaceholder, selectedItems, selectedText }) =>
+                formatMultiSelectLabel({
+                  placeholder: 'Vendor',
+                  isPlaceholder,
+                  selectedItems,
+                  selectedText,
+                })
+              }
+            </Select.Value>
             <Select.Indicator />
           </Select.Trigger>
           <Select.Popover>
@@ -199,10 +257,24 @@ function ModelsFilters({
           </Select.Popover>
         </Select>
 
-        <Select placeholder='Tag' value={tag || null} onChange={(value) => setTag(String(value || ''))}>
+        <Select
+          placeholder='Tag'
+          selectionMode='multiple'
+          value={tags}
+          onChange={(value) => setTags(normalizeMultiSelectValue(value))}
+        >
           <Label>Tag</Label>
           <Select.Trigger>
-            <Select.Value />
+            <Select.Value>
+              {({ isPlaceholder, selectedItems, selectedText }) =>
+                formatMultiSelectLabel({
+                  placeholder: 'Tag',
+                  isPlaceholder,
+                  selectedItems,
+                  selectedText,
+                })
+              }
+            </Select.Value>
             <Select.Indicator />
           </Select.Trigger>
           <Select.Popover>
@@ -233,20 +305,22 @@ export function ModelsPage() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
 
   const [query, setQuery] = useState('');
-  const [quotaType, setQuotaType] = useState<string>('');
-  const [endpointType, setEndpointType] = useState<string>('');
-  const [vendorId, setVendorId] = useState<string>('');
-  const [tag, setTag] = useState<string>('');
+  const [quotaTypes, setQuotaTypes] = useState<string[]>([]);
+  const [endpointTypes, setEndpointTypes] = useState<string[]>([]);
+  const [vendorIds, setVendorIds] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
 
   const resetFilters = () => {
     setQuery('');
-    setQuotaType('');
-    setEndpointType('');
-    setVendorId('');
-    setTag('');
+    setQuotaTypes([]);
+    setEndpointTypes([]);
+    setVendorIds([]);
+    setTags([]);
   };
 
-  const hasActiveFilters = Boolean(query || quotaType || endpointType || vendorId || tag);
+  const hasActiveFilters = Boolean(
+    query.trim() || quotaTypes.length || endpointTypes.length || vendorIds.length || tags.length,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -297,21 +371,23 @@ export function ModelsPage() {
         const haystack = `${item.model_name} ${item.description || ''} ${item.tags || ''} ${vendorName}`.toLowerCase();
         if (!haystack.includes(q)) return false;
       }
-      if (quotaType) {
-        if (String(item.quota_type) !== quotaType) return false;
+      if (quotaTypes.length) {
+        if (!quotaTypes.includes(String(item.quota_type))) return false;
       }
-      if (endpointType) {
-        if (!(item.supported_endpoint_types || []).includes(endpointType)) return false;
+      if (endpointTypes.length) {
+        const supported = item.supported_endpoint_types || [];
+        if (!endpointTypes.some((et) => supported.includes(et))) return false;
       }
-      if (vendorId) {
-        if (String(item.vendor_id || '') !== vendorId) return false;
+      if (vendorIds.length) {
+        if (!vendorIds.includes(String(item.vendor_id || ''))) return false;
       }
-      if (tag) {
-        if (!splitTags(item.tags).includes(tag)) return false;
+      if (tags.length) {
+        const itemTags = splitTags(item.tags);
+        if (!tags.some((t) => itemTags.includes(t))) return false;
       }
       return true;
     });
-  }, [items, query, quotaType, endpointType, vendorId, tag, vendorMap]);
+  }, [items, query, quotaTypes, endpointTypes, vendorIds, tags, vendorMap]);
 
   if (!pricingGate.enabled) {
     return (
@@ -341,14 +417,14 @@ export function ModelsPage() {
             loading={loading}
             query={query}
             setQuery={setQuery}
-            quotaType={quotaType}
-            setQuotaType={setQuotaType}
-            endpointType={endpointType}
-            setEndpointType={setEndpointType}
-            vendorId={vendorId}
-            setVendorId={setVendorId}
-            tag={tag}
-            setTag={setTag}
+            quotaTypes={quotaTypes}
+            setQuotaTypes={setQuotaTypes}
+            endpointTypes={endpointTypes}
+            setEndpointTypes={setEndpointTypes}
+            vendorIds={vendorIds}
+            setVendorIds={setVendorIds}
+            tags={tags}
+            setTags={setTags}
             vendors={vendors}
             allEndpointTypes={allEndpointTypes}
             allTags={allTags}

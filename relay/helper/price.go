@@ -89,10 +89,21 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 			outputPrice = inputPrice * ratio_setting.GetCompletionRatio(info.OriginModelName)
 		}
 
-		if v, ok := pricing_setting.GetModelCacheReadPrice(info.OriginModelName); ok {
-			cacheReadPrice = v
+		cacheReadPerMillion, hasCacheReadPrice := pricing_setting.GetModelCacheReadPrice(info.OriginModelName)
+		cacheWritePerMillion, hasCacheWritePrice := pricing_setting.GetModelCacheWritePrice(info.OriginModelName)
+		if hasCacheReadPrice && hasCacheWritePrice {
+			cacheReadPrice = cacheReadPerMillion
+			cacheCreationPrice = cacheWritePerMillion
+			cacheCreation5mPrice = cacheCreationPrice
+			// 固定1h和5min缓存写入价格的比例
+			cacheCreation1hPrice = cacheCreationPrice * claudeCacheCreation1hMultiplier
 		} else {
+			// Cache pricing is only enabled when both read & write prices are configured.
+			// If not fully configured, treat the model as not supporting cache.
 			cacheReadPrice = inputPrice
+			cacheCreationPrice = inputPrice
+			cacheCreation5mPrice = inputPrice
+			cacheCreation1hPrice = inputPrice
 		}
 
 		if v, ok := pricing_setting.GetModelImageInputPrice(info.OriginModelName); ok {
@@ -100,12 +111,6 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 		} else {
 			imageInputPrice = inputPrice
 		}
-
-		cacheCreationRatio, _ := ratio_setting.GetCreateCacheRatio(info.OriginModelName)
-		cacheCreationPrice = inputPrice * cacheCreationRatio
-		cacheCreation5mPrice = cacheCreationPrice
-		// 固定1h和5min缓存写入价格的比例
-		cacheCreation1hPrice = cacheCreationPrice * claudeCacheCreation1hMultiplier
 
 		if v, ok := pricing_setting.GetModelAudioInputPrice(info.OriginModelName); ok {
 			audioInputPrice = v

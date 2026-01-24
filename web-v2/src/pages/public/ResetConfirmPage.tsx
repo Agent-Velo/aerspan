@@ -34,14 +34,13 @@ export function ResetConfirmPage() {
   };
 
   return (
-    <div className='mx-auto w-full max-w-xl'>
-      <Card>
-        <Card.Header>
-          <Card.Title>Confirm reset</Card.Title>
-          <Card.Description>This will generate a new password.</Card.Description>
-        </Card.Header>
+    <div className='w-full max-w-lg pb-4 flex flex-col items-center'>
+      <div className='pb-8'>
+        <h1 className='text-3xl font-semibold'>Confirm reset</h1>
+      </div>
 
-        <Card.Content className='space-y-2 text-sm'>
+      <Card className='pt-6 w-md'>
+        <Card.Content className='space-y-4 mr-4.5 ml-4.5'>
           <div>
             <span className='text-muted'>Email: </span>
             <span>{email || '—'}</span>
@@ -51,11 +50,9 @@ export function ResetConfirmPage() {
             <span className='break-all'>{token || '—'}</span>
           </div>
 
-          <div className='flex flex-wrap gap-2 pt-2'>
-            <Button onPress={reset} isDisabled={submitting}>
-              Reset now
-            </Button>
-          </div>
+          <Button className='w-full' onPress={reset} isDisabled={submitting}>
+            Reset now
+          </Button>
 
           {newPassword ? (
             <Card variant='secondary'>

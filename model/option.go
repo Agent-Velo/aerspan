@@ -146,6 +146,7 @@ func InitOptionMap() {
 	common.OptionMap["ModelInputTokenPriceMultiplier"] = pricing_setting.ModelInputTokenPriceMultiplier2JSONString()
 	common.OptionMap["ModelOutputTokenPriceMultiplier"] = pricing_setting.ModelOutputTokenPriceMultiplier2JSONString()
 	common.OptionMap["ModelCacheReadPrice"] = pricing_setting.ModelCacheReadPrice2JSONString()
+	common.OptionMap["ModelCacheWritePrice"] = pricing_setting.ModelCacheWritePrice2JSONString()
 	common.OptionMap["ModelImageInputPrice"] = pricing_setting.ModelImageInputPrice2JSONString()
 	common.OptionMap["ModelAudioInputPrice"] = pricing_setting.ModelAudioInputPrice2JSONString()
 	common.OptionMap["ModelAudioOutputPrice"] = pricing_setting.ModelAudioOutputPrice2JSONString()
@@ -437,6 +438,8 @@ func updateOptionMap(key string, value string) (err error) {
 		err = pricing_setting.UpdateModelOutputTokenPriceMultiplierByJSONString(value)
 	case "ModelCacheReadPrice":
 		err = pricing_setting.UpdateModelCacheReadPriceByJSONString(value)
+	case "ModelCacheWritePrice":
+		err = pricing_setting.UpdateModelCacheWritePriceByJSONString(value)
 	case "ModelImageInputPrice":
 		err = pricing_setting.UpdateModelImageInputPriceByJSONString(value)
 	case "ModelAudioInputPrice":

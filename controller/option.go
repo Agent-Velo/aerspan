@@ -215,6 +215,15 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "ModelCacheWritePrice":
+		err = pricing_setting.UpdateModelCacheWritePriceByJSONString(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "Failed to update model cache write price: " + err.Error(),
+			})
+			return
+		}
 	case "ModelImageInputPrice":
 		err = pricing_setting.UpdateModelImageInputPriceByJSONString(option.Value.(string))
 		if err != nil {

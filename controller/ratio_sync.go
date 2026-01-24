@@ -243,6 +243,7 @@ func FetchUpstreamRatios(c *gin.Context) {
 				InputPrice       float64 `json:"input_price"`
 				OutputPrice      float64 `json:"output_price"`
 				CacheReadPrice   float64 `json:"cache_read_price"`
+				CacheWritePrice  float64 `json:"cache_write_price"`
 				ImageInputPrice  float64 `json:"image_input_price"`
 				AudioInputPrice  float64 `json:"audio_input_price"`
 				AudioOutputPrice float64 `json:"audio_output_price"`
@@ -257,6 +258,7 @@ func FetchUpstreamRatios(c *gin.Context) {
 			modelInputPriceMap := make(map[string]float64)
 			modelOutputPriceMap := make(map[string]float64)
 			modelCacheReadPriceMap := make(map[string]float64)
+			modelCacheWritePriceMap := make(map[string]float64)
 			modelImageInputPriceMap := make(map[string]float64)
 			modelAudioInputPriceMap := make(map[string]float64)
 			modelAudioOutputPriceMap := make(map[string]float64)
@@ -271,6 +273,9 @@ func FetchUpstreamRatios(c *gin.Context) {
 				modelOutputPriceMap[item.ModelName] = item.OutputPrice
 				if item.CacheReadPrice != 0 {
 					modelCacheReadPriceMap[item.ModelName] = item.CacheReadPrice
+				}
+				if item.CacheWritePrice != 0 {
+					modelCacheWritePriceMap[item.ModelName] = item.CacheWritePrice
 				}
 				if item.ImageInputPrice != 0 {
 					modelImageInputPriceMap[item.ModelName] = item.ImageInputPrice
@@ -305,6 +310,13 @@ func FetchUpstreamRatios(c *gin.Context) {
 					anyMap[k] = v
 				}
 				converted["model_cache_read_price"] = anyMap
+			}
+			if len(modelCacheWritePriceMap) > 0 {
+				anyMap := make(map[string]any, len(modelCacheWritePriceMap))
+				for k, v := range modelCacheWritePriceMap {
+					anyMap[k] = v
+				}
+				converted["model_cache_write_price"] = anyMap
 			}
 			if len(modelImageInputPriceMap) > 0 {
 				anyMap := make(map[string]any, len(modelImageInputPriceMap))

@@ -1,5 +1,6 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom';
 import { PublicLayout } from '@/layouts/PublicLayout';
+import { AuthLayout } from '@/layouts/AuthLayout';
 import { ConsoleLayout } from '@/layouts/ConsoleLayout';
 import { RequireAuth, AuthRedirect, RequirePricingAuth } from '@/router/guards';
 
@@ -76,8 +77,16 @@ export function createAppRouter() {
         { path: 'terms', element: <TermsPage /> },
         { path: 'user-agreement', element: <Navigate to='/terms' replace /> },
         { path: 'privacy-policy', element: <PrivacyPolicyPage /> },
+        { path: 'setup', element: <SetupPage /> },
+        { path: '*', element: <NotFoundPage /> },
+      ],
+    },
+    {
+      path: '/auth',
+      element: <AuthLayout />,
+      children: [
         {
-          path: 'auth/signin',
+          path: 'signin',
           element: (
             <AuthRedirect>
               <LoginPage />
@@ -85,19 +94,17 @@ export function createAppRouter() {
           ),
         },
         {
-          path: 'auth/signup',
+          path: 'signup',
           element: (
             <AuthRedirect>
               <RegisterPage />
             </AuthRedirect>
           ),
         },
-        { path: 'auth/magic', element: <MagicLinkCallbackPage /> },
-        { path: 'auth/recover', element: <ResetRequestPage /> },
-        { path: 'auth/recover/confirm', element: <ResetConfirmPage /> },
-        { path: 'auth/callback/:provider', element: <OAuthCallbackPage /> },
-        { path: 'setup', element: <SetupPage /> },
-        { path: '*', element: <NotFoundPage /> },
+        { path: 'magic', element: <MagicLinkCallbackPage /> },
+        { path: 'recover', element: <ResetRequestPage /> },
+        { path: 'recover/confirm', element: <ResetConfirmPage /> },
+        { path: 'callback/:provider', element: <OAuthCallbackPage /> },
       ],
     },
     {

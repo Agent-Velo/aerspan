@@ -430,13 +430,11 @@ func updatePricing() {
 				// Backward-compatible fallback for models without explicit output pricing.
 				pricing.OutputPrice = inputPrice * ratio_setting.GetCompletionRatio(model)
 			}
-			if p, ok := pricing_setting.GetModelCacheReadPrice(model); ok {
-				pricing.CacheReadPrice = p
-			}
-			if createCacheRatio, ok := ratio_setting.GetCreateCacheRatio(model); ok {
-				pricing.CacheWritePrice = inputPrice * createCacheRatio
-			} else {
-				pricing.CacheWritePrice = inputPrice * 1.25
+			cacheReadPrice, hasCacheReadPrice := pricing_setting.GetModelCacheReadPrice(model)
+			cacheWritePrice, hasCacheWritePrice := pricing_setting.GetModelCacheWritePrice(model)
+			if hasCacheReadPrice && hasCacheWritePrice {
+				pricing.CacheReadPrice = cacheReadPrice
+				pricing.CacheWritePrice = cacheWritePrice
 			}
 			if p, ok := pricing_setting.GetModelImageInputPrice(model); ok {
 				pricing.ImageInputPrice = p

@@ -98,12 +98,8 @@ function normalizeEndpointOrder(all: string[]) {
   return [...inKnown, ...others];
 }
 
-function getCacheReadPrice(item: PricingItem) {
-  return typeof item.cache_read_price === 'number' ? item.cache_read_price : item.input_price;
-}
-
-function getCacheWritePrice(item: PricingItem) {
-  return typeof item.cache_write_price === 'number' ? item.cache_write_price : item.input_price * 1.25;
+function hasCachePricing(item: PricingItem) {
+  return typeof item.cache_read_price === 'number' && typeof item.cache_write_price === 'number';
 }
 
 function buildCapabilitySets(item: PricingItem) {
@@ -425,15 +421,19 @@ export function ModelComparePage() {
                   <td className='align-top'>
                     {leftItem.quota_type === 1 ? (
                       <PriceValue value='—' align='right' />
+                    ) : hasCachePricing(leftItem) ? (
+                      <PriceValue value={formatUsd(leftItem.cache_read_price!)} hint='per 1M tokens' align='right' />
                     ) : (
-                      <PriceValue value={formatUsd(getCacheReadPrice(leftItem))} hint='per 1M tokens' align='right' />
+                      <PriceValue value='-' hint='Cache not supported' align='right' />
                     )}
                   </td>
                   <td className='align-top'>
                     {rightItem.quota_type === 1 ? (
                       <PriceValue value='—' align='right' />
+                    ) : hasCachePricing(rightItem) ? (
+                      <PriceValue value={formatUsd(rightItem.cache_read_price!)} hint='per 1M tokens' align='right' />
                     ) : (
-                      <PriceValue value={formatUsd(getCacheReadPrice(rightItem))} hint='per 1M tokens' align='right' />
+                      <PriceValue value='-' hint='Cache not supported' align='right' />
                     )}
                   </td>
                 </tr>
@@ -442,15 +442,19 @@ export function ModelComparePage() {
                   <td className='align-top'>
                     {leftItem.quota_type === 1 ? (
                       <PriceValue value='—' align='right' />
+                    ) : hasCachePricing(leftItem) ? (
+                      <PriceValue value={formatUsd(leftItem.cache_write_price!)} hint='per 1M tokens' align='right' />
                     ) : (
-                      <PriceValue value={formatUsd(getCacheWritePrice(leftItem))} hint='per 1M tokens' align='right' />
+                      <PriceValue value='-' hint='Cache not supported' align='right' />
                     )}
                   </td>
                   <td className='align-top'>
                     {rightItem.quota_type === 1 ? (
                       <PriceValue value='—' align='right' />
+                    ) : hasCachePricing(rightItem) ? (
+                      <PriceValue value={formatUsd(rightItem.cache_write_price!)} hint='per 1M tokens' align='right' />
                     ) : (
-                      <PriceValue value={formatUsd(getCacheWritePrice(rightItem))} hint='per 1M tokens' align='right' />
+                      <PriceValue value='-' hint='Cache not supported' align='right' />
                     )}
                   </td>
                 </tr>

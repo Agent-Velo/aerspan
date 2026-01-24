@@ -25,6 +25,9 @@ var (
 	modelCacheReadPriceMap      map[string]float64
 	modelCacheReadPriceMapMutex sync.RWMutex
 
+	modelCacheWritePriceMap      map[string]float64
+	modelCacheWritePriceMapMutex sync.RWMutex
+
 	modelImageInputPriceMap      map[string]float64
 	modelImageInputPriceMapMutex sync.RWMutex
 
@@ -51,6 +54,10 @@ func InitPricingSettings() {
 	modelCacheReadPriceMapMutex.Lock()
 	modelCacheReadPriceMap = map[string]float64{}
 	modelCacheReadPriceMapMutex.Unlock()
+
+	modelCacheWritePriceMapMutex.Lock()
+	modelCacheWritePriceMap = map[string]float64{}
+	modelCacheWritePriceMapMutex.Unlock()
 
 	modelImageInputPriceMapMutex.Lock()
 	modelImageInputPriceMap = map[string]float64{}
@@ -107,6 +114,17 @@ func GetModelCacheReadPrice(name string) (float64, bool) {
 	defer modelCacheReadPriceMapMutex.RUnlock()
 	name = FormatMatchingModelName(name)
 	price, ok := modelCacheReadPriceMap[name]
+	if !ok {
+		return 0, false
+	}
+	return price, true
+}
+
+func GetModelCacheWritePrice(name string) (float64, bool) {
+	modelCacheWritePriceMapMutex.RLock()
+	defer modelCacheWritePriceMapMutex.RUnlock()
+	name = FormatMatchingModelName(name)
+	price, ok := modelCacheWritePriceMap[name]
 	if !ok {
 		return 0, false
 	}
@@ -236,6 +254,28 @@ func UpdateModelCacheReadPriceByJSONString(jsonStr string) error {
 	return nil
 }
 
+func ModelCacheWritePrice2JSONString() string {
+	modelCacheWritePriceMapMutex.RLock()
+	defer modelCacheWritePriceMapMutex.RUnlock()
+	jsonBytes, err := json.Marshal(modelCacheWritePriceMap)
+	if err != nil {
+		common.SysError("error marshalling model cache write price: " + err.Error())
+	}
+	return string(jsonBytes)
+}
+
+func UpdateModelCacheWritePriceByJSONString(jsonStr string) error {
+	tmp := make(map[string]float64)
+	if err := json.Unmarshal([]byte(jsonStr), &tmp); err != nil {
+		return err
+	}
+	modelCacheWritePriceMapMutex.Lock()
+	modelCacheWritePriceMap = tmp
+	modelCacheWritePriceMapMutex.Unlock()
+	InvalidateExposedDataCache()
+	return nil
+}
+
 func ModelImageInputPrice2JSONString() string {
 	modelImageInputPriceMapMutex.RLock()
 	defer modelImageInputPriceMapMutex.RUnlock()
@@ -318,6 +358,12 @@ func GetModelCacheReadPriceCopy() map[string]float64 {
 	modelCacheReadPriceMapMutex.RLock()
 	defer modelCacheReadPriceMapMutex.RUnlock()
 	return copyFloatMap(modelCacheReadPriceMap)
+}
+
+func GetModelCacheWritePriceCopy() map[string]float64 {
+	modelCacheWritePriceMapMutex.RLock()
+	defer modelCacheWritePriceMapMutex.RUnlock()
+	return copyFloatMap(modelCacheWritePriceMap)
 }
 
 func GetModelImageInputPriceCopy() map[string]float64 {

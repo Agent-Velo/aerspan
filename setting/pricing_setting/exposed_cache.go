@@ -47,6 +47,7 @@ func GetExposedData() gin.H {
 		"model_input_price":        GetModelInputPriceCopy(),
 		"model_output_price":       GetModelOutputPriceCopy(),
 		"model_cache_read_price":   GetModelCacheReadPriceCopy(),
+		"model_cache_write_price":  GetModelCacheWritePriceCopy(),
 		"model_image_input_price":  GetModelImageInputPriceCopy(),
 		"model_audio_input_price":  GetModelAudioInputPriceCopy(),
 		"model_audio_output_price": GetModelAudioOutputPriceCopy(),

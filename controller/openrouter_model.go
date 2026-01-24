@@ -178,17 +178,23 @@ func ListOpenRouterModels(c *gin.Context) {
 			}
 		}
 		if pricing.InputCacheRead == "" {
-			if cacheReadPerMillion, ok := pricing_setting.GetModelCacheReadPrice(slug); ok {
-				pricing.InputCacheRead = formatUSDPerMillionToUSDPerTokenString(cacheReadPerMillion)
+			if cacheReadPerMillion, okRead := pricing_setting.GetModelCacheReadPrice(slug); okRead {
+				if cacheWritePerMillion, okWrite := pricing_setting.GetModelCacheWritePrice(slug); okWrite {
+					pricing.InputCacheRead = formatUSDPerMillionToUSDPerTokenString(cacheReadPerMillion)
+					if pricing.InputCacheWrite == "" {
+						pricing.InputCacheWrite = formatUSDPerMillionToUSDPerTokenString(cacheWritePerMillion)
+					}
+				}
 			}
 		}
 		if pricing.InputCacheWrite == "" {
-			if inputPricePerMillion, ok, _ := pricing_setting.GetModelInputPrice(slug); ok {
-				cacheWritePerMillion := inputPricePerMillion * 1.25
-				if r, ok := ratio_setting.GetCreateCacheRatio(slug); ok {
-					cacheWritePerMillion = inputPricePerMillion * r
+			if cacheReadPerMillion, okRead := pricing_setting.GetModelCacheReadPrice(slug); okRead {
+				if cacheWritePerMillion, okWrite := pricing_setting.GetModelCacheWritePrice(slug); okWrite {
+					pricing.InputCacheWrite = formatUSDPerMillionToUSDPerTokenString(cacheWritePerMillion)
+					if pricing.InputCacheRead == "" {
+						pricing.InputCacheRead = formatUSDPerMillionToUSDPerTokenString(cacheReadPerMillion)
+					}
 				}
-				pricing.InputCacheWrite = formatUSDPerMillionToUSDPerTokenString(cacheWritePerMillion)
 			}
 		}
 		if pricing.Prompt == "" {

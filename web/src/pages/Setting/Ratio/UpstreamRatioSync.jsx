@@ -272,6 +272,7 @@ export default function UpstreamRatioSync(props) {
       ModelInputPrice: JSON.parse(props.options.ModelInputPrice || '{}'),
       ModelOutputPrice: JSON.parse(props.options.ModelOutputPrice || '{}'),
       ModelCacheReadPrice: JSON.parse(props.options.ModelCacheReadPrice || '{}'),
+      ModelCacheWritePrice: JSON.parse(props.options.ModelCacheWritePrice || '{}'),
       ModelImageInputPrice: JSON.parse(props.options.ModelImageInputPrice || '{}'),
       ModelAudioInputPrice: JSON.parse(props.options.ModelAudioInputPrice || '{}'),
       ModelAudioOutputPrice: JSON.parse(props.options.ModelAudioOutputPrice || '{}'),
@@ -286,6 +287,7 @@ export default function UpstreamRatioSync(props) {
         currentRatios.ModelInputPrice[model] !== undefined ||
         currentRatios.ModelOutputPrice[model] !== undefined ||
         currentRatios.ModelCacheReadPrice[model] !== undefined ||
+        currentRatios.ModelCacheWritePrice[model] !== undefined ||
         currentRatios.ModelImageInputPrice[model] !== undefined ||
         currentRatios.ModelAudioInputPrice[model] !== undefined ||
         currentRatios.ModelAudioOutputPrice[model] !== undefined
@@ -351,6 +353,7 @@ export default function UpstreamRatioSync(props) {
         ModelInputPrice: { ...currentRatios.ModelInputPrice },
         ModelOutputPrice: { ...currentRatios.ModelOutputPrice },
         ModelCacheReadPrice: { ...currentRatios.ModelCacheReadPrice },
+        ModelCacheWritePrice: { ...currentRatios.ModelCacheWritePrice },
         ModelImageInputPrice: { ...currentRatios.ModelImageInputPrice },
         ModelAudioInputPrice: { ...currentRatios.ModelAudioInputPrice },
         ModelAudioOutputPrice: { ...currentRatios.ModelAudioOutputPrice },
@@ -366,6 +369,7 @@ export default function UpstreamRatioSync(props) {
           delete finalRatios.ModelInputPrice[model];
           delete finalRatios.ModelOutputPrice[model];
           delete finalRatios.ModelCacheReadPrice[model];
+          delete finalRatios.ModelCacheWritePrice[model];
           delete finalRatios.ModelImageInputPrice[model];
           delete finalRatios.ModelAudioInputPrice[model];
           delete finalRatios.ModelAudioOutputPrice[model];
@@ -495,6 +499,9 @@ export default function UpstreamRatioSync(props) {
               <Select.Option value='model_cache_read_price'>
                 {t('缓存读取价格')}
               </Select.Option>
+              <Select.Option value='model_cache_write_price'>
+                {t('缓存写入价格')}
+              </Select.Option>
               <Select.Option value='model_image_input_price'>
                 {t('图片输入价格')}
               </Select.Option>
@@ -599,6 +606,7 @@ export default function UpstreamRatioSync(props) {
             model_input_price: t('模型输入价格'),
             model_output_price: t('模型输出价格'),
             model_cache_read_price: t('缓存读取价格'),
+            model_cache_write_price: t('缓存写入价格'),
             model_image_input_price: t('图片输入价格'),
             model_audio_input_price: t('音频输入价格'),
             model_audio_output_price: t('音频输出价格'),
@@ -885,6 +893,7 @@ export default function UpstreamRatioSync(props) {
             ModelInputPrice: JSON.parse(props.options.ModelInputPrice || '{}'),
             ModelOutputPrice: JSON.parse(props.options.ModelOutputPrice || '{}'),
             ModelCacheReadPrice: JSON.parse(props.options.ModelCacheReadPrice || '{}'),
+            ModelCacheWritePrice: JSON.parse(props.options.ModelCacheWritePrice || '{}'),
             ModelImageInputPrice: JSON.parse(props.options.ModelImageInputPrice || '{}'),
             ModelAudioInputPrice: JSON.parse(props.options.ModelAudioInputPrice || '{}'),
             ModelAudioOutputPrice: JSON.parse(props.options.ModelAudioOutputPrice || '{}'),

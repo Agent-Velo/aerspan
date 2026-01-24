@@ -1,13 +1,26 @@
-import { useEffect, useMemo, useState } from 'react';
-import Turnstile from 'react-turnstile';
-import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
-import { fetchJson } from '@/api/client';
-import type { ApiResponse, UserBase } from '@/api/types';
-import { toast } from '@/ui/toast';
-import { useAuth } from '@/stores/auth/AuthStore';
-import { useStatus } from '@/stores/status/StatusStore';
-import { buildAssertionResult, isPasskeySupported, prepareCredentialRequestOptions } from '@/lib/passkey';
-import { Alert, Button, Card, Checkbox, Input, Label, TextField } from '@/components/ui/heroui';
+import { useEffect, useMemo, useState } from "react";
+import Turnstile from "react-turnstile";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
+import { fetchJson } from "@/api/client";
+import type { ApiResponse, UserBase } from "@/api/types";
+import { toast } from "@/ui/toast";
+import { useAuth } from "@/stores/auth/AuthStore";
+import { useStatus } from "@/stores/status/StatusStore";
+import {
+  buildAssertionResult,
+  isPasskeySupported,
+  prepareCredentialRequestOptions,
+} from "@/lib/passkey";
+import {
+  Alert,
+  Button,
+  Card,
+  Checkbox,
+  Input,
+  Label,
+  Separator,
+  TextField,
+} from "@/components/ui/heroui";
 
 type LoginResponse =
   | ApiResponse<UserBase>
@@ -16,7 +29,7 @@ type LoginResponse =
     }>;
 
 function getInviteCode(): string | null {
-  const raw = localStorage.getItem('via') || localStorage.getItem('aff');
+  const raw = localStorage.getItem("via") || localStorage.getItem("aff");
   return raw && raw.trim() ? raw.trim() : null;
 }
 
@@ -26,27 +39,43 @@ export function LoginPage() {
   const { login } = useAuth();
   const { status } = useStatus();
 
-  const [method, setMethod] = useState<'magic' | 'password'>('magic');
-  const [magicEmail, setMagicEmail] = useState('');
+  const [method, setMethod] = useState<"magic" | "password">("magic");
+  const [magicEmail, setMagicEmail] = useState("");
   const [magicLinkSent, setMagicLinkSent] = useState(false);
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [twoFactorCode, setTwoFactorCode] = useState("");
 
-  const [wechatCode, setWechatCode] = useState('');
+  const [wechatCode, setWechatCode] = useState("");
 
-  const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
 
-  const [step, setStep] = useState<'password' | '2fa'>('password');
+  const [step, setStep] = useState<"password" | "2fa">("password");
   const [submitting, setSubmitting] = useState(false);
   const [passkeyAvailable, setPasskeyAvailable] = useState(false);
 
   const turnstileEnabled = Boolean(status?.turnstile_check);
-  const turnstileSiteKey = (status?.turnstile_site_key as string | undefined) || '';
+  const turnstileSiteKey =
+    (status?.turnstile_site_key as string | undefined) || "";
 
-  const needsTerms = Boolean(status?.user_agreement_enabled || status?.privacy_policy_enabled);
+  const needsTerms = Boolean(
+    status?.user_agreement_enabled || status?.privacy_policy_enabled,
+  );
+
+  const hasTelegramLogin = Boolean(
+    status?.telegram_oauth && status?.telegram_bot_name,
+  );
+  const hasOtherMethods = Boolean(
+    status?.github_oauth ||
+    status?.discord_oauth ||
+    status?.linuxdo_oauth ||
+    status?.oidc_enabled ||
+    status?.wechat_login ||
+    status?.passkey_login ||
+    hasTelegramLogin,
+  );
 
   useEffect(() => {
     isPasskeySupported()
@@ -56,20 +85,20 @@ export function LoginPage() {
 
   const redirectTo = useMemo(() => {
     const from = (location.state as any)?.from?.pathname as string | undefined;
-    return from || '/dashboard';
+    return from || "/dashboard";
   }, [location.state]);
 
   const ensureTerms = () => {
     if (!needsTerms) return true;
     if (termsAccepted) return true;
-    toast.warning('Please accept the Terms and Privacy Policy.');
+    toast.warning("Please accept the Terms and Privacy Policy.");
     return false;
   };
 
   const ensureTurnstile = () => {
     if (!turnstileEnabled) return true;
     if (turnstileToken) return true;
-    toast.info('Please complete Turnstile verification.');
+    toast.info("Please complete Turnstile verification.");
     return false;
   };
 
@@ -82,21 +111,21 @@ export function LoginPage() {
     if (!ensureTerms()) return;
     if (!ensureTurnstile()) return;
     if (!magicEmail.trim()) {
-      toast.warning('Please enter your email.');
+      toast.warning("Please enter your email.");
       return;
     }
     setSubmitting(true);
     try {
-      await fetchJson<ApiResponse<any>>('/api/user/magic_link', {
+      await fetchJson<ApiResponse<any>>("/api/user/magic_link", {
         params: {
           email: magicEmail.trim(),
-          action: 'login',
+          action: "login",
           redirect: redirectTo,
           turnstile: turnstileEnabled ? turnstileToken : undefined,
         },
       });
       setMagicLinkSent(true);
-      toast.success('If the account exists, a magic link has been sent.');
+      toast.success("If the account exists, a magic link has been sent.");
     } finally {
       setSubmitting(false);
     }
@@ -106,20 +135,20 @@ export function LoginPage() {
     if (!ensureTerms()) return;
     if (!ensureTurnstile()) return;
     if (!username.trim() || !password) {
-      toast.warning('Please enter username/email and password.');
+      toast.warning("Please enter username/email and password.");
       return;
     }
     setSubmitting(true);
     try {
-      const res = await fetchJson<LoginResponse>('/api/user/login', {
-        method: 'POST',
+      const res = await fetchJson<LoginResponse>("/api/user/login", {
+        method: "POST",
         params: turnstileEnabled ? { turnstile: turnstileToken } : undefined,
         body: { username: username.trim(), password },
       });
 
       if ((res.data as any)?.require_2fa) {
-        setStep('2fa');
-        toast.info('2FA required.');
+        setStep("2fa");
+        toast.info("2FA required.");
         return;
       }
 
@@ -132,15 +161,18 @@ export function LoginPage() {
   const handle2faLogin = async () => {
     if (!ensureTerms()) return;
     if (!twoFactorCode.trim()) {
-      toast.warning('Please enter your 2FA code.');
+      toast.warning("Please enter your 2FA code.");
       return;
     }
     setSubmitting(true);
     try {
-      const res = await fetchJson<ApiResponse<UserBase>>('/api/user/login/2fa', {
-        method: 'POST',
-        body: { code: twoFactorCode.trim() },
-      });
+      const res = await fetchJson<ApiResponse<UserBase>>(
+        "/api/user/login/2fa",
+        {
+          method: "POST",
+          body: { code: twoFactorCode.trim() },
+        },
+      );
       completeLogin(res.data);
     } finally {
       setSubmitting(false);
@@ -149,70 +181,72 @@ export function LoginPage() {
 
   const getOAuthState = async () => {
     const aff = getInviteCode();
-    const res = await fetchJson<ApiResponse<string>>('/api/oauth/state', {
+    const res = await fetchJson<ApiResponse<string>>("/api/oauth/state", {
       params: aff ? { via: aff } : undefined,
     });
     return res.data;
   };
 
-  const startOAuth = async (provider: 'github' | 'discord' | 'linuxdo' | 'oidc') => {
+  const startOAuth = async (
+    provider: "github" | "discord" | "linuxdo" | "oidc",
+  ) => {
     if (!ensureTerms()) return;
     const state = await getOAuthState();
     if (!state) return;
 
     const origin = window.location.origin;
-    if (provider === 'github') {
+    if (provider === "github") {
       const clientId = status?.github_client_id as string | undefined;
-      if (!clientId) return toast.error('GitHub OAuth is not configured.');
+      if (!clientId) return toast.error("GitHub OAuth is not configured.");
       window.open(
         `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(clientId)}&state=${encodeURIComponent(state)}&scope=user:email`,
-        '_blank',
+        "_blank",
       );
       return;
     }
-    if (provider === 'discord') {
+    if (provider === "discord") {
       const clientId = status?.discord_client_id as string | undefined;
-      if (!clientId) return toast.error('Discord OAuth is not configured.');
+      if (!clientId) return toast.error("Discord OAuth is not configured.");
       const redirectUri = `${origin}/auth/callback/discord`;
-      const scope = 'identify+openid';
+      const scope = "identify+openid";
       window.open(
         `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${encodeURIComponent(state)}`,
-        '_blank',
+        "_blank",
       );
       return;
     }
-    if (provider === 'linuxdo') {
+    if (provider === "linuxdo") {
       const clientId = status?.linuxdo_client_id as string | undefined;
-      if (!clientId) return toast.error('LinuxDO OAuth is not configured.');
+      if (!clientId) return toast.error("LinuxDO OAuth is not configured.");
       window.open(
         `https://connect.linux.do/oauth2/authorize?response_type=code&client_id=${encodeURIComponent(clientId)}&state=${encodeURIComponent(state)}`,
-        '_blank',
+        "_blank",
       );
       return;
     }
 
     const authUrl = status?.oidc_authorization_endpoint as string | undefined;
     const clientId = status?.oidc_client_id as string | undefined;
-    if (!authUrl || !clientId) return toast.error('OIDC is not configured.');
+    if (!authUrl || !clientId) return toast.error("OIDC is not configured.");
 
     const url = new URL(authUrl);
-    url.searchParams.set('client_id', clientId);
-    url.searchParams.set('redirect_uri', `${origin}/auth/callback/oidc`);
-    url.searchParams.set('response_type', 'code');
-    url.searchParams.set('scope', 'openid profile email');
-    url.searchParams.set('state', state);
-    window.open(url.toString(), '_blank');
+    url.searchParams.set("client_id", clientId);
+    url.searchParams.set("redirect_uri", `${origin}/auth/callback/oidc`);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", "openid profile email");
+    url.searchParams.set("state", state);
+    window.open(url.toString(), "_blank");
   };
 
   const loginWithWeChat = async () => {
     if (!ensureTerms()) return;
     if (!wechatCode.trim()) {
-      toast.warning('Please enter the WeChat verification code.');
+      toast.warning("Please enter the WeChat verification code.");
       return;
     }
     setSubmitting(true);
     try {
-      const res = await fetchJson<ApiResponse<UserBase>>('/api/oauth/wechat', {
+      const res = await fetchJson<ApiResponse<UserBase>>("/api/oauth/wechat", {
         params: { code: wechatCode.trim() },
       });
       completeLogin(res.data);
@@ -224,23 +258,33 @@ export function LoginPage() {
   const loginWithPasskey = async () => {
     if (!ensureTerms()) return;
     if (!passkeyAvailable || !window.PublicKeyCredential) {
-      toast.info('Passkey is not supported on this device.');
+      toast.info("Passkey is not supported on this device.");
       return;
     }
     setSubmitting(true);
     try {
-      const begin = await fetchJson<ApiResponse<any>>('/api/user/passkey/login/begin', { method: 'POST' });
-      const publicKey = prepareCredentialRequestOptions(begin.data?.options || begin.data);
-      const assertion = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential;
+      const begin = await fetchJson<ApiResponse<any>>(
+        "/api/user/passkey/login/begin",
+        { method: "POST" },
+      );
+      const publicKey = prepareCredentialRequestOptions(
+        begin.data?.options || begin.data,
+      );
+      const assertion = (await navigator.credentials.get({
+        publicKey,
+      })) as PublicKeyCredential;
       const payload = buildAssertionResult(assertion);
-      const finish = await fetchJson<ApiResponse<UserBase>>('/api/user/passkey/login/finish', {
-        method: 'POST',
-        body: payload,
-      });
+      const finish = await fetchJson<ApiResponse<UserBase>>(
+        "/api/user/passkey/login/finish",
+        {
+          method: "POST",
+          body: payload,
+        },
+      );
       completeLogin(finish.data);
     } catch (err: any) {
-      if (err?.name === 'AbortError') {
-        toast.info('Passkey login cancelled.');
+      if (err?.name === "AbortError") {
+        toast.info("Passkey login cancelled.");
       }
     } finally {
       setSubmitting(false);
@@ -250,226 +294,310 @@ export function LoginPage() {
   useEffect(() => {
     if (!status?.telegram_oauth || !status?.telegram_bot_name) return;
 
-    const containerId = 'telegram-login-container';
+    const containerId = "telegram-login-container";
     const container = document.getElementById(containerId);
     if (!container) return;
-    container.innerHTML = '';
+    container.innerHTML = "";
 
     (window as any).onTelegramAuth = async (user: any) => {
       try {
-        const res = await fetchJson<ApiResponse<UserBase>>('/api/oauth/telegram/login', {
-          params: {
-            id: user.id,
-            first_name: user.first_name,
-            last_name: user.last_name,
-            username: user.username,
-            photo_url: user.photo_url,
-            auth_date: user.auth_date,
-            hash: user.hash,
+        const res = await fetchJson<ApiResponse<UserBase>>(
+          "/api/oauth/telegram/login",
+          {
+            params: {
+              id: user.id,
+              first_name: user.first_name,
+              last_name: user.last_name,
+              username: user.username,
+              photo_url: user.photo_url,
+              auth_date: user.auth_date,
+              hash: user.hash,
+            },
           },
-        });
+        );
         completeLogin(res.data);
       } catch {
         // handled globally
       }
     };
 
-    const script = document.createElement('script');
+    const script = document.createElement("script");
     script.async = true;
-    script.src = 'https://telegram.org/js/telegram-widget.js?22';
-    script.setAttribute('data-telegram-login', String(status.telegram_bot_name));
-    script.setAttribute('data-size', 'large');
-    script.setAttribute('data-userpic', 'false');
-    script.setAttribute('data-request-access', 'write');
-    script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+    script.src = "https://telegram.org/js/telegram-widget.js?22";
+    script.setAttribute(
+      "data-telegram-login",
+      String(status.telegram_bot_name),
+    );
+    script.setAttribute("data-size", "large");
+    script.setAttribute("data-userpic", "false");
+    script.setAttribute("data-request-access", "write");
+    script.setAttribute("data-onauth", "onTelegramAuth(user)");
     container.appendChild(script);
 
     return () => {
       delete (window as any).onTelegramAuth;
-      container.innerHTML = '';
+      container.innerHTML = "";
     };
   }, [status?.telegram_oauth, status?.telegram_bot_name]);
 
   return (
-    <div className='mx-auto w-full max-w-xl space-y-4'>
-      <Card>
-        <Card.Header>
-          <Card.Title>Sign in</Card.Title>
-          <Card.Description>Use a magic link (default), password, 2FA, OAuth, or Passkey.</Card.Description>
-        </Card.Header>
-
-        <Card.Content className='space-y-3'>
-          {method === 'magic' ? (
+    <div className="w-full max-w-lg pb-4 flex flex-col items-center">
+      <div className="pb-8">
+        <h1 className="text-3xl font-semibold">Sign in</h1>
+      </div>
+      <Card className="pt-6 w-md">
+        <Card.Content className="space-y-4 mr-4.5 ml-4.5">
+          {method === "magic" ? (
             <>
               {magicLinkSent ? (
-                <Alert status='success'>
+                <Alert status="success">
                   <Alert.Indicator />
                   <Alert.Content>
-                    <Alert.Description>Check your inbox for a sign-in link.</Alert.Description>
+                    <Alert.Description>
+                      Check your inbox for a sign-in link.
+                    </Alert.Description>
                   </Alert.Content>
                 </Alert>
               ) : null}
 
               <TextField
                 fullWidth
-                name='email'
-                type='email'
+                name="email"
+                type="email"
                 onChange={(next) => {
                   setMagicEmail(next);
                   setMagicLinkSent(false);
                 }}
               >
                 <Label>Email</Label>
-                <Input value={magicEmail} autoComplete='email' />
+                <Input value={magicEmail} autoComplete="email" />
               </TextField>
             </>
-          ) : step === 'password' ? (
+          ) : step === "password" ? (
             <>
-              <TextField fullWidth name='username' onChange={setUsername}>
+              <TextField fullWidth name="username" onChange={setUsername}>
                 <Label>Username / Email</Label>
-                <Input value={username} autoComplete='username' />
+                <Input value={username} autoComplete="username" />
               </TextField>
-              <TextField fullWidth name='password' type='password' onChange={setPassword}>
+              <TextField
+                fullWidth
+                name="password"
+                type="password"
+                onChange={setPassword}
+              >
                 <Label>Password</Label>
-                <Input value={password} autoComplete='current-password' />
+                <Input value={password} autoComplete="current-password" />
               </TextField>
             </>
           ) : (
-            <>
-              <TextField fullWidth name='twoFactorCode' onChange={setTwoFactorCode}>
-                <Label>2FA code</Label>
-                <Input
-                  value={twoFactorCode}
-                  placeholder='6-digit code or backup code'
-                  autoComplete='one-time-code'
-                />
-              </TextField>
-            </>
+            <TextField
+              fullWidth
+              name="twoFactorCode"
+              onChange={setTwoFactorCode}
+            >
+              <Label>2FA code</Label>
+              <Input
+                value={twoFactorCode}
+                placeholder="6-digit code or backup code"
+                autoComplete="one-time-code"
+              />
+            </TextField>
           )}
 
           {turnstileEnabled && turnstileSiteKey ? (
-            <Card variant='secondary'>
-              <Turnstile sitekey={turnstileSiteKey} onVerify={setTurnstileToken} />
+            <Card variant="secondary">
+              <Turnstile
+                sitekey={turnstileSiteKey}
+                onVerify={setTurnstileToken}
+              />
             </Card>
           ) : null}
 
           {needsTerms ? (
-            <Checkbox id='login-terms' isSelected={termsAccepted} onChange={setTermsAccepted}>
+            <Checkbox
+              id="login-terms"
+              isSelected={termsAccepted}
+              onChange={setTermsAccepted}
+            >
               <Checkbox.Control>
                 <Checkbox.Indicator />
               </Checkbox.Control>
               <Checkbox.Content>
-                <Label htmlFor='login-terms'>
-                  I agree to the <RouterLink to='/terms'>Terms</RouterLink> and{' '}
-                  <RouterLink to='/privacy-policy'>Privacy Policy</RouterLink>.
+                <Label htmlFor="login-terms">
+                  I agree to the <RouterLink to="/terms">Terms</RouterLink> and{" "}
+                  <RouterLink to="/privacy-policy">Privacy Policy</RouterLink>.
                 </Label>
               </Checkbox.Content>
             </Checkbox>
           ) : null}
 
-          <div className='flex flex-wrap gap-2'>
-            {method === 'magic' ? (
-              <>
-                <Button isDisabled={submitting} onPress={sendMagicLinkLogin}>
-                  Send magic link
-                </Button>
-                <Button
-                  variant='ghost'
-                  isDisabled={submitting}
-                  onPress={() => {
-                    setMethod('password');
+          {method === "magic" ? (
+            <div className="space-y-2">
+              <Button
+                className="w-full"
+                isDisabled={submitting}
+                onPress={sendMagicLinkLogin}
+              >
+                Continue
+              </Button>
+              <div className="text-sm text-muted pt-3 grid place-items-center">
+                {magicLinkSent ? (
+                  <button
+                    type="button"
+                    className="underline-offset-4 hover:underline"
+                    onClick={() => {
+                      setMethod("password");
+                      setMagicLinkSent(false);
+                      setStep("password");
+                    }}
+                  >
+                    Use password instead
+                  </button>
+                ) : (
+                  ""
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Button
+                className="w-full"
+                isDisabled={submitting}
+                onPress={
+                  step === "password" ? handlePasswordLogin : handle2faLogin
+                }
+              >
+                {step === "password" ? "Sign in" : "Verify"}
+              </Button>
+
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm text-muted">
+                <button
+                  type="button"
+                  className="underline-offset-4 hover:underline"
+                  onClick={() => {
+                    setMethod("magic");
                     setMagicLinkSent(false);
-                    setStep('password');
-                  }}
-                >
-                  Use password instead
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  isDisabled={submitting}
-                  onPress={step === 'password' ? handlePasswordLogin : handle2faLogin}
-                >
-                  {step === 'password' ? 'Sign in' : 'Verify'}
-                </Button>
-                {step === '2fa' ? (
-                  <Button variant='secondary' isDisabled={submitting} onPress={() => setStep('password')}>
-                    Back
-                  </Button>
-                ) : null}
-                <Button
-                  variant='ghost'
-                  isDisabled={submitting}
-                  onPress={() => {
-                    setMethod('magic');
-                    setMagicLinkSent(false);
-                    setTurnstileToken('');
+                    setTurnstileToken("");
+                    setStep("password");
                   }}
                 >
                   Use magic link instead
-                </Button>
-                <Button variant='secondary' onPress={() => navigate('/auth/recover')}>
-                  Forgot password
-                </Button>
-              </>
-            )}
-          </div>
-        </Card.Content>
-      </Card>
+                </button>
 
-      <Card>
-        <Card.Header>
-          <Card.Title>Other sign-in methods</Card.Title>
-        </Card.Header>
-        <Card.Content className='flex flex-wrap gap-2'>
-          {status?.github_oauth ? (
-            <Button variant='secondary' onPress={() => startOAuth('github')} isDisabled={submitting}>
-              GitHub
-            </Button>
-          ) : null}
-          {status?.discord_oauth ? (
-            <Button variant='secondary' onPress={() => startOAuth('discord')} isDisabled={submitting}>
-              Discord
-            </Button>
-          ) : null}
-          {status?.linuxdo_oauth ? (
-            <Button variant='secondary' onPress={() => startOAuth('linuxdo')} isDisabled={submitting}>
-              LinuxDO
-            </Button>
-          ) : null}
-          {status?.oidc_enabled ? (
-            <Button variant='secondary' onPress={() => startOAuth('oidc')} isDisabled={submitting}>
-              OIDC
-            </Button>
-          ) : null}
-          {status?.wechat_login ? (
-            <div className='flex flex-wrap items-end gap-2'>
-              <TextField name='wechatCode' onChange={setWechatCode}>
-                <Label>WeChat code</Label>
-                <Input value={wechatCode} placeholder='WeChat code' />
-              </TextField>
-              <Button variant='secondary' onPress={loginWithWeChat} isDisabled={submitting}>
-                WeChat
-              </Button>
+                {step === "2fa" ? (
+                  <button
+                    type="button"
+                    className="underline-offset-4 hover:underline"
+                    onClick={() => setStep("password")}
+                  >
+                    Back
+                  </button>
+                ) : (
+                  <RouterLink
+                    to="/auth/recover"
+                    className="underline-offset-4 hover:underline"
+                  >
+                    Forgot password?
+                  </RouterLink>
+                )}
+              </div>
             </div>
-          ) : null}
+          )}
 
-          {status?.telegram_oauth && status?.telegram_bot_name ? (
-            <div id='telegram-login-container' />
-          ) : null}
+          {hasOtherMethods ? (
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center gap-3">
+                <Separator className="flex-1" />
+                <div className="text-xs font-semibold uppercase text-muted">
+                  or
+                </div>
+                <Separator className="flex-1" />
+              </div>
 
-          {status?.passkey_login ? (
-            <Button variant='secondary' onPress={loginWithPasskey} isDisabled={submitting}>
-              Passkey
-            </Button>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {status?.github_oauth ? (
+                  <Button
+                    className="w-full justify-start"
+                    variant="secondary"
+                    onPress={() => startOAuth("github")}
+                    isDisabled={submitting}
+                  >
+                    Continue with GitHub
+                  </Button>
+                ) : null}
+                {status?.discord_oauth ? (
+                  <Button
+                    className="w-full justify-start"
+                    variant="secondary"
+                    onPress={() => startOAuth("discord")}
+                    isDisabled={submitting}
+                  >
+                    Continue with Discord
+                  </Button>
+                ) : null}
+                {status?.linuxdo_oauth ? (
+                  <Button
+                    className="w-full justify-start"
+                    variant="secondary"
+                    onPress={() => startOAuth("linuxdo")}
+                    isDisabled={submitting}
+                  >
+                    Continue with LinuxDO
+                  </Button>
+                ) : null}
+                {status?.oidc_enabled ? (
+                  <Button
+                    className="w-full justify-start"
+                    variant="secondary"
+                    onPress={() => startOAuth("oidc")}
+                    isDisabled={submitting}
+                  >
+                    Continue with OIDC
+                  </Button>
+                ) : null}
+                {status?.passkey_login ? (
+                  <Button
+                    className="w-full justify-start"
+                    variant="secondary"
+                    onPress={loginWithPasskey}
+                    isDisabled={submitting || !passkeyAvailable}
+                  >
+                    Continue with passkey
+                  </Button>
+                ) : null}
+              </div>
+
+              {status?.wechat_login ? (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                  <TextField
+                    fullWidth
+                    name="wechatCode"
+                    onChange={setWechatCode}
+                  >
+                    <Label>WeChat code</Label>
+                    <Input value={wechatCode} placeholder="WeChat code" />
+                  </TextField>
+                  <Button
+                    className="sm:w-auto"
+                    variant="secondary"
+                    onPress={loginWithWeChat}
+                    isDisabled={submitting}
+                  >
+                    WeChat
+                  </Button>
+                </div>
+              ) : null}
+
+              {hasTelegramLogin ? <div id="telegram-login-container" /> : null}
+            </div>
           ) : null}
         </Card.Content>
 
         {!status?.self_use_mode_enabled ? (
-          <Card.Footer>
-            <div className='text-sm text-muted'>
-              Don't have an account? <RouterLink to='/auth/signup'>Register</RouterLink>
+          <Card.Footer className="mr-4.5 ml-4.5 mt-1.5 mb-1 text-center">
+            <div className="text-sm text-muted w-full text-center">
+              Don't have an account?{" "}
+              <RouterLink to="/auth/signup">Register</RouterLink>
             </div>
           </Card.Footer>
         ) : null}

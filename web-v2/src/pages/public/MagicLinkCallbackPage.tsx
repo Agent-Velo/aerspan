@@ -108,13 +108,13 @@ export function MagicLinkCallbackPage() {
   };
 
   return (
-    <div className='mx-auto w-full max-w-xl'>
-      <Card>
-        <Card.Header>
-          <Card.Title>Magic Link</Card.Title>
-          <Card.Description>Verifying your sign-in link.</Card.Description>
-        </Card.Header>
-        <Card.Content className='space-y-3 text-sm'>
+    <div className='w-full max-w-lg pb-4 flex flex-col items-center'>
+      <div className='pb-8'>
+        <h1 className='text-3xl font-semibold'>Magic Link</h1>
+      </div>
+
+      <Card className='pt-6 w-md'>
+        <Card.Content className='space-y-4 mr-4.5 ml-4.5'>
           {step === 'working' ? (
             <div className='flex items-center gap-2'>
               <Spinner size='sm' />
@@ -133,11 +133,9 @@ export function MagicLinkCallbackPage() {
                   autoComplete='one-time-code'
                 />
               </TextField>
-              <div className='flex flex-wrap gap-2'>
-                <Button isDisabled={submitting} onPress={verify2fa}>
-                  Verify
-                </Button>
-              </div>
+              <Button className='w-full' isDisabled={submitting} onPress={verify2fa}>
+                Verify
+              </Button>
             </>
           ) : null}
 
