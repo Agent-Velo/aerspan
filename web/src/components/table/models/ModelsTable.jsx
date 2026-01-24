@@ -39,6 +39,7 @@ const ModelsTable = (modelsData) => {
     rowSelection,
     handleRow,
     manageModel,
+    duplicateModel,
     setEditingModel,
     setShowEdit,
     refresh,
@@ -51,12 +52,21 @@ const ModelsTable = (modelsData) => {
     return getModelsColumns({
       t,
       manageModel,
+      duplicateModel,
       setEditingModel,
       setShowEdit,
       refresh,
       vendorMap,
     });
-  }, [t, manageModel, setEditingModel, setShowEdit, refresh, vendorMap]);
+  }, [
+    t,
+    manageModel,
+    duplicateModel,
+    setEditingModel,
+    setShowEdit,
+    refresh,
+    vendorMap,
+  ]);
 
   // Handle compact mode by removing fixed positioning
   const tableColumns = useMemo(() => {

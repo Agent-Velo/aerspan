@@ -214,6 +214,7 @@ const renderOperations = (
   setEditingModel,
   setShowEdit,
   manageModel,
+  duplicateModel,
   refresh,
   t,
 ) => {
@@ -245,6 +246,14 @@ const renderOperations = (
         }}
       >
         {t('编辑')}
+      </Button>
+
+      <Button
+        type='tertiary'
+        size='small'
+        onClick={() => duplicateModel?.(record)}
+      >
+        {t('复制')}
       </Button>
 
       <Button
@@ -309,6 +318,7 @@ const renderNameRule = (rule, record, t) => {
 export const getModelsColumns = ({
   t,
   manageModel,
+  duplicateModel,
   setEditingModel,
   setShowEdit,
   refresh,
@@ -413,6 +423,7 @@ export const getModelsColumns = ({
           setEditingModel,
           setShowEdit,
           manageModel,
+          duplicateModel,
           refresh,
           t,
         ),

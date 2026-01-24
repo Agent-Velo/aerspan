@@ -27,6 +27,56 @@ export const useModelsData = () => {
   const { t } = useTranslation();
   const [compactMode, setCompactMode] = useTableCompactMode('models');
 
+  const MODEL_EDITABLE_FIELDS = [
+    'model_name',
+    'display_name',
+    'description',
+    'icon',
+    'tags',
+    'vendor_id',
+    'endpoints',
+    'input_types',
+    'output_types',
+    'total_context',
+    'max_output',
+    'openrouter_slug',
+    'openrouter_created',
+    'openrouter_hugging_face_id',
+    'openrouter_input_modalities',
+    'openrouter_output_modalities',
+    'openrouter_quantization',
+    'openrouter_pricing_prompt',
+    'openrouter_pricing_completion',
+    'openrouter_pricing_image',
+    'openrouter_pricing_request',
+    'openrouter_pricing_input_cache_read',
+    'openrouter_pricing_input_cache_write',
+    'openrouter_supported_sampling_parameters',
+    'openrouter_supported_features',
+    'name_rule',
+    'status',
+    'sync_official',
+  ];
+
+  const pickEditableModelFields = (record) => {
+    const result = { id: undefined };
+    if (!record || typeof record !== 'object') return result;
+
+    MODEL_EDITABLE_FIELDS.forEach((field) => {
+      if (record[field] !== undefined) result[field] = record[field];
+    });
+
+    return result;
+  };
+
+  const suggestDuplicateModelName = (name) => {
+    if (!name || typeof name !== 'string') return '';
+    const base = name.trim();
+    if (!base) return '';
+    if (base.endsWith('-copy')) return `${base}-2`;
+    return `${base}-copy`;
+  };
+
   // State management
   const [models, setModels] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -327,6 +377,20 @@ export const useModelsData = () => {
     }
   };
 
+  const duplicateModel = (record) => {
+    const modelName = record?.model_name;
+    if (!modelName) {
+      showError(t('模型 ID 为空，无法复制'));
+      return;
+    }
+
+    const copyData = pickEditableModelFields(record);
+    copyData.model_name = suggestDuplicateModelName(modelName);
+
+    setEditingModel(copyData);
+    setShowEdit(true);
+  };
+
   // Handle page change
   const handlePageChange = (page) => {
     setActivePage(page);
@@ -458,6 +522,7 @@ export const useModelsData = () => {
     searchModels,
     refresh,
     manageModel,
+    duplicateModel,
     batchDeleteModels,
     copyText,
 

@@ -58,6 +58,93 @@ const nameRuleOptions = [
   { label: '后缀名称匹配', value: 3 },
 ];
 
+const splitCsv = (val) => {
+  if (val === undefined || val === null || val === '') return [];
+  if (Array.isArray(val)) {
+    return val.map((v) => String(v).trim()).filter(Boolean);
+  }
+  if (typeof val !== 'string') return [];
+  return val
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const normalizeEndpoints = (val) => {
+  if (!val) return '';
+  if (typeof val === 'string') return val;
+  try {
+    return JSON.stringify(val, null, 2);
+  } catch (_) {
+    return String(val);
+  }
+};
+
+const normalizeBooleanFlag = (value, defaultValue = true) => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === '1' || normalized === 'true') return true;
+    if (normalized === '0' || normalized === 'false') return false;
+  }
+  return defaultValue;
+};
+
+const normalizeModelForForm = (raw) => {
+  const model = raw && typeof raw === 'object' ? raw : {};
+  const tags = Array.isArray(model.tags)
+    ? model.tags
+    : typeof model.tags === 'string'
+      ? model.tags.split(',')
+      : [];
+
+  const nameRule =
+    model.name_rule === undefined || model.name_rule === null || model.name_rule === ''
+      ? undefined
+      : Number(model.name_rule);
+
+  const vendorId =
+    model.vendor_id === undefined || model.vendor_id === null || model.vendor_id === ''
+      ? undefined
+      : typeof model.vendor_id === 'string'
+        ? parseInt(model.vendor_id, 10)
+        : model.vendor_id;
+
+  return {
+    model_name: model.model_name || '',
+    display_name: model.display_name || '',
+    description: model.description || '',
+    icon: model.icon || '',
+    tags: tags.map((tag) => String(tag).trim()).filter(Boolean),
+    vendor_id: vendorId || undefined,
+    endpoints: normalizeEndpoints(model.endpoints),
+    input_types: splitCsv(model.input_types),
+    output_types: splitCsv(model.output_types),
+    total_context: model.total_context ?? undefined,
+    max_output: model.max_output ?? undefined,
+    openrouter_slug: model.openrouter_slug || '',
+    openrouter_created: model.openrouter_created ?? undefined,
+    openrouter_hugging_face_id: model.openrouter_hugging_face_id || '',
+    openrouter_input_modalities: splitCsv(model.openrouter_input_modalities),
+    openrouter_output_modalities: splitCsv(model.openrouter_output_modalities),
+    openrouter_quantization: model.openrouter_quantization || '',
+    openrouter_pricing_prompt: model.openrouter_pricing_prompt || '',
+    openrouter_pricing_completion: model.openrouter_pricing_completion || '',
+    openrouter_pricing_image: model.openrouter_pricing_image || '',
+    openrouter_pricing_request: model.openrouter_pricing_request || '',
+    openrouter_pricing_input_cache_read: model.openrouter_pricing_input_cache_read || '',
+    openrouter_pricing_input_cache_write: model.openrouter_pricing_input_cache_write || '',
+    openrouter_supported_sampling_parameters: splitCsv(
+      model.openrouter_supported_sampling_parameters,
+    ),
+    openrouter_supported_features: splitCsv(model.openrouter_supported_features),
+    name_rule: Number.isFinite(nameRule) ? nameRule : undefined,
+    status: normalizeBooleanFlag(model.status, true),
+    sync_official: normalizeBooleanFlag(model.sync_official ?? 1, true),
+  };
+};
+
 const EditModelModal = (props) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
@@ -111,38 +198,45 @@ const EditModelModal = (props) => {
     }
   }, [props.visiable]);
 
-  const getInitValues = () => ({
-    model_name: props.editingModel?.model_name || '',
-    display_name: props.editingModel?.display_name || '',
-    description: '',
-    icon: '',
-    tags: [],
-    vendor_id: undefined,
-    vendor: '',
-    vendor_icon: '',
-    endpoints: '',
-    input_types: [],
-    output_types: [],
-    total_context: undefined,
-    max_output: undefined,
-    openrouter_slug: '',
-    openrouter_created: undefined,
-    openrouter_hugging_face_id: '',
-    openrouter_input_modalities: [],
-    openrouter_output_modalities: [],
-    openrouter_quantization: '',
-    openrouter_pricing_prompt: '',
-    openrouter_pricing_completion: '',
-    openrouter_pricing_image: '',
-    openrouter_pricing_request: '',
-    openrouter_pricing_input_cache_read: '',
-    openrouter_pricing_input_cache_write: '',
-    openrouter_supported_sampling_parameters: [],
-    openrouter_supported_features: [],
-    name_rule: props.editingModel?.model_name ? 0 : undefined, // 通过未配置模型过来的固定为精确匹配
-    status: true,
-    sync_official: true,
-  });
+  const getInitValues = () => {
+    const prefill = normalizeModelForForm(props.editingModel);
+    const nameRule =
+      prefill.name_rule !== undefined ? prefill.name_rule : prefill.model_name ? 0 : undefined;
+
+    return {
+      model_name: '',
+      display_name: '',
+      description: '',
+      icon: '',
+      tags: [],
+      vendor_id: undefined,
+      vendor: '',
+      vendor_icon: '',
+      endpoints: '',
+      input_types: [],
+      output_types: [],
+      total_context: undefined,
+      max_output: undefined,
+      openrouter_slug: '',
+      openrouter_created: undefined,
+      openrouter_hugging_face_id: '',
+      openrouter_input_modalities: [],
+      openrouter_output_modalities: [],
+      openrouter_quantization: '',
+      openrouter_pricing_prompt: '',
+      openrouter_pricing_completion: '',
+      openrouter_pricing_image: '',
+      openrouter_pricing_request: '',
+      openrouter_pricing_input_cache_read: '',
+      openrouter_pricing_input_cache_write: '',
+      openrouter_supported_sampling_parameters: [],
+      openrouter_supported_features: [],
+      status: true,
+      sync_official: true,
+      ...prefill,
+      name_rule: nameRule, // 通过未配置模型过来的固定为精确匹配
+    };
+  };
 
   const handleCancel = () => {
     props.handleClose();
@@ -156,46 +250,9 @@ const EditModelModal = (props) => {
       const res = await API.get(`/api/models/${props.editingModel.id}`);
       const { success, message, data } = res.data;
       if (success) {
-        const splitCsv = (val) => {
-          if (!val) return [];
-          if (Array.isArray(val)) {
-            return val.map((v) => String(v).trim()).filter(Boolean);
-          }
-          if (typeof val !== 'string') return [];
-          return val
-            .split(',')
-            .map((item) => item.trim())
-            .filter(Boolean);
-        };
-        // 处理tags
-        if (data.tags) {
-          data.tags = data.tags.split(',').filter(Boolean);
-        } else {
-          data.tags = [];
-        }
-
-        // OpenRouter list fields are stored as CSV in backend.
-        data.openrouter_input_modalities = splitCsv(data.openrouter_input_modalities);
-        data.openrouter_output_modalities = splitCsv(data.openrouter_output_modalities);
-        data.openrouter_supported_sampling_parameters = splitCsv(
-          data.openrouter_supported_sampling_parameters,
-        );
-        data.openrouter_supported_features = splitCsv(
-          data.openrouter_supported_features,
-        );
-
-        data.input_types = splitCsv(data.input_types);
-        data.output_types = splitCsv(data.output_types);
-
-        // endpoints 保持原始 JSON 字符串，若为空设为空串
-        if (!data.endpoints) {
-          data.endpoints = '';
-        }
-        // 处理status/sync_official，将数字转为布尔值
-        data.status = data.status === 1;
-        data.sync_official = (data.sync_official ?? 1) === 1;
+        const normalized = normalizeModelForForm(data);
         if (formApiRef.current) {
-          formApiRef.current.setValues({ ...getInitValues(), ...data });
+          formApiRef.current.setValues({ ...getInitValues(), ...normalized });
         }
       } else {
         showError(message);
@@ -209,10 +266,7 @@ const EditModelModal = (props) => {
   useEffect(() => {
     if (formApiRef.current) {
       if (!isEdit) {
-        formApiRef.current.setValues({
-          ...getInitValues(),
-          model_name: props.editingModel?.model_name || '',
-        });
+        formApiRef.current.setValues(getInitValues());
       }
     }
   }, [props.editingModel?.id, props.editingModel?.model_name]);
@@ -222,10 +276,7 @@ const EditModelModal = (props) => {
       if (isEdit) {
         loadModel();
       } else {
-        formApiRef.current?.setValues({
-          ...getInitValues(),
-          model_name: props.editingModel?.model_name || '',
-        });
+        formApiRef.current?.setValues(getInitValues());
       }
     } else {
       formApiRef.current?.reset();

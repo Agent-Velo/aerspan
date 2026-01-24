@@ -445,7 +445,8 @@ export function ModelsPage() {
               {filtered.map((item) => {
                 const vendorName = item.vendor_id ? vendorMap.get(item.vendor_id)?.name : undefined;
                 const tags = splitTags(item.tags);
-                const endpoints = (item.supported_endpoint_types || []).slice(0, 4);
+                const modelName = item.display_name?.trim() || item.model_name;
+                const displayName = vendorName ? `${vendorName}: ${modelName}` : modelName;
                 const hasTierPricing =
                   (item.input_token_price_multiplier_tiers?.length || 0) > 0 ||
                   (item.output_token_price_multiplier_tiers?.length || 0) > 0;
@@ -459,17 +460,10 @@ export function ModelsPage() {
                     <div className='flex flex-col gap-1 md:flex-row md:items-center md:justify-between'>
                       <div className='min-w-0'>
                         <div className='flex items-center gap-2'>
-                          <div className='truncate text-sm font-semibold'>
-                            {item.display_name?.trim() || item.model_name}
-                          </div>
-                          {vendorName ? (
-                            <Chip size='sm' variant='secondary'>
-                              {vendorName}
-                            </Chip>
-                          ) : null}
+                          <div className='truncate text-base font-semibold'>{displayName}</div>
                         </div>
                         {item.description ? (
-                          <div className='mt-1 max-h-10 overflow-hidden text-xs text-muted'>
+                          <div className='mt-1 max-h-10 overflow-hidden text-sm text-muted'>
                             {item.description}
                           </div>
                         ) : null}
@@ -487,11 +481,6 @@ export function ModelsPage() {
                     </div>
 
                     <div className='mt-2 flex flex-wrap gap-1'>
-                      {endpoints.map((et) => (
-                        <Chip key={et} size='sm' variant='secondary' color='accent'>
-                          {et}
-                        </Chip>
-                      ))}
                       {tags.slice(0, 4).map((t) => (
                         <Chip key={t} size='sm' variant='tertiary'>
                           {t}
