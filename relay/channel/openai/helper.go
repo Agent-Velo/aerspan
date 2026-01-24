@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/logger"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
@@ -201,7 +202,12 @@ func HandleFinalResponse(c *gin.Context, info *relaycommon.RelayInfo, lastStream
 	switch info.RelayFormat {
 	case types.RelayFormatOpenAI:
 		if info.ShouldIncludeUsage && !containStreamUsage {
-			response := helper.GenerateFinalUsageResponse(responseId, createAt, model, *usage)
+			usageForClient := *usage
+			if info != nil && service.ShouldHideCacheUsage(info.OriginModelName) {
+				isAnthropicUsageSemantic := info.ChannelType == constant.ChannelTypeAnthropic
+				usageForClient = service.UsageWithoutCacheFields(usageForClient, isAnthropicUsageSemantic)
+			}
+			response := helper.GenerateFinalUsageResponse(responseId, createAt, model, usageForClient)
 			response.SetSystemFingerprint(systemFingerprint)
 			helper.ObjectData(c, response)
 		}
@@ -256,6 +262,12 @@ func HandleFinalResponse(c *gin.Context, info *relaycommon.RelayInfo, lastStream
 func sendResponsesStreamData(c *gin.Context, info *relaycommon.RelayInfo, streamResponse dto.ResponsesStreamResponse, data string) {
 	if data == "" {
 		return
+	}
+	if info != nil && service.ShouldHideCacheUsage(info.OriginModelName) && service.MightContainCacheUsageFields(data) {
+		isAnthropicUsageSemantic := info.ChannelType == constant.ChannelTypeAnthropic
+		if scrubbed, ok := service.ScrubCacheUsageFromJSONString(data, isAnthropicUsageSemantic); ok {
+			data = scrubbed
+		}
 	}
 	data = relaycommon.MaskJSONModelFieldIfMappedString(c, info, data, "response.model")
 	helper.ResponseChunkData(c, streamResponse, data)

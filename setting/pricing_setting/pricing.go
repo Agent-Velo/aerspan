@@ -131,6 +131,20 @@ func GetModelCacheWritePrice(name string) (float64, bool) {
 	return price, true
 }
 
+func HasModelCachePricing(name string) bool {
+	name = FormatMatchingModelName(name)
+	modelCacheReadPriceMapMutex.RLock()
+	_, hasRead := modelCacheReadPriceMap[name]
+	modelCacheReadPriceMapMutex.RUnlock()
+	if !hasRead {
+		return false
+	}
+	modelCacheWritePriceMapMutex.RLock()
+	_, hasWrite := modelCacheWritePriceMap[name]
+	modelCacheWritePriceMapMutex.RUnlock()
+	return hasWrite
+}
+
 func GetModelImageInputPrice(name string) (float64, bool) {
 	modelImageInputPriceMapMutex.RLock()
 	defer modelImageInputPriceMapMutex.RUnlock()

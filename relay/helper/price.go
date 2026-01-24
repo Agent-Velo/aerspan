@@ -119,8 +119,7 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 			audioOutputPrice = v
 		}
 
-		inputTierMultiplier, _ := pricing_setting.GetModelInputTokenPriceMultiplier(info.OriginModelName, preConsumedInputTokens)
-		outputTierMultiplier, _ := pricing_setting.GetModelOutputTokenPriceMultiplier(info.OriginModelName, preConsumedOutputTokens)
+		inputTierMultiplier, outputTierMultiplier, _, _ := pricing_setting.GetModelTokenPriceTierMultipliersByInputTokens(info.OriginModelName, preConsumedInputTokens)
 		preConsumedUSD := (float64(preConsumedInputTokens)*inputPrice*inputTierMultiplier + float64(preConsumedOutputTokens)*outputPrice*outputTierMultiplier) / pricing_setting.TokensPerMillion
 		preConsumedQuota = int(preConsumedUSD * groupRatioInfo.GroupRatio * common.QuotaPerUnit)
 	} else {

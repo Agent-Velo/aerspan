@@ -245,6 +245,21 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 	cachedCreationTokens := usage.PromptTokensDetails.CachedCreationTokens
 
 	modelName := relayInfo.OriginModelName
+	isAnthropicUsageSemantic := relayInfo.ChannelType == constant.ChannelTypeAnthropic
+
+	// When cache pricing isn't fully configured, treat cache tokens as normal prompt tokens.
+	// This avoids exposing cache usage details to clients and ensures tier multipliers apply.
+	if !pricing_setting.HasModelCachePricing(modelName) {
+		cacheCreationTokensForMerge := cachedCreationTokens
+		if cacheCreationTokensForMerge == 0 {
+			cacheCreationTokensForMerge = usage.ClaudeCacheCreation5mTokens + usage.ClaudeCacheCreation1hTokens
+		}
+		if isAnthropicUsageSemantic {
+			promptTokens += cacheTokens + cacheCreationTokensForMerge
+		}
+		cacheTokens = 0
+		cachedCreationTokens = 0
+	}
 
 	tokenName := ctx.GetString("token_name")
 	inputPrice := relayInfo.PriceData.InputPrice
@@ -343,7 +358,7 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 
 	var audioInputQuota decimal.Decimal
 	var audioInputPrice float64
-	isClaudeUsageSemantic := relayInfo.ChannelType == constant.ChannelTypeAnthropic
+	isClaudeUsageSemantic := isAnthropicUsageSemantic
 	if !relayInfo.PriceData.UsePrice {
 		baseTokens := dPromptTokens
 		// 减去 cached tokens
@@ -385,8 +400,7 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 		if inputTokensForTier < 0 {
 			inputTokensForTier = 0
 		}
-		inputMultiplier, inputTierMatched := pricing_setting.GetModelInputTokenPriceMultiplier(modelName, inputTokensForTier)
-		outputMultiplier, outputTierMatched := pricing_setting.GetModelOutputTokenPriceMultiplier(modelName, completionTokens)
+		inputMultiplier, outputMultiplier, inputTierMatched, outputTierMatched := pricing_setting.GetModelTokenPriceTierMultipliersByInputTokens(modelName, inputTokensForTier)
 		dInputMultiplier := decimal.NewFromFloat(inputMultiplier)
 		dOutputMultiplier := decimal.NewFromFloat(outputMultiplier)
 		if inputTierMatched && inputMultiplier != 1 {

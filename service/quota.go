@@ -73,8 +73,7 @@ func calculateAudioQuota(info QuotaInfo) int {
 	inputAudioTokens := decimal.NewFromInt(int64(info.InputDetails.AudioTokens))
 	outputAudioTokens := decimal.NewFromInt(int64(info.OutputDetails.AudioTokens))
 
-	inputTierMultiplier, _ := pricing_setting.GetModelInputTokenPriceMultiplier(info.ModelName, info.InputDetails.TextTokens)
-	outputTierMultiplier, _ := pricing_setting.GetModelOutputTokenPriceMultiplier(info.ModelName, info.OutputDetails.TextTokens)
+	inputTierMultiplier, outputTierMultiplier, _, _ := pricing_setting.GetModelTokenPriceTierMultipliersByInputTokens(info.ModelName, info.InputDetails.TextTokens)
 
 	inputPrice := decimal.NewFromFloat(info.InputPrice).Mul(decimal.NewFromFloat(inputTierMultiplier))
 	outputPrice := decimal.NewFromFloat(info.OutputPrice).Mul(decimal.NewFromFloat(outputTierMultiplier))
@@ -266,7 +265,23 @@ func PostClaudeConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, 
 	cacheCreationTokens5m := usage.ClaudeCacheCreation5mTokens
 	cacheCreationTokens1h := usage.ClaudeCacheCreation1hTokens
 
-	if relayInfo.ChannelType == constant.ChannelTypeOpenRouter {
+	hasCachePricing := pricing_setting.HasModelCachePricing(modelName)
+	if !hasCachePricing {
+		cacheCreationTokensForMerge := cacheCreationTokens
+		if cacheCreationTokensForMerge == 0 {
+			cacheCreationTokensForMerge = cacheCreationTokens5m + cacheCreationTokens1h
+		}
+		// OpenRouter reports prompt tokens including cached tokens.
+		if relayInfo.ChannelType != constant.ChannelTypeOpenRouter {
+			promptTokens += cacheTokens + cacheCreationTokensForMerge
+		}
+		cacheTokens = 0
+		cacheCreationTokens = 0
+		cacheCreationTokens5m = 0
+		cacheCreationTokens1h = 0
+	}
+
+	if relayInfo.ChannelType == constant.ChannelTypeOpenRouter && hasCachePricing {
 		promptTokens -= cacheTokens
 		isUsingCustomSettings := relayInfo.PriceData.UsePrice || hasCustomModelInputPrice(modelName, inputPrice)
 		if cacheCreationTokens == 0 && cacheCreationPrice != inputPrice && usage.Cost != 0 && !isUsingCustomSettings {
@@ -294,8 +309,7 @@ func PostClaudeConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, 
 		// USD prices per 1M tokens
 		dIn := decimal.NewFromFloat(inputPrice)
 		dOut := decimal.NewFromFloat(outputPrice)
-		inputTierMultiplier, _ := pricing_setting.GetModelInputTokenPriceMultiplier(modelName, promptTokens)
-		outputTierMultiplier, _ := pricing_setting.GetModelOutputTokenPriceMultiplier(modelName, completionTokens)
+		inputTierMultiplier, outputTierMultiplier, _, _ := pricing_setting.GetModelTokenPriceTierMultipliersByInputTokens(modelName, promptTokens)
 		dInMultiplier := decimal.NewFromFloat(inputTierMultiplier)
 		dOutMultiplier := decimal.NewFromFloat(outputTierMultiplier)
 		dCacheRead := decimal.NewFromFloat(cacheReadPrice)

@@ -27,6 +27,13 @@ func sendStreamData(c *gin.Context, info *relaycommon.RelayInfo, data string, fo
 		return nil
 	}
 
+	isAnthropicUsageSemantic := info != nil && info.ChannelType == constant.ChannelTypeAnthropic
+	if info != nil && service.ShouldHideCacheUsage(info.OriginModelName) && service.MightContainCacheUsageFields(data) {
+		if scrubbed, ok := service.ScrubCacheUsageFromJSONString(data, isAnthropicUsageSemantic); ok {
+			data = scrubbed
+		}
+	}
+
 	if !forceFormat && !thinkToContent {
 		data = relaycommon.MaskJSONModelFieldIfMappedString(c, info, data, "model")
 		return helper.StringData(c, data)
@@ -35,6 +42,10 @@ func sendStreamData(c *gin.Context, info *relaycommon.RelayInfo, data string, fo
 	var lastStreamResponse dto.ChatCompletionsStreamResponse
 	if err := common.UnmarshalJsonStr(data, &lastStreamResponse); err != nil {
 		return err
+	}
+	if lastStreamResponse.Usage != nil && info != nil && service.ShouldHideCacheUsage(info.OriginModelName) {
+		clean := service.UsageWithoutCacheFields(*lastStreamResponse.Usage, isAnthropicUsageSemantic)
+		lastStreamResponse.Usage = &clean
 	}
 
 	lastStreamResponse.Model = relaycommon.MaskMappedModelName(c, info, lastStreamResponse.Model)
@@ -292,6 +303,13 @@ func OpenaiHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 			return nil, types.NewError(err, types.ErrorCodeBadResponseBody)
 		}
 		responseBody = geminiRespStr
+	}
+
+	if info != nil && service.ShouldHideCacheUsage(info.OriginModelName) {
+		isAnthropicUsageSemantic := info.ChannelType == constant.ChannelTypeAnthropic
+		if scrubbed, ok := service.ScrubCacheUsageFromJSON(responseBody, isAnthropicUsageSemantic); ok {
+			responseBody = scrubbed
+		}
 	}
 
 	responseBody = relaycommon.MaskJSONModelFieldIfMapped(c, info, responseBody, "model")
@@ -566,6 +584,7 @@ func OpenaiHandlerWithUsage(c *gin.Context, info *relaycommon.RelayInfo, resp *h
 	if err != nil {
 		return nil, types.NewOpenAIError(err, types.ErrorCodeReadResponseBodyFailed, http.StatusInternalServerError)
 	}
+	responseBodyForBilling := responseBody
 
 	var usageResp dto.SimpleResponse
 	err = common.Unmarshal(responseBody, &usageResp)
@@ -574,7 +593,14 @@ func OpenaiHandlerWithUsage(c *gin.Context, info *relaycommon.RelayInfo, resp *h
 	}
 
 	// 写入新的 response body
-	service.IOCopyBytesGracefully(c, resp, responseBody)
+	responseBodyForClient := responseBody
+	if info != nil && service.ShouldHideCacheUsage(info.OriginModelName) {
+		isAnthropicUsageSemantic := info.ChannelType == constant.ChannelTypeAnthropic
+		if scrubbed, ok := service.ScrubCacheUsageFromJSON(responseBodyForClient, isAnthropicUsageSemantic); ok {
+			responseBodyForClient = scrubbed
+		}
+	}
+	service.IOCopyBytesGracefully(c, resp, responseBodyForClient)
 
 	// Once we've written to the client, we should not return errors anymore
 	// because the upstream has already consumed resources and returned content
@@ -590,7 +616,7 @@ func OpenaiHandlerWithUsage(c *gin.Context, info *relaycommon.RelayInfo, resp *h
 		usageResp.PromptTokensDetails.ImageTokens += usageResp.InputTokensDetails.ImageTokens
 		usageResp.PromptTokensDetails.TextTokens += usageResp.InputTokensDetails.TextTokens
 	}
-	applyUsagePostProcessing(info, &usageResp.Usage, responseBody)
+	applyUsagePostProcessing(info, &usageResp.Usage, responseBodyForBilling)
 	return &usageResp.Usage, nil
 }
 

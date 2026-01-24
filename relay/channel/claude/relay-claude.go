@@ -647,19 +647,24 @@ func HandleStreamResponseData(c *gin.Context, info *relaycommon.RelayInfo, claud
 	if info.RelayFormat == types.RelayFormatClaude {
 		FormatClaudeResponseInfo(requestMode, &claudeResponse, nil, claudeInfo)
 
-		if requestMode == RequestModeCompletion {
-		} else {
+			if requestMode == RequestModeCompletion {
+			} else {
 			if claudeResponse.Type == "message_start" {
 				// message_start, 获取usage
 				info.UpstreamModelName = claudeResponse.Message.Model
 			} else if claudeResponse.Type == "content_block_delta" {
 			} else if claudeResponse.Type == "message_delta" {
 			}
-		}
-		data = relaycommon.MaskJSONModelFieldIfMappedString(c, info, data, "message.model")
-		data = relaycommon.MaskJSONModelFieldIfMappedString(c, info, data, "model")
-		helper.ClaudeChunkData(c, claudeResponse, data)
-	} else if info.RelayFormat == types.RelayFormatOpenAI {
+			}
+			if info != nil && service.ShouldHideCacheUsage(info.OriginModelName) && service.MightContainCacheUsageFields(data) {
+				if scrubbed, ok := service.ScrubCacheUsageFromJSONString(data, true); ok {
+					data = scrubbed
+				}
+			}
+			data = relaycommon.MaskJSONModelFieldIfMappedString(c, info, data, "message.model")
+			data = relaycommon.MaskJSONModelFieldIfMappedString(c, info, data, "model")
+			helper.ClaudeChunkData(c, claudeResponse, data)
+		} else if info.RelayFormat == types.RelayFormatOpenAI {
 		response := StreamResponseClaude2OpenAI(requestMode, &claudeResponse)
 
 		if !FormatClaudeResponseInfo(requestMode, &claudeResponse, response, claudeInfo) {
@@ -695,15 +700,19 @@ func HandleStreamFinalResponse(c *gin.Context, info *relaycommon.RelayInfo, clau
 
 	if info.RelayFormat == types.RelayFormatClaude {
 		//
-	} else if info.RelayFormat == types.RelayFormatOpenAI {
-		if info.ShouldIncludeUsage {
-			responseModel := relaycommon.MaskMappedModelName(c, info, info.UpstreamModelName)
-			response := helper.GenerateFinalUsageResponse(claudeInfo.ResponseId, claudeInfo.Created, responseModel, *claudeInfo.Usage)
-			err := helper.ObjectData(c, response)
-			if err != nil {
-				common.SysLog("send final response failed: " + err.Error())
+		} else if info.RelayFormat == types.RelayFormatOpenAI {
+			if info.ShouldIncludeUsage {
+				responseModel := relaycommon.MaskMappedModelName(c, info, info.UpstreamModelName)
+				usageForClient := *claudeInfo.Usage
+				if info != nil && service.ShouldHideCacheUsage(info.OriginModelName) {
+					usageForClient = service.UsageWithoutCacheFields(usageForClient, true)
+				}
+				response := helper.GenerateFinalUsageResponse(claudeInfo.ResponseId, claudeInfo.Created, responseModel, usageForClient)
+				err := helper.ObjectData(c, response)
+				if err != nil {
+					common.SysLog("send final response failed: " + err.Error())
+				}
 			}
-		}
 		helper.Done(c)
 	}
 }
@@ -757,7 +766,11 @@ func HandleClaudeResponseData(c *gin.Context, info *relaycommon.RelayInfo, claud
 	case types.RelayFormatOpenAI:
 		openaiResponse := ResponseClaude2OpenAI(requestMode, &claudeResponse)
 		openaiResponse.Model = relaycommon.MaskMappedModelName(c, info, openaiResponse.Model)
-		openaiResponse.Usage = *claudeInfo.Usage
+		usageForClient := *claudeInfo.Usage
+		if info != nil && service.ShouldHideCacheUsage(info.OriginModelName) {
+			usageForClient = service.UsageWithoutCacheFields(usageForClient, true)
+		}
+		openaiResponse.Usage = usageForClient
 		responseData, err = json.Marshal(openaiResponse)
 		if err != nil {
 			return types.NewError(err, types.ErrorCodeBadResponseBody)
@@ -766,13 +779,19 @@ func HandleClaudeResponseData(c *gin.Context, info *relaycommon.RelayInfo, claud
 		responseData = data
 	}
 
-	responseData = relaycommon.MaskJSONModelFieldIfMapped(c, info, responseData, "model")
+	responseDataForClient := responseData
+	if info != nil && service.ShouldHideCacheUsage(info.OriginModelName) {
+		if scrubbed, ok := service.ScrubCacheUsageFromJSON(responseDataForClient, true); ok {
+			responseDataForClient = scrubbed
+		}
+	}
+	responseDataForClient = relaycommon.MaskJSONModelFieldIfMapped(c, info, responseDataForClient, "model")
 
 	if claudeResponse.Usage.ServerToolUse != nil && claudeResponse.Usage.ServerToolUse.WebSearchRequests > 0 {
 		c.Set("claude_web_search_requests", claudeResponse.Usage.ServerToolUse.WebSearchRequests)
 	}
 
-	service.IOCopyBytesGracefully(c, httpResp, responseData)
+	service.IOCopyBytesGracefully(c, httpResp, responseDataForClient)
 	return nil
 }
 

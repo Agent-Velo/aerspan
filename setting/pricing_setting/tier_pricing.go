@@ -112,6 +112,18 @@ func GetModelOutputTokenPriceMultiplier(modelName string, outputTokens int) (flo
 	return matchTierMultiplier(tiers, outputTokens)
 }
 
+// GetModelTokenPriceTierMultipliersByInputTokens returns tier multipliers for both input and output
+// prices.
+//
+// Tier matching is based on input tokens only (i.e. prompt/context length). This supports vendors
+// that increase both input & output prices when a request uses a larger context window.
+func GetModelTokenPriceTierMultipliersByInputTokens(modelName string, inputTokens int) (inputMultiplier float64, outputMultiplier float64, inputMatched bool, outputMatched bool) {
+	inputMultiplier, inputMatched = GetModelInputTokenPriceMultiplier(modelName, inputTokens)
+	// NOTE: output tiers are also matched by input tokens.
+	outputMultiplier, outputMatched = GetModelOutputTokenPriceMultiplier(modelName, inputTokens)
+	return
+}
+
 func ModelInputTokenPriceMultiplier2JSONString() string {
 	modelInputTokenTierMapMutex.RLock()
 	defer modelInputTokenTierMapMutex.RUnlock()

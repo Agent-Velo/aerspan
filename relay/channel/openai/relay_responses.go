@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/logger"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
@@ -40,10 +41,17 @@ func OaiResponsesHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http
 		c.Set("image_generation_call_size", responsesResponse.GetSize())
 	}
 
-	responseBody = relaycommon.MaskJSONModelFieldIfMapped(c, info, responseBody, "model")
+	responseBodyForClient := responseBody
+	if info != nil && service.ShouldHideCacheUsage(info.OriginModelName) {
+		isAnthropicUsageSemantic := info.ChannelType == constant.ChannelTypeAnthropic
+		if scrubbed, ok := service.ScrubCacheUsageFromJSON(responseBodyForClient, isAnthropicUsageSemantic); ok {
+			responseBodyForClient = scrubbed
+		}
+	}
+	responseBodyForClient = relaycommon.MaskJSONModelFieldIfMapped(c, info, responseBodyForClient, "model")
 
 	// 写入新的 response body
-	service.IOCopyBytesGracefully(c, resp, responseBody)
+	service.IOCopyBytesGracefully(c, resp, responseBodyForClient)
 
 	// compute usage
 	usage := dto.Usage{}
