@@ -6,7 +6,7 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
+import { loadStripe, type Appearance } from "@stripe/stripe-js";
 import { Check, Trash2 } from "lucide-react";
 import { fetchJson } from "@/api/client";
 import type { ApiResponse, PaymentResponse } from "@/api/types";
@@ -171,10 +171,9 @@ function BindCardModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const elementsAppearance = useMemo(
-    () => ({ theme: resolvedTheme === "dark" ? "night" : "stripe" }),
-    [resolvedTheme],
-  );
+  const elementsAppearance = useMemo<Appearance>(() => {
+    return { theme: resolvedTheme === "dark" ? "night" : "stripe" };
+  }, [resolvedTheme]);
 
   useEffect(() => {
     if (!isOpen) return;

@@ -4,7 +4,7 @@ import { AuthLayout } from "@/layouts/AuthLayout";
 import { ConsoleLayout } from "@/layouts/ConsoleLayout";
 import { RequireAuth, AuthRedirect, RequirePricingAuth } from "@/router/guards";
 
-import { HomePage } from "@/pages/public/HomePage";
+import { ExternalRedirectPage } from "@/pages/public/ExternalRedirectPage";
 import { ModelsPage } from "@/pages/public/ModelsPage";
 import { ModelDetailsPage } from "@/pages/public/ModelDetailsPage";
 import { ModelComparePage } from "@/pages/public/ModelComparePage";
@@ -47,7 +47,7 @@ export function createAppRouter() {
       path: "/",
       element: <PublicLayout />,
       children: [
-        { index: true, element: <Navigate to="https://aerspan.com" replace /> },
+        { index: true, element: <ExternalRedirectPage to="//aerspan.com" /> },
         {
           path: "models",
           element: (

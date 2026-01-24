@@ -221,64 +221,66 @@ export function TopUpHistoryPage() {
         </Card.Header>
         <Card.Content className='space-y-3'>
           <Card className='gap-0 overflow-hidden p-0' variant='secondary'>
-            <table className='app-table'>
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Amount</th>
-                  <th>Method</th>
-                  <th>Status</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((row) => (
-                  <tr key={row.id}>
-                    <td>{formatUnixSeconds(row.create_time)}</td>
-                    <td>{row.amount}</td>
-                    <td>{row.payment_method}</td>
-                    <td>{row.status}</td>
-                    <td className='text-right'>
-                      <div className='flex justify-end gap-1'>
-                        <TableActionButton label='Details' onPress={() => setDetailTopUp(row)}>
-                          <Eye size={16} />
-                        </TableActionButton>
-                        {row.payment_method === 'stripe' &&
-                        (row.status === 'success' ||
-                          row.status === 'refund_pending' ||
-                          row.status === 'refunded') ? (
-                          <TableActionButton
-                            label={
-                              row.status === 'refunded'
-                                ? 'Refunded'
-                                : row.status === 'refund_pending'
-                                  ? 'Refund pending'
-                                  : row.refundable
-                                    ? 'Refund'
-                                    : 'Not refundable'
-                            }
-                            tooltip={
-                              row.refundable
-                                ? 'Refund'
-                                : row.status === 'refunded'
-                                  ? 'Already refunded'
-                                  : row.status === 'refund_pending'
-                                    ? 'Refund in progress'
-                                    : row.refund_ineligible_reason || 'Not eligible'
-                            }
-                            variant={row.refundable ? 'danger' : 'ghost'}
-                            isDisabled={!row.refundable || refundingId === row.id}
-                            onPress={() => refundTopUp(row)}
-                          >
-                            <Undo2 size={16} />
-                          </TableActionButton>
-                        ) : null}
-                      </div>
-                    </td>
+            <div className='overflow-x-auto'>
+              <table className='app-table min-w-max'>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Amount</th>
+                    <th>Method</th>
+                    <th>Status</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {history.map((row) => (
+                    <tr key={row.id}>
+                      <td>{formatUnixSeconds(row.create_time)}</td>
+                      <td>{row.amount}</td>
+                      <td>{row.payment_method}</td>
+                      <td>{row.status}</td>
+                      <td className='text-right'>
+                        <div className='flex justify-end gap-1'>
+                          <TableActionButton label='Details' onPress={() => setDetailTopUp(row)}>
+                            <Eye size={16} />
+                          </TableActionButton>
+                          {row.payment_method === 'stripe' &&
+                          (row.status === 'success' ||
+                            row.status === 'refund_pending' ||
+                            row.status === 'refunded') ? (
+                            <TableActionButton
+                              label={
+                                row.status === 'refunded'
+                                  ? 'Refunded'
+                                  : row.status === 'refund_pending'
+                                    ? 'Refund pending'
+                                    : row.refundable
+                                      ? 'Refund'
+                                      : 'Not refundable'
+                              }
+                              tooltip={
+                                row.refundable
+                                  ? 'Refund'
+                                  : row.status === 'refunded'
+                                    ? 'Already refunded'
+                                    : row.status === 'refund_pending'
+                                      ? 'Refund in progress'
+                                      : row.refund_ineligible_reason || 'Not eligible'
+                              }
+                              variant={row.refundable ? 'danger' : 'ghost'}
+                              isDisabled={!row.refundable || refundingId === row.id}
+                              onPress={() => refundTopUp(row)}
+                            >
+                              <Undo2 size={16} />
+                            </TableActionButton>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </Card>
           <div className='flex items-center justify-between text-sm text-muted'>
             <div>{historyLoading ? 'Loading…' : `Total ${historyTotal}`}</div>

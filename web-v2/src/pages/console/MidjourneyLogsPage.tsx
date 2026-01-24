@@ -207,7 +207,8 @@ export function MidjourneyLogsPage() {
       </Card>
 
       <Card className="gap-0 overflow-hidden p-0">
-        <table className="app-table">
+        <div className="overflow-x-auto">
+          <table className="app-table min-w-max">
           <thead>
             <tr>
               <th className="px-3 py-2">Time</th>
@@ -241,7 +242,8 @@ export function MidjourneyLogsPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+          </table>
+        </div>
 
         <div className="app-table-footer flex items-center justify-between px-4 py-3 text-sm">
           <div>{loading ? "Loading…" : `Total ${total}`}</div>

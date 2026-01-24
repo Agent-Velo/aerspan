@@ -1,6 +1,6 @@
 import { useContext, useMemo } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { Check, Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/heroui";
 import { getLogoUrl, getSystemName } from "@/lib/branding";
 import { useStatus } from "@/stores/status/StatusStore";
@@ -30,31 +30,6 @@ export function AuthLayout() {
   const cta = useMemo(() => {
     return getHeaderCta(location.pathname, selfUseMode);
   }, [location.pathname, selfUseMode]);
-
-  const featureItems = useMemo(() => {
-    const items: string[] = [
-      "Magic links or password sign-in",
-      "2FA-ready security",
-    ];
-    if (status?.passkey_login) items.push("Passkey sign-in (WebAuthn)");
-    if (
-      status?.github_oauth ||
-      status?.discord_oauth ||
-      status?.linuxdo_oauth ||
-      status?.oidc_enabled
-    ) {
-      items.push("OAuth providers (when configured)");
-    }
-    if (status?.turnstile_check) items.push("Bot protection (Turnstile)");
-    return items;
-  }, [
-    status?.passkey_login,
-    status?.github_oauth,
-    status?.discord_oauth,
-    status?.linuxdo_oauth,
-    status?.oidc_enabled,
-    status?.turnstile_check,
-  ]);
 
   return (
     <div className="auth-shell">

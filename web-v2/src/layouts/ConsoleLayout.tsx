@@ -51,7 +51,7 @@ export function ConsoleLayout() {
       <Header />
       <div className='mx-auto flex w-full max-w-7xl gap-4 px-4 py-6'>
         <Surface
-          className='w-60 shrink-0 rounded-lg p-2'
+          className='hidden w-60 shrink-0 rounded-lg p-2 md:block'
           variant='secondary'
         >
           {hasSectionVisibleModules('chat') && (

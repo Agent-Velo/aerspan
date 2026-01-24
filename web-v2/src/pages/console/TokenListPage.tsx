@@ -487,106 +487,110 @@ export function TokenListPage() {
       </div>
 
       <Card className="gap-0 overflow-hidden p-0">
-        <table className="app-table app-table-align-middle">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Status</th>
-              <th>Key</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tokens.map((token) => {
-              const muted = token.status === 2;
-              return (
-                <tr
-                  key={token.id}
-                  className={muted ? "app-table-row-muted" : undefined}
-                >
-                  <td>{token.name || "(unnamed)"}</td>
-                  <td>
-                    <Chip
-                      size="sm"
-                      variant="secondary"
-                      color={tokenStatusChipColor(token.status)}
-                    >
-                      {tokenStatusLabel(token.status)}
-                    </Chip>
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <Chip size="sm" variant="soft">
-                        <span className="font-mono">
-                          {getTokenApiKeyPrefix(token.key)}********
-                        </span>
+        <div className="overflow-x-auto">
+          <table className="app-table app-table-align-middle min-w-max">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Key</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tokens.map((token) => {
+                const muted = token.status === 2;
+                return (
+                  <tr
+                    key={token.id}
+                    className={muted ? "app-table-row-muted" : undefined}
+                  >
+                    <td>{token.name || "(unnamed)"}</td>
+                    <td>
+                      <Chip
+                        size="sm"
+                        variant="secondary"
+                        color={tokenStatusChipColor(token.status)}
+                      >
+                        {tokenStatusLabel(token.status)}
                       </Chip>
-                      <TableActionButton
-                        label="Show"
-                        onPress={() => setKeyModalToken(token)}
-                      >
-                        <Eye size={16} />
-                      </TableActionButton>
-                      <TableActionButton
-                        label="Copy"
-                        onPress={() =>
-                          copyText(formatTokenApiKey(token.key)).then((ok) =>
-                            ok
-                              ? toast.success("Copied")
-                              : toast.error("Copy failed"),
-                          )
-                        }
-                      >
-                        <Copy size={16} />
-                      </TableActionButton>
-                      <TableActionButton
-                        label="Roll"
-                        isDisabled={loading}
-                        onPress={() => rollTokenKey(token)}
-                      >
-                        <RefreshCcw size={16} />
-                      </TableActionButton>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="flex flex-wrap gap-2">
-                      {token.status === 2 ? (
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <Chip size="sm" variant="soft">
+                          <span className="font-mono">
+                            {getTokenApiKeyPrefix(token.key)}********
+                          </span>
+                        </Chip>
                         <TableActionButton
-                          label="Enable"
-                          isDisabled={loading}
-                          onPress={() => setStatus(token, 1)}
+                          label="Show"
+                          onPress={() => setKeyModalToken(token)}
                         >
-                          <Check size={16} />
+                          <Eye size={16} />
                         </TableActionButton>
-                      ) : (
                         <TableActionButton
-                          label="Disable"
-                          isDisabled={loading}
-                          onPress={() => setStatus(token, 2)}
+                          label="Copy"
+                          onPress={() =>
+                            copyText(formatTokenApiKey(token.key)).then((ok) =>
+                              ok
+                                ? toast.success("Copied")
+                                : toast.error("Copy failed"),
+                            )
+                          }
                         >
-                          <Ban size={16} />
+                          <Copy size={16} />
                         </TableActionButton>
-                      )}
-                      <TableActionButton
-                        label="Edit"
-                        onPress={() => navigate(`/api-keys/${token.id}/edit`)}
-                      >
-                        <Pencil size={16} />
-                      </TableActionButton>
-                      <TableActionButton
-                        label="Delete"
-                        variant="danger-soft"
-                        onPress={() => deleteToken(token)}
-                      >
-                        <Trash2 size={16} />
-                      </TableActionButton>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                        <TableActionButton
+                          label="Roll"
+                          isDisabled={loading}
+                          onPress={() => rollTokenKey(token)}
+                        >
+                          <RefreshCcw size={16} />
+                        </TableActionButton>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex flex-wrap gap-2">
+                        {token.status === 2 ? (
+                          <TableActionButton
+                            label="Enable"
+                            isDisabled={loading}
+                            onPress={() => setStatus(token, 1)}
+                          >
+                            <Check size={16} />
+                          </TableActionButton>
+                        ) : (
+                          <TableActionButton
+                            label="Disable"
+                            isDisabled={loading}
+                            onPress={() => setStatus(token, 2)}
+                          >
+                            <Ban size={16} />
+                          </TableActionButton>
+                        )}
+                        <TableActionButton
+                          label="Edit"
+                          onPress={() =>
+                            navigate(`/api-keys/${token.id}/edit`)
+                          }
+                        >
+                          <Pencil size={16} />
+                        </TableActionButton>
+                        <TableActionButton
+                          label="Delete"
+                          variant="danger-soft"
+                          onPress={() => deleteToken(token)}
+                        >
+                          <Trash2 size={16} />
+                        </TableActionButton>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
         <div className="app-table-footer flex items-center justify-between px-4 py-3 text-sm">
           <div>{loading ? "Loading…" : `Total ${total}`}</div>
