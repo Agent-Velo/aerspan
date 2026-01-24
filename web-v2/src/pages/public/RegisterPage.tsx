@@ -3,7 +3,9 @@ import Turnstile from "react-turnstile";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { fetchJson } from "@/api/client";
 import type { ApiResponse } from "@/api/types";
+import { SocialLoginOptions } from "@/components/auth/SocialLoginOptions";
 import { toast } from "@/ui/toast";
+import { getInviteCode } from "@/lib/inviteCode";
 import { useStatus } from "@/stores/status/StatusStore";
 import {
   Alert,
@@ -14,11 +16,6 @@ import {
   Label,
   TextField,
 } from "@/components/ui/heroui";
-
-function getInviteCode(): string | null {
-  const raw = localStorage.getItem("via") || localStorage.getItem("aff");
-  return raw && raw.trim() ? raw.trim() : null;
-}
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -183,6 +180,13 @@ export function RegisterPage() {
           >
             Continue
           </Button>
+
+          <SocialLoginOptions
+            redirectTo="/dashboard"
+            ensureTerms={ensureTerms}
+            isDisabled={submitting}
+            showPasskey={false}
+          />
         </Card.Content>
 
         <Card.Footer className="mr-4.5 ml-4.5 mt-6 mb-1 text-center">
